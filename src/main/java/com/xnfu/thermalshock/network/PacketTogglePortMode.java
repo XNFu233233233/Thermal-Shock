@@ -1,7 +1,6 @@
 package com.xnfu.thermalshock.network;
 
 import com.xnfu.thermalshock.ThermalShock;
-import com.xnfu.thermalshock.block.entity.SimulationChamberBlockEntity;
 import io.netty.buffer.ByteBuf;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.codec.StreamCodec;

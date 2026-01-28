@@ -6,7 +6,6 @@ import com.xnfu.thermalshock.registries.ThermalShockBlockEntities;
 import com.xnfu.thermalshock.registries.ThermalShockBlocks;
 import com.xnfu.thermalshock.registries.ThermalShockRecipes;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.Connection;

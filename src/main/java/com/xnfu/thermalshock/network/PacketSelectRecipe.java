@@ -4,7 +4,6 @@ import com.xnfu.thermalshock.ThermalShock;
 import com.xnfu.thermalshock.block.entity.SimulationChamberBlockEntity;
 import io.netty.buffer.ByteBuf;
 import net.minecraft.core.BlockPos;
-import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;

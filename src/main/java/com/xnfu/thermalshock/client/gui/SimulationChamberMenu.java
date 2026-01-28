@@ -1,9 +1,7 @@
 package com.xnfu.thermalshock.client.gui;
 
 import com.xnfu.thermalshock.block.entity.SimulationChamberBlockEntity;
-import com.xnfu.thermalshock.registries.ThermalShockDataMaps;
 import com.xnfu.thermalshock.registries.ThermalShockMenus;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;

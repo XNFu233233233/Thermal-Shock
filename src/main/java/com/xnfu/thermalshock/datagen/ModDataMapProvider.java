@@ -1,6 +1,5 @@
 package com.xnfu.thermalshock.datagen;
 
-import com.xnfu.thermalshock.ThermalShock;
 import com.xnfu.thermalshock.data.*;
 import com.xnfu.thermalshock.registries.ThermalShockDataMaps;
 import net.minecraft.core.HolderLookup;

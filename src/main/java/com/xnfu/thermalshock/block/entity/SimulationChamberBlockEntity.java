@@ -1,6 +1,5 @@
 package com.xnfu.thermalshock.block.entity;
 
-import com.xnfu.thermalshock.ThermalShock;
 import com.xnfu.thermalshock.block.SimulationChamberBlock;
 import com.xnfu.thermalshock.client.gui.SimulationChamberMenu;
 import com.xnfu.thermalshock.item.SimulationUpgradeItem;

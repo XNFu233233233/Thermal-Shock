@@ -1,6 +1,5 @@
 package com.xnfu.thermalshock.block.entity;
 
-import net.minecraft.util.Mth;
 
 public class ChamberPerformance {
 

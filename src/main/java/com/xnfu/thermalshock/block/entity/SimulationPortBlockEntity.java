@@ -3,7 +3,6 @@ package com.xnfu.thermalshock.block.entity;
 
 import com.xnfu.thermalshock.client.gui.SimulationPortMenu;
 import com.xnfu.thermalshock.registries.ThermalShockBlockEntities;
-import com.xnfu.thermalshock.registries.ThermalShockDataMaps;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.BuiltInRegistries;

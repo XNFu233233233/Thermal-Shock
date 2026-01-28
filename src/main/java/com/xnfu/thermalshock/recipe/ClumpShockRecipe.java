@@ -1,7 +1,6 @@
 package com.xnfu.thermalshock.recipe;
 
 import com.mojang.serialization.MapCodec;
-import com.xnfu.thermalshock.block.entity.MachineMode;
 import com.xnfu.thermalshock.data.ClumpInfo;
 import com.xnfu.thermalshock.registries.ThermalShockDataComponents;
 import com.xnfu.thermalshock.registries.ThermalShockItems;

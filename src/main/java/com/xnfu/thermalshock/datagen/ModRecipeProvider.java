@@ -3,7 +3,6 @@ package com.xnfu.thermalshock.datagen;
 import com.xnfu.thermalshock.ThermalShock;
 import com.xnfu.thermalshock.recipe.ClumpFillingRecipe;
 import com.xnfu.thermalshock.recipe.ClumpProcessingRecipe;
-import com.xnfu.thermalshock.recipe.ClumpShockRecipe;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.data.PackOutput;
 import net.minecraft.data.recipes.RecipeOutput;
