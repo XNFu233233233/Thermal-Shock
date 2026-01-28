@@ -1,0 +1,9 @@
+{
+  "type": "thermalshock:clump_processing",
+  "heat_cost": 2000,
+  "min_temp": 500,
+  "target_content": {
+    "count": 1,
+    "id": "minecraft:gold_ingot"
+  }
+}

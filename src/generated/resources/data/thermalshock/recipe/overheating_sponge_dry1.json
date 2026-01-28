@@ -1,0 +1,17 @@
+{
+  "type": "thermalshock:overheating",
+  "heat_cost": 10,
+  "ingredients": [
+    {
+      "type": "block",
+      "value": {
+        "item": "minecraft:ice"
+      }
+    }
+  ],
+  "min_temp": 100,
+  "result": {
+    "count": 1,
+    "id": "minecraft:sponge"
+  }
+}

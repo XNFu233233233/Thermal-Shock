@@ -1,0 +1,8 @@
+{
+  "type": "thermalshock:thermal_fuel",
+  "burn_time": 20000,
+  "heat_rate": 1000,
+  "ingredient": {
+    "item": "minecraft:lava_bucket"
+  }
+}

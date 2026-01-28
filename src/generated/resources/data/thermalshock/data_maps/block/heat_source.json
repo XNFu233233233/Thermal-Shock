@@ -1,0 +1,13 @@
+{
+  "values": {
+    "minecraft:lava": {
+      "heat_per_tick": 20
+    },
+    "minecraft:magma_block": {
+      "heat_per_tick": 50
+    },
+    "minecraft:torch": {
+      "heat_per_tick": 2
+    }
+  }
+}

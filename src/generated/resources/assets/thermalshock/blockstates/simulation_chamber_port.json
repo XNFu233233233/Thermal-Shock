@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "thermalshock:block/simulation_chamber_port"
+    }
+  }
+}

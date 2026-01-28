@@ -1,0 +1,9 @@
+{
+  "parent": "minecraft:block/orientable_with_bottom",
+  "textures": {
+    "bottom": "thermalshock:block/thermal_freezer_top",
+    "front": "thermalshock:block/thermal_freezer_front_on",
+    "side": "thermalshock:block/thermal_freezer_side",
+    "top": "thermalshock:block/thermal_freezer_top"
+  }
+}

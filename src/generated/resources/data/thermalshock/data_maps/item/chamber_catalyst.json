@@ -1,0 +1,11 @@
+{
+  "values": {
+    "minecraft:diamond": {
+      "bonus_yield": 0.5,
+      "buffer_amount": 20.0
+    },
+    "minecraft:iron_ingot": {
+      "bonus_yield": 0.1
+    }
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "type": "thermalshock:thermal_fuel",
+  "burn_time": 2400,
+  "heat_rate": 500,
+  "ingredient": {
+    "item": "minecraft:blaze_rod"
+  }
+}

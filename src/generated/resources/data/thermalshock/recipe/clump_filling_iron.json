@@ -1,0 +1,16 @@
+{
+  "type": "thermalshock:clump_filling",
+  "category": "misc",
+  "group": "clump_filling",
+  "heat_cost": 1000,
+  "ingredients": [
+    {
+      "item": "minecraft:iron_ore"
+    }
+  ],
+  "min_temp": 200,
+  "result_item": {
+    "count": 1,
+    "id": "minecraft:iron_ingot"
+  }
+}

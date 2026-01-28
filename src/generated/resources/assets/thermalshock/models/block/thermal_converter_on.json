@@ -1,0 +1,9 @@
+{
+  "parent": "minecraft:block/orientable_with_bottom",
+  "textures": {
+    "bottom": "thermalshock:block/thermal_converter_top",
+    "front": "thermalshock:block/thermal_converter_front_on",
+    "side": "thermalshock:block/thermal_converter_side",
+    "top": "thermalshock:block/thermal_converter_top"
+  }
+}

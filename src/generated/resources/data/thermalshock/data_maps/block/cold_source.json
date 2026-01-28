@@ -1,0 +1,10 @@
+{
+  "values": {
+    "minecraft:blue_ice": {
+      "cooling_per_tick": 40
+    },
+    "minecraft:ice": {
+      "cooling_per_tick": 5
+    }
+  }
+}
