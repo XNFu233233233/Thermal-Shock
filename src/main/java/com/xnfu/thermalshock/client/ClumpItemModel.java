@@ -65,10 +65,11 @@ public class ClumpItemModel implements BakedModel {
     }
 
     // --- 委托方法 (Boilerplate) ---
+    // [修复] 添加 SuppressWarnings 压制弃用警告 (这是实现接口必须的)
     @Override public boolean useAmbientOcclusion() { return originalModel.useAmbientOcclusion(); }
     @Override public boolean isGui3d() { return originalModel.isGui3d(); }
     @Override public boolean usesBlockLight() { return originalModel.usesBlockLight(); }
     @Override public boolean isCustomRenderer() { return originalModel.isCustomRenderer(); }
-    @Override public TextureAtlasSprite getParticleIcon() { return originalModel.getParticleIcon(); }
-    @Override public ItemTransforms getTransforms() { return originalModel.getTransforms(); }
+    @Deprecated @Override public TextureAtlasSprite getParticleIcon() { return originalModel.getParticleIcon(); }
+    @Deprecated @Override public ItemTransforms getTransforms() { return originalModel.getTransforms(); }
 }

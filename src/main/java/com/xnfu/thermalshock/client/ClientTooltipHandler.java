@@ -50,7 +50,8 @@ public class ClientTooltipHandler {
                 // 获取流体对应的默认方块状态
                 block = fluid.defaultFluidState().createLegacyBlock().getBlock();
                 // 检查是否为水 (用于硬编码 0 度)
-                if (fluid.is(FluidTags.WATER)) {
+                // [修复] 使用 FluidState 或 Holder 进行标签检查
+                if (fluid.defaultFluidState().is(FluidTags.WATER)) {
                     isWater = true;
                 }
             }

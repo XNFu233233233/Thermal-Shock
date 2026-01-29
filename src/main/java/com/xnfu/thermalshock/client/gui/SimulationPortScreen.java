@@ -7,8 +7,8 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
-import net.minecraft.client.renderer.texture.TextureAtlas;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraft.world.inventory.InventoryMenu; // [修复] 引入 InventoryMenu
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
@@ -159,7 +159,8 @@ public class SimulationPortScreen extends AbstractContainerScreen<SimulationPort
 
                 FluidStack stack = new FluidStack(fluid, amount);
                 IClientFluidTypeExtensions clientFluid = IClientFluidTypeExtensions.of(fluid);
-                TextureAtlasSprite sprite = this.minecraft.getTextureAtlas(TextureAtlas.LOCATION_BLOCKS).apply(clientFluid.getStillTexture(stack));
+                // [修复] TextureAtlas.LOCATION_BLOCKS -> InventoryMenu.BLOCK_ATLAS
+                TextureAtlasSprite sprite = this.minecraft.getTextureAtlas(InventoryMenu.BLOCK_ATLAS).apply(clientFluid.getStillTexture(stack));
                 int color = clientFluid.getTintColor(stack);
 
                 // 设置颜色
