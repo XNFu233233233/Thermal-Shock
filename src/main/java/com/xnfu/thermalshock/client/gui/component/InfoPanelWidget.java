@@ -60,17 +60,8 @@ public class InfoPanelWidget extends AbstractWidget {
         gfx.drawString(font, String.format("Eff: %.0f%%", eff), x, y + REL_Y_2, 0xFF00AA00, false);
 
         // === Line 3: 产量加成 (Yield Bonus) ===
-        // 1. 结构/升级倍率 (Index 5 -> Menu.getBonusYield)
-        float structMult = menu.getBonusYield();
-        if (structMult < 1.0f) structMult = 1.0f;
-
-        // 2. 催化剂加成 (Index 4 -> Menu.getEfficiency)
-        float catBonus = menu.getEfficiency();
-
-        // 3. 计算最终倍率
-        // 公式: 1(基础) * 结构倍率 * (1 + 催化剂)
-        // 例(5x5 + 铁锭): 1.0 * 2.0 * (1 + 0.1) = 2.2
-        float totalRate = 1.0f * structMult * (1.0f + catBonus);
+        // [重构] 提取计算逻辑
+        float totalRate = calculateTotalYieldRate();
 
         // 4. 显示增量: (2.2 - 1.0) * 100 = 120%
         float displayVal = (totalRate - 1.0f) * 100.0f;
@@ -84,6 +75,15 @@ public class InfoPanelWidget extends AbstractWidget {
 
         // === Line 5: 警告信息 (Warning) ===
         gfx.drawString(font, net.minecraft.network.chat.Component.translatable("gui.thermalshock.warning.short"), x, y + REL_Y_5, 0xFFFF5555, false);
+    }
+
+    // [新增] 提取的计算方法
+    private float calculateTotalYieldRate() {
+        float structMult = menu.getBonusYield();
+        if (structMult < 1.0f) structMult = 1.0f;
+        float catBonus = menu.getEfficiency();
+        // 公式: 1(基础) * 结构倍率 * (1 + 催化剂)
+        return 1.0f * structMult * (1.0f + catBonus);
     }
 
     public void appendHoverText(List<Component> tooltip, int mouseX, int mouseY, boolean isShiftDown) {

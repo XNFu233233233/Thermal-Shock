@@ -84,10 +84,9 @@ public class SimulationChamberScreen extends AbstractContainerScreen<SimulationC
     protected void init() {
         super.init();
 
-        // [修复] 分别获取两种类型的配方并合并
-        this.allRecipes = new ArrayList<>();
+        // [优化] 使用带参数的构造函数或 addAll 优化
         var manager = this.minecraft.level.getRecipeManager();
-        // 因为泛型协变问题，这里分别 addAll
+        this.allRecipes = new ArrayList<>();
         this.allRecipes.addAll(manager.getAllRecipesFor(ThermalShockRecipes.OVERHEATING_TYPE.get()));
         this.allRecipes.addAll(manager.getAllRecipesFor(ThermalShockRecipes.THERMAL_SHOCK_TYPE.get()));
 
