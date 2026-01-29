@@ -243,7 +243,7 @@ public class ChamberProcess {
             rawOutputs.add(recipeToRun.assemble(new SimulationRecipeInput(mainInput, RecipeSourceType.ITEM), level.registryAccess()));
 
             if (primaryOutputPos == null) capturePrimaryPos(match.foundMaterials);
-            match.confirm();
+            // [修复] 移除空方法调用
         }
 
         if (successCount > 0) {
@@ -789,9 +789,6 @@ public class ChamberProcess {
                 mat.remainingCount++;
                 mat.consumedCount--;
             }
-        }
-
-        void confirm() {
         }
     }
 

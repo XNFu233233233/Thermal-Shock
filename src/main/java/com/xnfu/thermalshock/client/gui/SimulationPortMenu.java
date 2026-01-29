@@ -1,5 +1,6 @@
 package com.xnfu.thermalshock.client.gui;
 
+import com.mojang.logging.LogUtils; // [新增]
 import com.xnfu.thermalshock.block.entity.PortMode;
 import com.xnfu.thermalshock.block.entity.SimulationPortBlockEntity;
 import com.xnfu.thermalshock.registries.ThermalShockDataMaps;
@@ -12,11 +13,13 @@ import net.minecraft.world.inventory.*;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.items.SlotItemHandler;
 import net.neoforged.neoforge.items.wrapper.InvWrapper;
+import org.slf4j.Logger; // [新增]
 
 import java.lang.reflect.Field;
 import java.util.List;
 
 public class SimulationPortMenu extends AbstractContainerMenu {
+    private static final Logger LOGGER = LogUtils.getLogger(); // [新增] 日志记录器
 
     public final SimulationPortBlockEntity be;
     private final ContainerData data;
@@ -69,7 +72,8 @@ public class SimulationPortMenu extends AbstractContainerMenu {
             remoteSlotsField.setAccessible(true);
             ((List<?>) remoteSlotsField.get(this)).clear();
         } catch (Exception e) {
-            e.printStackTrace();
+            // [修复] 使用 logger 替代 printStackTrace
+            LOGGER.error("Failed to clear slots via reflection in SimulationPortMenu", e);
         }
 
         // 3. 重新添加机器槽位 (Index 0-26)
