@@ -1,0 +1,9 @@
+{
+  "type": "thermalshock:clump_processing",
+  "heat_cost": 500,
+  "min_temp": 100,
+  "target_content": {
+    "count": 1,
+    "id": "minecraft:iron_nugget"
+  }
+}
