@@ -455,12 +455,11 @@ public class SimulationChamberScreen extends AbstractContainerScreen<SimulationC
 
         // [核心修复] 动态生成 Tooltip，不再使用缓存
         public List<Component> getTooltipComponents() {
-            List<Component> tooltip = new ArrayList<>();
             Minecraft mc = Minecraft.getInstance();
 
-            // 1. 获取物品本身的所有信息 (名字 + NBT解析 + Shift详情)
-            // Screen.getTooltipFromItem 会自动处理 appendHoverText 和 Shift 键检测
-            tooltip.addAll(Screen.getTooltipFromItem(mc, icon));
+            // [优化] 1. 直接通过构造函数初始化，避免 addAll 的开销
+            // Screen.getTooltipFromItem 返回 List<Component>
+            List<Component> tooltip = new ArrayList<>(Screen.getTooltipFromItem(mc, icon));
 
             // 2. 追加机器配方特定的硬性条件 (Req/Cost/Delta)
             AbstractSimulationRecipe recipe = holder.value();
