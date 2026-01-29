@@ -1,6 +1,5 @@
 package com.xnfu.thermalshock.client.gui;
 
-import com.mojang.blaze3d.systems.RenderSystem;
 import com.xnfu.thermalshock.network.PacketSetTargetHeat;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphics;

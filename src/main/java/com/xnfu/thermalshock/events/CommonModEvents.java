@@ -1,15 +1,12 @@
 package com.xnfu.thermalshock.events;
 
 import com.xnfu.thermalshock.ThermalShock;
-import com.xnfu.thermalshock.block.entity.ThermalSourceBlockEntity;
 import com.xnfu.thermalshock.registries.ThermalShockBlocks;
 import com.xnfu.thermalshock.registries.ThermalShockDataMaps;
 import com.xnfu.thermalshock.registries.ThermalShockTags;
 import com.xnfu.thermalshock.util.StructureManager;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.level.Level;
