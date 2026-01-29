@@ -94,8 +94,8 @@ public class ThermalSourceBlockEntity extends BlockEntity implements MenuProvide
         public boolean canReceive() { return true; }
     };
 
-    // 数据同步 (大小 7: 燃烧2 + 热值2 + 能量2(Low/High) + 目标1)
-    private final ContainerData data = new SimpleContainerData(7) {
+    // 数据同步 (大小 8: 燃烧2 + 热值2 + 能量2(Low/High) + 目标1 + 最大能量低位1 + 瞬时能耗1)
+    private final ContainerData data = new SimpleContainerData(8) {
         @Override
         public int get(int index) {
             return switch (index) {
@@ -106,6 +106,7 @@ public class ThermalSourceBlockEntity extends BlockEntity implements MenuProvide
                 case 4 -> (int) (energyStored >>> 32);         // Energy High
                 case 5 -> targetElectricHeat;
                 case 6 -> (int) (Math.max(1000, (long) targetElectricHeat * 100) & 0xFFFF_FFFFL); // Max Energy Low (简化同步)
+                case 7 -> 0; // [修复] LastTickEnergy 占位符，防止 GUI 崩溃
                 default -> 0;
             };
         }

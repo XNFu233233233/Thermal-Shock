@@ -50,7 +50,6 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
         @Override
         protected void onContentsChanged(int slot) {
             setChanged();
-            wakeUp(); // [新增] 库存变动唤醒机器
             if (slot == 0) {
                 markCatalystDirty();
             } else if (slot == 1) {
@@ -60,6 +59,7 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
                 portsDirty = true;
                 // 升级卡变动可能解锁配方限制，唤醒处理逻辑
                 markEntityCacheDirty();
+                wakeUp();
             }
         }
 
@@ -183,7 +183,6 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
     // =========================================================
 
 
-    // [新增] 唤醒机制：当有外部输入或变动时调用
     public void wakeUp() {
         if (this.isSleeping) {
             this.isSleeping = false;
@@ -233,53 +232,67 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
     public static void tick(Level level, BlockPos pos, BlockState state, SimulationChamberBlockEntity be) {
         if (level.isClientSide) return;
 
-        // 1. 安全性优先：处理延迟的结构验证
+        // --- 阶段 0: 始终运行 (结构验证 + 热力学 + 红石) ---
+
+        // 1. 结构验证 (必须优先处理，否则后续逻辑基于错误结构)
         if (be.validationPending) {
             be.performValidation(null);
             be.validationPending = false;
         }
 
-        // 2. 红石状态机
+        // 2. 红石状态更新 (检测脉冲)
         boolean currentSignal = level.hasNeighborSignal(pos);
         if (currentSignal != be.lastPowered) {
             be.isPulseFrame = currentSignal && !be.lastPowered;
             be.isPowered = currentSignal;
-            be.updatePoweredState(currentSignal); // 唤醒
+            be.updatePoweredState(currentSignal);
         } else {
             be.isPulseFrame = false;
         }
 
-        // 3. 休眠检查
-        // 条件：处于休眠态 && 无待处理任务 && 非发光状态 && 非脉冲帧
-        if (be.isSleeping && !be.pendingProcess && be.litTimer <= 0 && !be.isPulseFrame) {
+        // 3. 热力学更新 (即使关机，热传导也不会停止)
+        if (be.structure.isFormed()) {
+            be.thermo.updateLazy(level);
+        }
+
+        // --- 阶段 1: 停机过滤器 (Power Cutoff) ---
+        // 条件: 没电 且 非脉冲帧 且 视觉效果结束
+        boolean lackPower = !be.isPowered && !be.isPulseFrame;
+        if (lackPower && be.litTimer <= 0) {
+            be.isSleeping = true;
+            be.pendingProcess = false;
+            return; // 直接返回，不执行任何配方逻辑
+        }
+
+        // --- 阶段 2: 唤醒过滤器 (Wake-Up Filter) ---
+        // 如果正在休眠，且不是脉冲帧，检查是否有唤醒信号
+        if (be.isSleeping && !be.pendingProcess && !be.isPulseFrame) {
+            // 注意：wakeUp() 方法会在外部事件（如物品变动）发生时将 isSleeping 设为 false
+            // 所以这里只需要检查 isSleeping 即可。如果它还是 true，说明没被唤醒。
             return;
         }
 
-        // 4. 业务逻辑执行
+        // --- 阶段 3: 业务处理 (Processing) ---
         if (be.structure.isFormed()) {
-            // 基础更新 (无论是否有电都要算热量和催化剂)
-            be.thermo.updateLazy(level);
 
-            if (be.catalystDirty) {
-                be.processCatalyst();
-            }
+            // 3.1 预处理：催化剂与端口缓存
+            if (be.catalystDirty) be.processCatalyst();
+            if (be.portsDirty) be.refreshPortCache();
 
-            if (be.portsDirty) {
-                be.refreshPortCache();
-            }
-
-            // 在处理配方前，如果有脏标记，先重建缓存
+            // 3.2 预处理：重建内部快照
+            // 只有在被标记为 dirty 时才执行，且只有物理模式或部分逻辑需要
             if (be.blockCacheDirty || be.entityCacheDirty) {
                 be.rebuildInternalCache();
             }
 
-            // 红石门控 (Redstone Gate)
+            // 3.3 执行配方逻辑
+            // 只有通电或脉冲时才执行
             if (be.isPowered || be.isPulseFrame) {
                 be.process.tick(level);
             }
         }
 
-        // 5. 状态收尾
+        // 3.4 视觉状态收尾
         if (be.litTimer > 0) {
             be.litTimer--;
             if (be.litTimer == 0) {
@@ -287,17 +300,18 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
             }
         }
 
-        // 6. 自动进入休眠判定
-        boolean lackPower = !be.isPowered && !be.isPulseFrame;
-        boolean workDone = !be.pendingProcess;
-
-        if ((lackPower || workDone) && be.litTimer <= 0) {
+        // 3.5 自动休眠判定
+        // 如果工作完了(pendingProcess=false) 且 (没电 或 只是脉冲一闪而过)
+        // 则进入休眠等待下一次唤醒
+        if (!be.pendingProcess && (lackPower || be.isPulseFrame)) {
             be.isSleeping = true;
-            be.pendingProcess = false;
         }
 
+        // 重置单次处理标记
+        be.pendingProcess = false;
         be.lastPowered = be.isPowered;
     }
+
 
     // =========================================================
     // 2. 事件响应与脏标记 (Event Driven API)
@@ -335,7 +349,9 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
             } else {
                 // 否则是外部热源变动 -> 重建热力缓存并唤醒
                 thermo.rebuildCache(level, structure);
-                wakeUp();
+                // 热量变化不一定会触发配方（因为热量是独立计算的），
+                // 但如果机器通电，建议唤醒检查一次是否达到了配方阈值
+                if (isPowered) wakeUp();
             }
         } else {
             // 是内部方块变动 -> 标记方块缓存脏并唤醒
@@ -346,24 +362,32 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
 
     public void markBlockCacheDirty() {
         this.blockCacheDirty = true;
-        wakeUp(); // [新增]
+        wakeUp(); // 物理输入变动，必须唤醒
     }
 
     public void markEntityCacheDirty() {
         this.entityCacheDirty = true;
-        wakeUp(); // [新增]
+        wakeUp(); // 物理输入变动，必须唤醒
     }
 
     public void markPortsDirty() {
         this.portsDirty = true;
-        // 端口变动通常意味着库存能力变动，也应唤醒实体处理
-        this.entityCacheDirty = true;
-        wakeUp(); // [新增]
+
+        // [差异化唤醒]
+        if (this.performance.isVirtual()) {
+            // 虚拟模式：端口是直接输入源，必须唤醒
+            // 复用 entityCacheDirty 标记来触发 ChamberProcess 的逻辑
+            this.entityCacheDirty = true;
+            wakeUp();
+        } else {
+            // 物理模式：端口通常只作为输出或被忽略
+            // 不唤醒，仅标记 dirty 等待下一次运行刷新缓存
+        }
     }
 
     public void markCatalystDirty() {
         this.catalystDirty = true;
-        wakeUp(); // [新增]
+        wakeUp(); // 催化剂变动建议唤醒以填充 Buffer
     }
 
     public void updatePoweredState(boolean newSignal) {
@@ -465,8 +489,6 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
             }
         }
         this.portsDirty = false;
-        // 端口缓存刷新后，可能解锁了新的物品输入路径，标记实体脏
-        this.entityCacheDirty = true;
     }
 
     // =========================================================
@@ -626,21 +648,6 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
         return recipeLocked;
     }
 
-    // Process 需要读取这些脏标记来决定是否重建缓存
-    public boolean isBlockCacheDirty() {
-        return blockCacheDirty;
-    }
-
-    public boolean isEntityCacheDirty() {
-        return entityCacheDirty;
-    }
-
-    // Process 处理完后调用此方法清除脏标记
-    public void clearCacheDirtyFlags() {
-        this.blockCacheDirty = false;
-        this.entityCacheDirty = false;
-    }
-
     public void addAccumulatedYield(float amount) {
         this.accumulatedYield += amount;
         setChanged();
@@ -695,7 +702,7 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
         this.structure.setCamouflageStateOnly(s);
         setChanged();
         syncData();
-        wakeUp(); // [新增]
+        wakeUp();
     }
 
     // =========================================================

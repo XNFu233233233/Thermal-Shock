@@ -87,7 +87,7 @@ public class ThermalConverterBlock extends BaseEntityBlock {
         if (!level.isClientSide) {
             BlockEntity be = level.getBlockEntity(pos);
             if (be instanceof ThermalConverterBlockEntity converter) {
-                converter.markHeatCacheDirty();
+                converter.markHeatDirty();
             }
         }
     }

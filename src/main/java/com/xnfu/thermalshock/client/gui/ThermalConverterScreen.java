@@ -155,6 +155,5 @@ public class ThermalConverterScreen extends AbstractContainerScreen<ThermalConve
         renderBackground(gfx, mx, my, pt);
         super.render(gfx, mx, my, pt);
         renderTooltip(gfx, mx, my);
-        // 渲染流体 Tooltip (略，逻辑同 SimulationPortScreen)
     }
 }

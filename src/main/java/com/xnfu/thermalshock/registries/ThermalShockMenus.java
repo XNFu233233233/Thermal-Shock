@@ -3,6 +3,7 @@ package com.xnfu.thermalshock.registries;
 import com.xnfu.thermalshock.ThermalShock;
 import com.xnfu.thermalshock.client.gui.SimulationChamberMenu;
 import com.xnfu.thermalshock.client.gui.SimulationPortMenu;
+import com.xnfu.thermalshock.client.gui.ThermalConverterMenu;
 import com.xnfu.thermalshock.client.gui.ThermalSourceMenu;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.inventory.MenuType;
@@ -24,8 +25,8 @@ public class ThermalShockMenus {
     public static final DeferredHolder<MenuType<?>, MenuType<ThermalSourceMenu>> THERMAL_SOURCE_MENU =
             MENUS.register("thermal_source_menu", () ->IMenuTypeExtension.create(ThermalSourceMenu::new));
 
-    public static final DeferredHolder<MenuType<?>, MenuType<com.xnfu.thermalshock.client.gui.ThermalConverterMenu>> THERMAL_CONVERTER_MENU =
-            MENUS.register("thermal_converter_menu", () ->IMenuTypeExtension.create(com.xnfu.thermalshock.client.gui.ThermalConverterMenu::new));
+    public static final DeferredHolder<MenuType<?>, MenuType<ThermalConverterMenu>> THERMAL_CONVERTER_MENU =
+            MENUS.register("thermal_converter_menu", () ->IMenuTypeExtension.create(ThermalConverterMenu::new));
 
     public static void register(IEventBus eventBus) {
         MENUS.register(eventBus);

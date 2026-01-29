@@ -1,6 +1,6 @@
 package com.xnfu.thermalshock.block.entity;
 
-import com.xnfu.thermalshock.block.ThermalSourceBlock;
+import com.xnfu.thermalshock.client.gui.ThermalConverterMenu;
 import com.xnfu.thermalshock.data.ColdSourceData;
 import com.xnfu.thermalshock.data.HeatSourceData;
 import com.xnfu.thermalshock.recipe.ConverterRecipeInput;
@@ -45,24 +45,24 @@ public class ThermalConverterBlockEntity extends BlockEntity implements MenuProv
         @Override
         protected void onContentsChanged(int slot) {
             setChanged();
-            wakeUp();
+            markRecipeDirty(); // 库存变动 -> 可能改变配方匹配结果
         }
     };
 
     // === Fluid ===
     // 0: Input Tank, 1: Output Tank
-    private final FluidTank inputTank = new FluidTank(64000) {
-        @Override protected void onContentsChanged() { setChanged(); wakeUp(); }
+    private final FluidTank inputTank = new FluidTank(4000) { // 稍微加大一点缓存
+        @Override protected void onContentsChanged() { setChanged(); markRecipeDirty(); }
     };
-    private final FluidTank outputTank = new FluidTank(64000) {
-        @Override protected void onContentsChanged() { setChanged(); wakeUp(); }
+    private final FluidTank outputTank = new FluidTank(4000) {
+        @Override protected void onContentsChanged() { setChanged(); markRecipeDirty(); }
     };
 
-    // 包装器，用于 Capability 暴露 (Input tank 只进，Output tank 只出)
+    // 包装器：用于 Capability 暴露
     private final IFluidHandler fluidHandlerWrapper = new IFluidHandler() {
         @Override public int getTanks() { return 2; }
         @Override public @NotNull FluidStack getFluidInTank(int tank) { return tank == 0 ? inputTank.getFluid() : outputTank.getFluid(); }
-        @Override public int getTankCapacity(int tank) { return 64000; }
+        @Override public int getTankCapacity(int tank) { return 4000; }
         @Override public boolean isFluidValid(int tank, @NotNull FluidStack stack) { return tank == 0 && inputTank.isFluidValid(stack); }
         @Override public int fill(FluidStack resource, FluidAction action) { return inputTank.fill(resource, action); }
         @Override public @NotNull FluidStack drain(FluidStack resource, FluidAction action) { return outputTank.drain(resource, action); }
@@ -72,11 +72,13 @@ public class ThermalConverterBlockEntity extends BlockEntity implements MenuProv
     // === Logic State ===
     private int processTime = 0;
     private int totalProcessTime = 0;
-    private boolean isSleeping = true;
+    private boolean isSleeping = true; // 默认休眠
 
-    // === Heat Cache ===
+    // === Caches ===
     private int cachedHeatInput = 0;
-    private boolean heatCacheDirty = true;
+    private boolean heatDirty = true;   // 热量是否需要重算
+    private boolean recipeDirty = true; // 配方是否需要重查
+    private RecipeHolder<ThermalConverterRecipe> cachedRecipe = null;
 
     // === GUI Sync ===
     private final ContainerData data = new ContainerData() {
@@ -100,46 +102,69 @@ public class ThermalConverterBlockEntity extends BlockEntity implements MenuProv
         super(ThermalShockBlockEntities.THERMAL_CONVERTER_BE.get(), pos, blockState);
     }
 
+    // =========================================================
+    // 1. 核心循环 (Tick Logic)
+    // =========================================================
+
     public static void tick(Level level, BlockPos pos, BlockState state, ThermalConverterBlockEntity be) {
         if (level.isClientSide) return;
 
-        // 1. 热量缓存更新 (事件驱动)
-        if (be.heatCacheDirty) {
-            be.recalculateHeat();
+        // 1. 如果正在休眠且没有脏标记，直接跳过 (极致性能)
+        if (be.isSleeping && !be.heatDirty && !be.recipeDirty) {
+            return;
         }
 
-        // 2. 休眠检查
-        if (be.isSleeping) {
-            // 如果有热量输入，可能满足“纯热量配方”，尝试唤醒一次检查
-            if (be.cachedHeatInput != 0 && be.processTime == 0) {
-                be.isSleeping = false;
-            } else {
-                return;
-            }
+        // 2. 处理热量更新 (被动触发)
+        if (be.heatDirty) {
+            be.recalculateHeat(); // 算完后 heatDirty = false
         }
 
-        // 3. 配方处理逻辑
-        boolean isWorking = false;
-        ThermalConverterRecipe recipe = be.findRecipe();
-
-        if (recipe != null && be.canProcess(recipe)) {
-            isWorking = true;
-            be.totalProcessTime = recipe.getProcessTime();
-            be.processTime++;
-
-            if (be.processTime >= be.totalProcessTime) {
-                be.finishProcess(recipe);
-                be.processTime = 0;
-            }
-        } else {
-            be.processTime = 0;
+        // 3. 处理配方缓存 (被动触发)
+        if (be.recipeDirty) {
+            be.updateCachedRecipe(); // 算完后 recipeDirty = false
         }
 
-        // 4. 自动休眠
-        if (!isWorking && be.processTime == 0) {
+        // 安全检查：如果没有配方（可能是更新后变null，也可能是本来就是null但被热量更新唤醒），直接睡去
+        if (be.cachedRecipe == null) {
             be.isSleeping = true;
+            be.processTime = 0;
+            return;
+        }
+
+        // 4. 运行检查
+        ThermalConverterRecipe recipe = be.cachedRecipe.value();
+
+        // 4.1 检查热量条件
+        if (!be.checkHeatCondition(recipe)) {
+            // 热量不足 -> 进度回退并休眠 (等待 neighborChanged 唤醒)
+            if (be.processTime > 0) be.processTime = Math.max(0, be.processTime - 2);
+            be.isSleeping = true;
+            return;
+        }
+
+        // 4.2 检查输出空间 (模拟)
+        if (!be.checkOutputSpace(recipe)) {
+            // 空间不足 -> 休眠 (等待库存变动唤醒)
+            be.isSleeping = true;
+            return;
+        }
+
+        // 5. 执行加工
+        be.isSleeping = false; // 正在工作，标记为醒着
+        be.totalProcessTime = recipe.getProcessTime();
+        be.processTime++;
+
+        if (be.processTime >= be.totalProcessTime) {
+            be.finishProcess(recipe);
+            be.processTime = 0;
+            // 完成一次后，需要重新检查输入是否足够 (可能刚才把最后一份原料用完了)
+            be.markRecipeDirty();
         }
     }
+
+    // =========================================================
+    // 2. 辅助逻辑
+    // =========================================================
 
     private void recalculateHeat() {
         int heat = 0;
@@ -147,52 +172,84 @@ public class ThermalConverterBlockEntity extends BlockEntity implements MenuProv
             BlockPos target = worldPosition.relative(dir);
             BlockState s = level.getBlockState(target);
 
-            // A. 主动热源/冷源
-            if (s.getBlock() instanceof ThermalSourceBlock && s.getValue(ThermalSourceBlock.LIT)) {
-                BlockEntity neighborBe = level.getBlockEntity(target);
-                if (neighborBe instanceof ThermalSourceBlockEntity source) {
-                    heat += source.getCurrentHeatOutput();
-                }
+            // A. 主动热源/冷源 (机器)
+            // 优先检查 BE，因为机器可能有开关状态
+            BlockEntity neighborBe = level.getBlockEntity(target);
+            if (neighborBe instanceof ThermalSourceBlockEntity source) {
+                // 只有开启状态才有热量 (getCurrentHeatOutput 内部已经处理了逻辑)
+                heat += source.getCurrentHeatOutput();
+                continue; // 既然是机器，就不查 DataMap 了，避免重复
             }
-            // B. 被动热源 (DataMap)
-            else {
-                var holder = s.getBlockHolder();
-                HeatSourceData hData = holder.getData(ThermalShockDataMaps.HEAT_SOURCE_PROPERTY);
-                if (hData != null) heat += hData.heatPerTick();
 
-                ColdSourceData cData = holder.getData(ThermalShockDataMaps.COLD_SOURCE_PROPERTY);
-                if (cData != null) heat -= cData.coolingPerTick(); // 冷源减热
+            // B. 被动热源 (DataMap)
+            var holder = s.getBlockHolder();
+            HeatSourceData hData = holder.getData(ThermalShockDataMaps.HEAT_SOURCE_PROPERTY);
+            if (hData != null) {
+                heat += hData.heatPerTick();
+                continue;
+            }
+
+            ColdSourceData cData = holder.getData(ThermalShockDataMaps.COLD_SOURCE_PROPERTY);
+            if (cData != null) {
+                heat -= cData.coolingPerTick(); // 冷源减热 (coolingPerTick 是正数)
+                continue;
+            }
+
+            // C. 特殊硬编码 (水) - 也可以写进 DataMap，但为了保险保留硬编码
+            if (s.getFluidState().is(net.minecraft.tags.FluidTags.WATER)) {
+                // 水大概提供微弱冷却? 这里暂设为 0 或者 -5
+                // 如果 DataMap 没覆盖到，可以在这里补充
             }
         }
         this.cachedHeatInput = heat;
-        this.heatCacheDirty = false;
-        // 热量变化可能满足配方条件，唤醒
-        wakeUp();
+        this.heatDirty = false;
     }
 
-    private ThermalConverterRecipe findRecipe() {
+    private void updateCachedRecipe() {
         ConverterRecipeInput input = new ConverterRecipeInput(
                 itemHandler.getStackInSlot(0),
                 inputTank.getFluid()
         );
+
+        // 如果输入为空，直接清空配方
+        if (input.item().isEmpty() && input.fluid().isEmpty()) {
+            this.cachedRecipe = null;
+            this.recipeDirty = false;
+            return;
+        }
+
+        // 只有当 当前缓存的配方 不再匹配时，才去查表
+        if (this.cachedRecipe != null && this.cachedRecipe.value().matches(input, level)) {
+            this.recipeDirty = false;
+            return;
+        }
+
         Optional<RecipeHolder<ThermalConverterRecipe>> opt = level.getRecipeManager()
                 .getRecipeFor(ThermalShockRecipes.CONVERTER_TYPE.get(), input, level);
-        return opt.map(RecipeHolder::value).orElse(null);
+
+        this.cachedRecipe = opt.orElse(null);
+        this.recipeDirty = false;
     }
 
-    private boolean canProcess(ThermalConverterRecipe recipe) {
-        // 1. 温度检查
+    private boolean checkHeatCondition(ThermalConverterRecipe recipe) {
         // 熔融: InputHeat >= Min (e.g. 1000 >= 500)
         if (recipe.getMinHeat() != Integer.MIN_VALUE && cachedHeatInput < recipe.getMinHeat()) return false;
         // 冷冻: InputHeat <= Max (e.g. -200 <= -100)
         if (recipe.getMaxHeat() != Integer.MAX_VALUE && cachedHeatInput > recipe.getMaxHeat()) return false;
+        return true;
+    }
 
-        // 2. 输出空间检查 (模拟产出)
-        // 简单起见，只检查是否有空位或物品相同且未满堆叠
+    private boolean checkOutputSpace(ThermalConverterRecipe recipe) {
+        // 模拟插入物品
         if (!recipe.getItemOutputs().isEmpty()) {
             ItemStack out1 = recipe.getItemOutputs().get(0).stack();
             if (!itemHandler.insertItem(1, out1, true).isEmpty()) return false;
         }
+        if (recipe.getItemOutputs().size() > 1) {
+            ItemStack out2 = recipe.getItemOutputs().get(1).stack();
+            if (!itemHandler.insertItem(2, out2, true).isEmpty()) return false;
+        }
+        // 模拟注入流体
         if (!recipe.getFluidOutputs().isEmpty()) {
             FluidStack outF = recipe.getFluidOutputs().get(0).fluid();
             if (outputTank.fill(outF, IFluidHandler.FluidAction.SIMULATE) < outF.getAmount()) return false;
@@ -210,7 +267,6 @@ public class ThermalConverterBlockEntity extends BlockEntity implements MenuProv
         }
         if (!recipe.getFluidInputs().isEmpty()) {
             var inRule = recipe.getFluidInputs().get(0);
-            // [修复] .fluid()
             if (level.random.nextFloat() < inRule.consumeChance()) {
                 inputTank.drain(inRule.fluid().getAmount(), IFluidHandler.FluidAction.EXECUTE);
             }
@@ -219,7 +275,6 @@ public class ThermalConverterBlockEntity extends BlockEntity implements MenuProv
         // 2. 产生输出
         if (!recipe.getItemOutputs().isEmpty()) {
             var outRule = recipe.getItemOutputs().get(0);
-            // [修复] .chance() 和 .stack()
             if (level.random.nextFloat() < outRule.chance()) {
                 itemHandler.insertItem(1, outRule.stack().copy(), false);
             }
@@ -238,15 +293,30 @@ public class ThermalConverterBlockEntity extends BlockEntity implements MenuProv
         }
     }
 
-    // --- API & Utility ---
+    // =========================================================
+    // 3. 事件 API (供外部调用)
+    // =========================================================
+
     public void wakeUp() {
-        this.isSleeping = false;
+        if (this.isSleeping) {
+            this.isSleeping = false;
+            // 不调用 setChanged()，因为 wakeUp 通常伴随着其他数据变化已经 setChanged 了
+        }
     }
 
-    public void markHeatCacheDirty() {
-        this.heatCacheDirty = true;
-        // 不立即 wakeUp，等到 tick 检查时发现 dirty 再重算，如果 processTime > 0 自然会继续跑
+    public void markHeatDirty() {
+        this.heatDirty = true;
+        wakeUp(); // 热量变化可能满足配方条件，唤醒检查
     }
+
+    public void markRecipeDirty() {
+        this.recipeDirty = true;
+        wakeUp(); // 库存变化必须唤醒
+    }
+
+    // =========================================================
+    // 4. 标准 Getters & NBT
+    // =========================================================
 
     public IItemHandler getItemHandler() { return itemHandler; }
     public IFluidHandler getFluidHandler() { return fluidHandlerWrapper; }
@@ -261,10 +331,9 @@ public class ThermalConverterBlockEntity extends BlockEntity implements MenuProv
     @Nullable
     @Override
     public AbstractContainerMenu createMenu(int id, Inventory inventory, Player player) {
-        return new com.xnfu.thermalshock.client.gui.ThermalConverterMenu(id, inventory, this, this.data);
+        return new ThermalConverterMenu(id, inventory, this, this.data);
     }
 
-    // --- NBT ---
     @Override
     protected void saveAdditional(CompoundTag tag, HolderLookup.Provider r) {
         super.saveAdditional(tag, r);
@@ -285,10 +354,12 @@ public class ThermalConverterBlockEntity extends BlockEntity implements MenuProv
         processTime = tag.getInt("ProcessTime");
         totalProcessTime = tag.getInt("TotalTime");
         cachedHeatInput = tag.getInt("HeatCache");
-        heatCacheDirty = true; // 载入时强制刷新一次热量
+
+        // 载入时强制标记脏，以便下一 tick 刷新状态
+        this.heatDirty = true;
+        this.recipeDirty = true;
     }
 
-    // ... UpdatePacket methods (Standard Boilerplate) ...
     @Override public CompoundTag getUpdateTag(HolderLookup.Provider r) { return saveWithoutMetadata(r); }
     @Override public Packet<ClientGamePacketListener> getUpdatePacket() { return ClientboundBlockEntityDataPacket.create(this); }
     @Override public void onDataPacket(Connection net, ClientboundBlockEntityDataPacket pkt, HolderLookup.Provider r) { loadAdditional(pkt.getTag(), r); }

@@ -25,31 +25,31 @@ import net.neoforged.neoforge.event.level.PistonEvent;
 public class CommonModEvents {
 
     /**
-     * 快速过滤器：判断方块是否值得触发多方块检查
-     * 只有 外壳、热源、流体、接口 才是“相关”的
+     * 优化后的过滤器：判断方块变动是否需要触发多方块检查
      */
     private static boolean isRelevantBlock(BlockState state) {
         if (state.isAir()) return false;
-        Block block = state.getBlock();
-        var holder = state.getBlockHolder();
 
-        // 1. 模组方块
+        Block block = state.getBlock();
+
         if (block == ThermalShockBlocks.SIMULATION_CHAMBER_CONTROLLER.get() ||
                 block == ThermalShockBlocks.SIMULATION_CHAMBER_PORT.get() ||
                 block == ThermalShockBlocks.THERMAL_HEATER.get() ||
-                block == ThermalShockBlocks.THERMAL_FREEZER.get()) {
+                block == ThermalShockBlocks.THERMAL_FREEZER.get() ||
+                block == ThermalShockBlocks.THERMAL_CONVERTER.get()) {
             return true;
         }
 
-        // 2. DataMap 数据 (外壳/热源/冷源)
+        // 2. DataMap 检查 (涵盖外壳、热源、冷源)
+        var holder = state.getBlockHolder();
         if (holder.getData(ThermalShockDataMaps.CASING_PROPERTY) != null) return true;
         if (holder.getData(ThermalShockDataMaps.HEAT_SOURCE_PROPERTY) != null) return true;
         if (holder.getData(ThermalShockDataMaps.COLD_SOURCE_PROPERTY) != null) return true;
 
-        // 3. 标签 (通风口/门)
+        // 3. 标签检查 (排气口、门/通道)
         if (state.is(ThermalShockTags.VENTS) || state.is(ThermalShockTags.CASING_ACCESS)) return true;
 
-        // 4. 流体 (水是冷源)
+        // 4. 流体检查 (水作为冷源)
         if (state.getFluidState().is(FluidTags.WATER)) return true;
 
         return false;

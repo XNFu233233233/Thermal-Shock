@@ -531,29 +531,6 @@ public class ChamberProcess {
         }
     }
 
-    private List<FoundMaterial> scanInternalBlocks() {
-        List<FoundMaterial> list = new ArrayList<>();
-        if (!be.getStructure().isFormed()) return list;
-        BlockPos min = be.getStructure().getMinPos();
-        BlockPos max = be.getStructure().getMaxPos();
-        BlockPos.betweenClosed(min.offset(1, 1, 1), max.offset(-1, -1, -1))
-                .forEach(p -> {
-                    BlockState s = be.getLevel().getBlockState(p);
-                    if (!s.isAir()) list.add(new FoundMaterial(p.immutable(), new ItemStack(s.getBlock())));
-                });
-        return list;
-    }
-
-    private List<FoundMaterial> scanInternalItems() {
-        List<FoundMaterial> list = new ArrayList<>();
-        if (!be.getStructure().isFormed()) return list;
-        AABB box = AABB.encapsulatingFullBlocks(be.getStructure().getMinPos(), be.getStructure().getMaxPos());
-        be.getLevel().getEntitiesOfClass(ItemEntity.class, box).forEach(e -> {
-            if (e.isAlive()) list.add(new FoundMaterial(e, e.getItem()));
-        });
-        return list;
-    }
-
     private int calculateMaxMaterialBatch(AbstractSimulationRecipe recipe, List<FoundMaterial> blockPool, List<FoundMaterial> itemPool) {
         List<Integer> blockCounts = new ArrayList<>();
         for (FoundMaterial m : blockPool) blockCounts.add(m.remainingCount);
