@@ -469,7 +469,7 @@ public class SimulationChamberScreen extends AbstractContainerScreen<SimulationC
 
             if (recipe.getMachineMode() == MachineMode.OVERHEATING) {
                 if (recipe instanceof OverheatingRecipe ov) {
-                    tooltip.add(Component.literal("Req: >" + ov.getMinTemp() + "°C").withStyle(ChatFormatting.GRAY));
+                    tooltip.add(Component.literal("Req: >" + ov.getMinHeatRate() + "H/t").withStyle(ChatFormatting.GRAY));
                     tooltip.add(Component.literal("Cost: " + ov.getHeatCost() + " Heat").withStyle(ChatFormatting.RED));
                 }
             } else {

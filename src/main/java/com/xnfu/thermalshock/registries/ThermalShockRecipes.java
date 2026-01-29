@@ -64,6 +64,17 @@ public class ThermalShockRecipes {
             SERIALIZERS.register("thermal_fuel", ThermalFuelRecipe.Serializer::new);
 
 
+    // =========================================
+    // 类型 D: 热力转换器 (Universal)
+    // =========================================
+    public static final net.neoforged.neoforge.registries.DeferredHolder<RecipeType<?>, RecipeType<com.xnfu.thermalshock.recipe.ThermalConverterRecipe>> CONVERTER_TYPE =
+            RECIPE_TYPES.register("thermal_converter", () -> new RecipeType<>() {
+                @Override public String toString() { return "thermalshock:thermal_converter"; }
+            });
+
+    public static final net.neoforged.neoforge.registries.DeferredHolder<RecipeSerializer<?>, com.xnfu.thermalshock.recipe.ThermalConverterRecipe.Serializer> CONVERTER_SERIALIZER =
+            SERIALIZERS.register("thermal_converter", com.xnfu.thermalshock.recipe.ThermalConverterRecipe.Serializer::new);
+
     public static void register(IEventBus eventBus) {
         SERIALIZERS.register(eventBus);
         RECIPE_TYPES.register(eventBus);

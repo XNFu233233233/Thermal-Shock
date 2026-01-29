@@ -14,6 +14,7 @@ import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.*;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 
@@ -22,15 +23,15 @@ public class ClumpFillingRecipe implements CraftingRecipe {
     final CraftingBookCategory category;
     final NonNullList<Ingredient> ingredients;
     final ItemStack resultItem;
-    final int minTemp;
+    final int minHeatRate;
     final int heatCost;
 
-    public ClumpFillingRecipe(String group, CraftingBookCategory category, List<Ingredient> ingredients, ItemStack resultItem, int minTemp, int heatCost) {
+    public ClumpFillingRecipe(String group, CraftingBookCategory category, List<Ingredient> ingredients, ItemStack resultItem, int minHeatRate, int heatCost) {
         this.group = group;
         this.category = category;
         this.ingredients = NonNullList.copyOf(ingredients);
         this.resultItem = resultItem;
-        this.minTemp = minTemp;
+        this.minHeatRate = minHeatRate;
         this.heatCost = heatCost;
     }
 
@@ -64,7 +65,7 @@ public class ClumpFillingRecipe implements CraftingRecipe {
     @Override
     public ItemStack assemble(CraftingInput input, HolderLookup.Provider registries) {
         ItemStack result = new ItemStack(ThermalShockItems.MATERIAL_CLUMP.get());
-        result.set(ThermalShockDataComponents.TARGET_OUTPUT, new ClumpInfo(resultItem, minTemp, heatCost));
+        result.set(ThermalShockDataComponents.TARGET_OUTPUT, new ClumpInfo(resultItem, minHeatRate, heatCost));
         return result;
     }
 
@@ -105,7 +106,7 @@ public class ClumpFillingRecipe implements CraftingRecipe {
                 CraftingBookCategory.CODEC.fieldOf("category").orElse(CraftingBookCategory.MISC).forGetter(r -> r.category),
                 Ingredient.CODEC_NONEMPTY.listOf().fieldOf("ingredients").forGetter(r -> r.ingredients),
                 ItemStack.CODEC.fieldOf("result_item").forGetter(r -> r.resultItem),
-                Codec.INT.fieldOf("min_temp").forGetter(r -> r.minTemp),
+                Codec.INT.fieldOf("min_heat_rate").forGetter(r -> r.minHeatRate),
                 Codec.INT.fieldOf("heat_cost").forGetter(r -> r.heatCost)
         ).apply(inst, ClumpFillingRecipe::new));
 
@@ -114,14 +115,14 @@ public class ClumpFillingRecipe implements CraftingRecipe {
                 CraftingBookCategory.STREAM_CODEC, r -> r.category,
                 Ingredient.CONTENTS_STREAM_CODEC.apply(ByteBufCodecs.list()), r -> r.ingredients,
                 ItemStack.STREAM_CODEC, r -> r.resultItem,
-                ByteBufCodecs.VAR_INT, r -> r.minTemp,
+                ByteBufCodecs.VAR_INT, r -> r.minHeatRate,
                 ByteBufCodecs.VAR_INT, r -> r.heatCost,
                 ClumpFillingRecipe::new
         );
 
         @Override
-        public MapCodec<ClumpFillingRecipe> codec() { return CODEC; }
+        public @NotNull MapCodec<ClumpFillingRecipe> codec() { return CODEC; }
         @Override
-        public StreamCodec<RegistryFriendlyByteBuf, ClumpFillingRecipe> streamCodec() { return STREAM_CODEC; }
+        public @NotNull StreamCodec<RegistryFriendlyByteBuf, ClumpFillingRecipe> streamCodec() { return STREAM_CODEC; }
     }
 }

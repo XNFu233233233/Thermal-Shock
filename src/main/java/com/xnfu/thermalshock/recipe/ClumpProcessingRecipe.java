@@ -22,10 +22,10 @@ public class ClumpProcessingRecipe extends OverheatingRecipe {
 
     private final ItemStack targetContent; // Clump 里必须装的是这个东西
 
-    public ClumpProcessingRecipe(ItemStack targetContent, int minTemp, int heatCost) {
+    public ClumpProcessingRecipe(ItemStack targetContent, int minHeatRate, int heatCost) {
         // 父类构造：输入固定为 Material Clump，输出就是 targetContent
         super(List.of(new SimulationIngredient(Ingredient.of(ThermalShockItems.MATERIAL_CLUMP.get()), RecipeSourceType.ITEM)),
-                targetContent, minTemp, heatCost);
+                targetContent, minHeatRate, heatCost);
         this.targetContent = targetContent;
     }
 
@@ -63,13 +63,13 @@ public class ClumpProcessingRecipe extends OverheatingRecipe {
     public static class Serializer implements RecipeSerializer<ClumpProcessingRecipe> {
         public static final MapCodec<ClumpProcessingRecipe> CODEC = RecordCodecBuilder.mapCodec(inst -> inst.group(
                 ItemStack.CODEC.fieldOf("target_content").forGetter(ClumpProcessingRecipe::getTargetContent),
-                Codec.INT.fieldOf("min_temp").forGetter(ClumpProcessingRecipe::getMinTemp),
+                Codec.INT.fieldOf("min_temp").forGetter(ClumpProcessingRecipe::getMinHeatRate),
                 Codec.INT.fieldOf("heat_cost").forGetter(ClumpProcessingRecipe::getHeatCost)
         ).apply(inst, ClumpProcessingRecipe::new));
 
         public static final StreamCodec<RegistryFriendlyByteBuf, ClumpProcessingRecipe> STREAM_CODEC = StreamCodec.composite(
                 ItemStack.STREAM_CODEC, ClumpProcessingRecipe::getTargetContent,
-                ByteBufCodecs.VAR_INT, ClumpProcessingRecipe::getMinTemp,
+                ByteBufCodecs.VAR_INT, ClumpProcessingRecipe::getMinHeatRate,
                 ByteBufCodecs.VAR_INT, ClumpProcessingRecipe::getHeatCost,
                 ClumpProcessingRecipe::new
         );

@@ -20,7 +20,7 @@ public class ThermalShockRecipeBuilder implements RecipeBuilder {
     private final MachineMode mode;
     private final List<SimulationIngredient> ingredients = new ArrayList<>();
 
-    private int minTemp = 0;
+    private int minHeatRate = 0;
     private int heatCost = 0;
     private int minHotTemp = 0;
     private int maxColdTemp = 0;
@@ -57,9 +57,9 @@ public class ThermalShockRecipeBuilder implements RecipeBuilder {
         return this;
     }
 
-    public ThermalShockRecipeBuilder setOverheatingParams(int minTemp, int heatCost) {
+    public ThermalShockRecipeBuilder setOverheatingParams(int minHeatRate, int heatCost) {
         if (mode != MachineMode.OVERHEATING) throw new IllegalStateException("Invalid mode");
-        this.minTemp = minTemp;
+        this.minHeatRate = minHeatRate;
         this.heatCost = heatCost;
         return this;
     }
@@ -89,7 +89,7 @@ public class ThermalShockRecipeBuilder implements RecipeBuilder {
 
         // [核心修改] 根据模式生成不同的配方对象 (对应的 Serializer 会负责写出干净的 JSON)
         if (mode == MachineMode.OVERHEATING) {
-            OverheatingRecipe recipe = new OverheatingRecipe(ingredients, result, minTemp, heatCost);
+            OverheatingRecipe recipe = new OverheatingRecipe(ingredients, result, minHeatRate, heatCost);
             output.accept(id, recipe, null);
         } else {
             ThermalShockRecipe recipe = new ThermalShockRecipe(ingredients, result, minHotTemp, maxColdTemp, requiredDelta);

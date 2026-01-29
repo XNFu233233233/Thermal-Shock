@@ -19,8 +19,6 @@ import java.util.List;
 public class ClumpShockRecipe extends OverheatingRecipe {
 
     public ClumpShockRecipe() {
-        // [修复] 参数改为匹配 OverheatingRecipe (Input, Result, MinTemp, HeatCost)
-        // 这里的 0, 0 是占位符，实际消耗由 Clump NBT 决定
         super(List.of(new SimulationIngredient(Ingredient.of(ThermalShockItems.MATERIAL_CLUMP.get()), RecipeSourceType.ITEM)),
                 ItemStack.EMPTY,
                 0, 0);

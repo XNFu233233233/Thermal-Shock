@@ -39,7 +39,7 @@ public class MaterialClumpItem extends Item {
             if (Screen.hasShiftDown()) {
                 tooltipComponents.add(Component.empty());
                 tooltipComponents.add(Component.translatable("gui.thermalshock.tooltip.mode.overheating").withStyle(ChatFormatting.RED));
-                tooltipComponents.add(Component.literal("Req: >" + info.minTemp() + "°C").withStyle(ChatFormatting.GRAY));
+                tooltipComponents.add(Component.literal("Req: >" + info.minHeatRate() + "H/t").withStyle(ChatFormatting.GRAY));
                 tooltipComponents.add(Component.literal("Cost: " + info.heatCost() + " Heat").withStyle(ChatFormatting.GRAY));
             }
         }

@@ -78,6 +78,7 @@
   "message.thermalshock.invalid": "§cStructure error: ",
   "message.thermalshock.missing_vent": "Missing blast vent (1-9 required)",
   "message.thermalshock.multiple_controllers": "Only one controller allowed",
+  "message.thermalshock.port_mode": "Port mode changed: %s",
   "message.thermalshock.too_many_access": "Too many sealed doors (0-4 allowed)",
   "message.thermalshock.too_many_port": "Too many interfaces (0-16 allowed)",
   "message.thermalshock.too_many_vents": "Too many blast vents (1-9 allowed)",

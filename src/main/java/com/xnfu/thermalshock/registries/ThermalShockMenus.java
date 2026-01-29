@@ -24,6 +24,9 @@ public class ThermalShockMenus {
     public static final DeferredHolder<MenuType<?>, MenuType<ThermalSourceMenu>> THERMAL_SOURCE_MENU =
             MENUS.register("thermal_source_menu", () ->IMenuTypeExtension.create(ThermalSourceMenu::new));
 
+    public static final DeferredHolder<MenuType<?>, MenuType<com.xnfu.thermalshock.client.gui.ThermalConverterMenu>> THERMAL_CONVERTER_MENU =
+            MENUS.register("thermal_converter_menu", () ->IMenuTypeExtension.create(com.xnfu.thermalshock.client.gui.ThermalConverterMenu::new));
+
     public static void register(IEventBus eventBus) {
         MENUS.register(eventBus);
     }

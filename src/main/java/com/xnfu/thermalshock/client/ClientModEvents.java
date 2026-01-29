@@ -3,7 +3,9 @@ package com.xnfu.thermalshock.client;
 import com.xnfu.thermalshock.ThermalShock;
 import com.xnfu.thermalshock.client.gui.SimulationChamberScreen;
 import com.xnfu.thermalshock.client.gui.SimulationPortScreen;
+import com.xnfu.thermalshock.client.gui.ThermalConverterScreen;
 import com.xnfu.thermalshock.client.gui.ThermalSourceScreen;
+import com.xnfu.thermalshock.client.gui.ThermalConverterScreen;
 import com.xnfu.thermalshock.client.renderer.SimulationChamberRenderer;
 import com.xnfu.thermalshock.data.ClumpInfo;
 import com.xnfu.thermalshock.registries.ThermalShockBlockEntities;
@@ -35,6 +37,7 @@ public class ClientModEvents {
         event.register(ThermalShockMenus.SIMULATION_CHAMBER_MENU.get(), SimulationChamberScreen::new);
         event.register(ThermalShockMenus.SIMULATION_PORT_MENU.get(), SimulationPortScreen::new);
         event.register(ThermalShockMenus.THERMAL_SOURCE_MENU.get(), ThermalSourceScreen::new);
+        event.register(ThermalShockMenus.THERMAL_CONVERTER_MENU.get(), ThermalConverterScreen::new);
     }
 
     @SubscribeEvent

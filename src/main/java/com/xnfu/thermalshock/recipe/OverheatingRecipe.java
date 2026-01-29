@@ -15,12 +15,12 @@ import net.minecraft.world.item.crafting.RecipeType;
 import java.util.List;
 
 public class OverheatingRecipe extends AbstractSimulationRecipe {
-    private final int minTemp;
+    private final int minHeatRate;
     private final int heatCost;
 
-    public OverheatingRecipe(List<SimulationIngredient> inputs, ItemStack result, int minTemp, int heatCost) {
+    public OverheatingRecipe(List<SimulationIngredient> inputs, ItemStack result, int minHeatRate, int heatCost) {
         super(inputs, result);
-        this.minTemp = minTemp;
+        this.minHeatRate = minHeatRate;
         this.heatCost = heatCost;
     }
 
@@ -29,7 +29,7 @@ public class OverheatingRecipe extends AbstractSimulationRecipe {
         return MachineMode.OVERHEATING;
     }
 
-    public int getMinTemp() { return minTemp; }
+    public int getMinHeatRate() { return minHeatRate; }
     public int getHeatCost() { return heatCost; }
 
     @Override
@@ -46,14 +46,14 @@ public class OverheatingRecipe extends AbstractSimulationRecipe {
         public static final MapCodec<OverheatingRecipe> CODEC = RecordCodecBuilder.mapCodec(inst -> inst.group(
                 SimulationIngredient.CODEC.listOf().fieldOf("ingredients").forGetter(OverheatingRecipe::getSimulationIngredients),
                 ItemStack.CODEC.fieldOf("result").forGetter(OverheatingRecipe::getResultStack),
-                Codec.INT.fieldOf("min_temp").forGetter(OverheatingRecipe::getMinTemp),
+                Codec.INT.fieldOf("min_temp").forGetter(OverheatingRecipe::getMinHeatRate),
                 Codec.INT.fieldOf("heat_cost").forGetter(OverheatingRecipe::getHeatCost)
         ).apply(inst, OverheatingRecipe::new));
 
         public static final StreamCodec<RegistryFriendlyByteBuf, OverheatingRecipe> STREAM_CODEC = StreamCodec.composite(
                 SimulationIngredient.STREAM_CODEC.apply(ByteBufCodecs.list()), OverheatingRecipe::getSimulationIngredients,
                 ItemStack.STREAM_CODEC, OverheatingRecipe::getResultStack,
-                ByteBufCodecs.VAR_INT, OverheatingRecipe::getMinTemp,
+                ByteBufCodecs.VAR_INT, OverheatingRecipe::getMinHeatRate,
                 ByteBufCodecs.VAR_INT, OverheatingRecipe::getHeatCost,
                 OverheatingRecipe::new
         );

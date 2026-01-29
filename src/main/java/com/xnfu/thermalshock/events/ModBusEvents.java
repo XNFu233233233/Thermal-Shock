@@ -44,5 +44,19 @@ public class ModBusEvents {
                 ThermalShockBlockEntities.THERMAL_SOURCE_BE.get(),
                 (be, context) -> be.getEnergyStorage()
         );
+
+        // 6. 转换器 - 物品
+        event.registerBlockEntity(
+                Capabilities.ItemHandler.BLOCK,
+                ThermalShockBlockEntities.THERMAL_CONVERTER_BE.get(),
+                (be, context) -> be.getItemHandler()
+        );
+
+        // 7. 转换器 - 流体
+        event.registerBlockEntity(
+                Capabilities.FluidHandler.BLOCK,
+                ThermalShockBlockEntities.THERMAL_CONVERTER_BE.get(),
+                (be, context) -> be.getFluidHandler()
+        );
     }
 }

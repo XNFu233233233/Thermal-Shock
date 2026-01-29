@@ -3,6 +3,7 @@ package com.xnfu.thermalshock.registries;
 import com.xnfu.thermalshock.ThermalShock;
 import com.xnfu.thermalshock.block.entity.SimulationChamberBlockEntity; // 稍后创建
 import com.xnfu.thermalshock.block.entity.SimulationPortBlockEntity;
+import com.xnfu.thermalshock.block.entity.ThermalConverterBlockEntity;
 import com.xnfu.thermalshock.block.entity.ThermalSourceBlockEntity;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.level.block.entity.BlockEntityType;
@@ -32,6 +33,12 @@ public class ThermalShockBlockEntities {
                     BlockEntityType.Builder.of(ThermalSourceBlockEntity::new,
                             ThermalShockBlocks.THERMAL_HEATER.get(),
                             ThermalShockBlocks.THERMAL_FREEZER.get()
+                    ).build(null));
+    
+    public static final Supplier<BlockEntityType<ThermalConverterBlockEntity>> THERMAL_CONVERTER_BE =
+            BLOCK_ENTITIES.register("thermal_converter_be", () ->
+                    BlockEntityType.Builder.of(ThermalConverterBlockEntity::new,
+                            ThermalShockBlocks.THERMAL_CONVERTER.get()
                     ).build(null));
 
     public static void register(IEventBus eventBus) {
