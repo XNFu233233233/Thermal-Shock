@@ -128,7 +128,8 @@ public class ChamberProcess {
         consumeIngredientsFromPorts(level, recipeToRun, actualBatch, inputPosList);
 
         if (be.getMachineMode() == MachineMode.OVERHEATING && recipeToRun instanceof OverheatingRecipe ov) {
-            be.getThermo().consumeHeat(ov.getHeatCost() * actualBatch);
+            // [修复] 传入 level
+            be.getThermo().consumeHeat(level, ov.getHeatCost() * actualBatch);
         }
         be.consumeCatalystBuffer(actualBatch, be.performance.getEfficiency());
 
@@ -231,7 +232,7 @@ public class ChamberProcess {
 
         if (successCount > 0) {
             triggerMachineEffects(level);
-            if (heatToConsume > 0) be.getThermo().consumeHeat(heatToConsume);
+            if (heatToConsume > 0) be.getThermo().consumeHeat(level, heatToConsume);
             be.consumeCatalystBuffer(successCount, be.performance.getEfficiency());
 
             consumeMaterialsVisuals(level, blockPool);
@@ -254,7 +255,6 @@ public class ChamberProcess {
     private int calculateExecutionBatch(int limitByStructureAndItems, AbstractSimulationRecipe recipe) {
         // 1. 热冲击模式逻辑：无热量消耗，直接拉满
         if (be.getMachineMode() == MachineMode.THERMAL_SHOCK) {
-            if (be.getStructure().getMaxTemp() < be.getThermo().getCurrentHighTemp()) return 0;
 
             if (recipe instanceof ThermalShockRecipe ts) {
                 if (be.getThermo().getCurrentHighTemp() < ts.getMinHotTemp()) return 0;
@@ -266,12 +266,11 @@ public class ChamberProcess {
 
         // 2. 过热模式逻辑：涉及热量消耗与速率逻辑
         if (be.getMachineMode() == MachineMode.OVERHEATING && recipe instanceof OverheatingRecipe ov) {
-            if (be.getStructure().getMaxTemp() < ov.getMinTemp()) return 0;
 
             int costPerOp = ov.getHeatCost();
             if (costPerOp <= 0) return limitByStructureAndItems;
 
-            int currentHeat = be.getThermo().getHeatStored();
+            int currentHeat = be.getThermo().getHeatStoredRaw();
             // 计算当前缓存够跑多少次
             int maxByStored = currentHeat / costPerOp;
 
@@ -315,7 +314,8 @@ public class ChamberProcess {
         if (be.getMachineMode() == MachineMode.OVERHEATING && recipe instanceof OverheatingRecipe ov) {
             int costPerOp = ov.getHeatCost();
             if (costPerOp <= 0) return false;
-            int currentHeat = be.getThermo().getHeatStored();
+            // [修复] 使用 Raw 读取
+            int currentHeat = be.getThermo().getHeatStoredRaw();
             int maxByStored = currentHeat / costPerOp;
             return maxByItems > 0 && maxByStored <= 0;
         }
@@ -729,15 +729,6 @@ public class ChamberProcess {
         // 1. 过热模式判定
         if (be.getMachineMode() == MachineMode.OVERHEATING) {
             if (!(recipe instanceof OverheatingRecipe ov)) return false;
-
-            // 物理限制：结构本身耐温必须达标
-            // (虚拟模式下通常由升级卡接管，但为了平衡性保留基础检查)
-            if (!be.performance.isVirtual() && be.getStructure().getMaxTemp() < ov.getMinTemp()) {
-                return false;
-            }
-            // 过热模式只看“热量够不够扣”，不看“当前温度是否达标”作为运行门槛
-            // (通常是 HeatStored >= Cost，这个在 calculateExecutionBatch 里判断)
-            // 但如果配方有硬性温度门槛 (MinTemp)，这里可以加，但通常由 Structure MaxTemp 决定
             return true;
         }
         // 2. 热冲击模式判定

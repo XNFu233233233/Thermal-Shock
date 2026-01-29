@@ -16,7 +16,7 @@ public class ThermalSourceMenu extends AbstractContainerMenu {
     private final ContainerData data;
 
     public ThermalSourceMenu(int containerId, Inventory inv, FriendlyByteBuf extraData) {
-        this(containerId, inv, (ThermalSourceBlockEntity) inv.player.level().getBlockEntity(extraData.readBlockPos()), new SimpleContainerData(7));
+        this(containerId, inv, (ThermalSourceBlockEntity) inv.player.level().getBlockEntity(extraData.readBlockPos()), new SimpleContainerData(8));
     }
 
     public ThermalSourceMenu(int containerId, Inventory inv, ThermalSourceBlockEntity entity, ContainerData data) {
@@ -24,11 +24,11 @@ public class ThermalSourceMenu extends AbstractContainerMenu {
         this.be = entity;
         this.data = data;
 
-        // 校验数据大小为 7
-        checkContainerDataCount(data, 7);
+        // [修改] 校验数据大小为 8
+        checkContainerDataCount(data, 8);
         addDataSlots(data);
 
-        // 燃料槽 (Slot 0) - 对应 GUI 坐标 80, 35
+        // 燃料槽 (Slot 0)
         this.addSlot(new SlotItemHandler(be.getItemHandler(), 0, 80, 35));
 
         // 玩家背包
@@ -70,6 +70,7 @@ public class ThermalSourceMenu extends AbstractContainerMenu {
     public long getMaxEnergyStored() {
         return (long) data.get(6) & 0xFFFF_FFFFL;
     }
+    public int getLastTickEnergy() { return data.get(7); }
 
     public float getBurnProgress() {
         int current = getBurnTime();

@@ -2,20 +2,20 @@
   "values": {
     "#minecraft:planks": {
       "efficiency": 0.8,
-      "max_temp": 300,
-      "min_temp": 0
+      "max_cold_rate": 20,
+      "max_heat_rate": 50
     },
     "minecraft:cobblestone": {
-      "max_temp": 1000,
-      "min_temp": -100
+      "max_cold_rate": 100,
+      "max_heat_rate": 200
     },
     "minecraft:iron_block": {
-      "max_temp": 2000,
-      "min_temp": -500
+      "max_cold_rate": 500,
+      "max_heat_rate": 1000
     },
     "minecraft:obsidian": {
-      "max_temp": 4000,
-      "min_temp": -3000
+      "max_cold_rate": 5000,
+      "max_heat_rate": 5000
     }
   }
 }

@@ -35,7 +35,7 @@ public class SimulationChamberMenu extends AbstractContainerMenu {
     private final ContainerData data;
 
     public SimulationChamberMenu(int containerId, Inventory inv, FriendlyByteBuf extraData) {
-        this(containerId, inv, (SimulationChamberBlockEntity) inv.player.level().getBlockEntity(extraData.readBlockPos()), new SimpleContainerData(16));
+        this(containerId, inv, (SimulationChamberBlockEntity) inv.player.level().getBlockEntity(extraData.readBlockPos()), new SimpleContainerData(17));
     }
 
     public SimulationChamberMenu(int containerId, Inventory inv, SimulationChamberBlockEntity entity, ContainerData data) {
@@ -83,8 +83,8 @@ public class SimulationChamberMenu extends AbstractContainerMenu {
 
     public int getHeatStored() { return this.data.get(0); }
     public int getMaxHeat() { return this.data.get(1); }
-    public int getMinTemp() { return this.data.get(2); }
-    public int getMaxTemp() { return this.data.get(3); }
+    public int getMaxColdRate() { return this.data.get(2); }
+    public int getMaxHeatRate() { return this.data.get(3); }
     public float getEfficiency() { return this.data.get(4) / 100.0f; }
     public float getBonusYield() { return this.data.get(5) / 100.0f; }
     public float getCatalystAmount() { return this.data.get(6) / 10.0f; }
@@ -100,6 +100,7 @@ public class SimulationChamberMenu extends AbstractContainerMenu {
         int val = this.data.get(15);
         return val <= 0 ? 1 : val;
     }
+    public int getbatchSize() { return this.data.get(16);}
 
     @Override
     public boolean stillValid(Player player) {

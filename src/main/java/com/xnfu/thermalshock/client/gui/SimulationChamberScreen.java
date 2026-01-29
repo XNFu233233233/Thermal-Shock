@@ -305,8 +305,8 @@ public class SimulationChamberScreen extends AbstractContainerScreen<SimulationC
                 Component casingName = be.getCamouflageState().getBlock().getName();
                 tooltip.add(Component.translatable("gui.thermalshock.status.detail.size_casing", sizeStr, casingName).withStyle(ChatFormatting.WHITE));
                 tooltip.add(Component.translatable("gui.thermalshock.status.detail.interior", menu.getStructVolume()).withStyle(ChatFormatting.GRAY));
-                tooltip.add(Component.translatable("gui.thermalshock.status.detail.casing", menu.getMinTemp(), menu.getMaxTemp()).withStyle(ChatFormatting.YELLOW));
-                tooltip.add(Component.translatable("gui.thermalshock.status.detail.max_batch", menu.getStructVolume()).withStyle(ChatFormatting.AQUA));
+                tooltip.add(Component.translatable("gui.thermalshock.status.detail.casing", menu.getMaxHeatRate(), menu.getMaxColdRate()).withStyle(ChatFormatting.YELLOW));
+                tooltip.add(Component.translatable("gui.thermalshock.status.detail.max_batch", menu.getbatchSize()).withStyle(ChatFormatting.AQUA));
             } else {
                 tooltip.add(Component.translatable("gui.thermalshock.status.help").withStyle(ChatFormatting.GRAY));
             }

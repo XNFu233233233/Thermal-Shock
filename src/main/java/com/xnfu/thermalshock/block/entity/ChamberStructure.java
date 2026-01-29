@@ -26,8 +26,8 @@ public class ChamberStructure {
     private int volume = 0;
 
     // 外壳属性
-    private int minTemp = 0;
-    private int maxTemp = 0;
+    private int maxHeatRate = 0;
+    private int maxColdRate = 0;
     private float efficiency = 1.0f;
 
     // 产量乘区
@@ -106,12 +106,12 @@ public class ChamberStructure {
         var holder = BuiltInRegistries.BLOCK.wrapAsHolder(block);
         CasingData data = holder.getData(ThermalShockDataMaps.CASING_PROPERTY);
         if (data != null) {
-            this.minTemp = data.minTemp();
-            this.maxTemp = data.maxTemp();
+            this.maxHeatRate = data.maxHeatRate();
+            this.maxColdRate = data.maxColdRate();
             this.efficiency = data.efficiency();
         } else {
-            this.minTemp = 0;
-            this.maxTemp = 0;
+            this.maxHeatRate = 0;
+            this.maxColdRate = 0;
             this.efficiency = 1.0f;
         }
     }
@@ -121,8 +121,8 @@ public class ChamberStructure {
         this.isFormed = false;
         this.minPos = BlockPos.ZERO;
         this.maxPos = BlockPos.ZERO;
-        this.minTemp = 0;
-        this.maxTemp = 0;
+        this.maxHeatRate = 0;
+        this.maxColdRate = 0;
         this.efficiency = 0.0f;
         this.yieldMultiplier = 1;
         this.volume = 0;
@@ -221,16 +221,51 @@ public class ChamberStructure {
     }
 
     // --- Getters ---
-    public boolean isFormed() { return isFormed; }
-    public BlockPos getMinPos() { return minPos; }
-    public BlockPos getMaxPos() { return maxPos; }
-    public int getVolume() { return volume; }
-    public int getMinTemp() { return minTemp; }
-    public int getMaxTemp() { return maxTemp; }
-    public float getEfficiency() { return efficiency; }
-    public BlockState getCamouflageState() { return camouflageState; }
-    public Set<BlockPos> getPorts() { return connectedPorts; }
-    public List<BlockPos> getVents() { return vents; }
-    public int getYieldMultiplier() { return yieldMultiplier; }
-    public void setCamouflageStateOnly(BlockState state) { this.camouflageState = state; }
+    public boolean isFormed() {
+        return isFormed;
+    }
+
+    public BlockPos getMinPos() {
+        return minPos;
+    }
+
+    public BlockPos getMaxPos() {
+        return maxPos;
+    }
+
+    public int getVolume() {
+        return volume;
+    }
+
+    public int getMaxHeatRate() {
+        return maxHeatRate;
+    }
+
+    public int getMaxColdRate() {
+        return maxColdRate;
+    }
+
+    public float getEfficiency() {
+        return efficiency;
+    }
+
+    public BlockState getCamouflageState() {
+        return camouflageState;
+    }
+
+    public Set<BlockPos> getPorts() {
+        return connectedPorts;
+    }
+
+    public List<BlockPos> getVents() {
+        return vents;
+    }
+
+    public int getYieldMultiplier() {
+        return yieldMultiplier;
+    }
+
+    public void setCamouflageStateOnly(BlockState state) {
+        this.camouflageState = state;
+    }
 }

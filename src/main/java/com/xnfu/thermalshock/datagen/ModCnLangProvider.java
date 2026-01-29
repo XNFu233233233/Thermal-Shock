@@ -47,7 +47,7 @@ public class ModCnLangProvider extends LanguageProvider {
         add("gui.thermalshock.label.efficiency", "结构效率: %s%%");
         add("gui.thermalshock.label.bonus_yield", "产量加成: +%s%% (进度 %s%%)");
         add("gui.thermalshock.label.heat_io", "速率: %s%s 热/刻");
-        add("gui.thermalshock.label.max_temp", "耐温上限: %s°C");
+        add("gui.thermalshock.label.max_rate", "输入上限: +%s / -%s");
 
         // GUI 工具提示 (悬停信息)
         add("gui.thermalshock.tooltip.hold_shift", "按住 [Shift] 查看详情");
@@ -76,7 +76,7 @@ public class ModCnLangProvider extends LanguageProvider {
         // 对号图标详情
         add("gui.thermalshock.status.detail.size_casing", "%s (%s)");
         add("gui.thermalshock.status.detail.interior", "内部空间: %s 格");
-        add("gui.thermalshock.status.detail.casing", "耐温范围: %s°C ~ %s°C");
+        add("gui.thermalshock.status.detail.casing", "输入限制: +%s / -%s H/t");
         add("gui.thermalshock.status.detail.max_batch", "批处理上限: %s");
         add("gui.thermalshock.status.help", "请检查结构搭建指南。");
 
@@ -113,11 +113,6 @@ public class ModCnLangProvider extends LanguageProvider {
         add("gui.thermalshock.tooltip.input.low", "低温源输入: %s H");
         add("gui.thermalshock.tooltip.input.net", "净热量输入: %s H");
 
-        // 耐温提示
-        add("gui.thermalshock.tooltip.max_temp.title", "结构耐温极限");
-        add("gui.thermalshock.tooltip.max_temp.desc", "结构安全运行的最高温度。");
-        add("gui.thermalshock.tooltip.max_temp.detail", "由外壳材质决定 (如: 黑曜石耐高温)。");
-
         // 进度条与图标提示
         add("gui.thermalshock.tooltip.heat_bar", "热量存储");
         add("gui.thermalshock.tooltip.heat_bar.desc", "机器运行所需的热能缓存。");
@@ -140,7 +135,7 @@ public class ModCnLangProvider extends LanguageProvider {
         // 通用物品提示 (Shift 信息)
         add("tooltip.thermalshock.hold_shift", "按住 [Shift] 查看热力属性");
         add("tooltip.thermalshock.header", "=== 热冲击模拟室组件 ===");
-        add("tooltip.thermalshock.temp_range", "耐温: %s°C ~ %s°C");
+        add("tooltip.thermalshock.rate_limit", "输入上限: +%s / -%s 热/刻");
         add("tooltip.thermalshock.efficiency", "基础效率: %s");
         add("tooltip.thermalshock.heat_source_rate", "高温热源: +%s H (基础值)");
         add("tooltip.thermalshock.cold_source_rate", "低温热源: %s H (基础值)");

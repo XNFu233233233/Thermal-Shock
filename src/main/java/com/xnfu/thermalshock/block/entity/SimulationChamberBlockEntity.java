@@ -1,5 +1,6 @@
 package com.xnfu.thermalshock.block.entity;
 
+import com.xnfu.thermalshock.ThermalShock;
 import com.xnfu.thermalshock.block.SimulationChamberBlock;
 import com.xnfu.thermalshock.client.gui.SimulationChamberMenu;
 import com.xnfu.thermalshock.item.SimulationUpgradeItem;
@@ -48,6 +49,7 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
         @Override
         protected void onContentsChanged(int slot) {
             setChanged();
+            wakeUp(); // [新增] 库存变动唤醒机器
             if (slot == 0) {
                 markCatalystDirty();
             } else if (slot == 1) {
@@ -86,6 +88,10 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
     private ResourceLocation selectedRecipeId = null;
     private boolean recipeLocked = false;
 
+    // [重构] 休眠与唤醒标记
+    private boolean isSleeping = true;
+    private boolean pendingProcess = false;
+
     // [关键修复] 验证逻辑懒加载
     private boolean validationPending = false;
 
@@ -119,45 +125,34 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
     private float accumulatedYield = 0.0f;
 
     // === GUI 数据同步 ===
+    // === GUI 数据同步 ===
     private final ContainerData data = new ContainerData() {
         @Override
         public int get(int index) {
+            if (level != null && !level.isClientSide) {
+                thermo.updateLazy(level);
+            }
+
             return switch (index) {
-                // 0: 主进度条/核心数值
-                // Overheat -> 当前热量; Shock -> 当前温差 (Delta)
-                case 0 -> mode == MachineMode.OVERHEATING ? thermo.getHeatStored() : thermo.getCurrentDelta();
-
+                case 0 -> mode == MachineMode.OVERHEATING ? thermo.getHeatStoredRaw() : thermo.getCurrentDelta();
                 case 1 -> thermo.getMaxHeatCapacity();
-                case 2 -> structure.getMinTemp();
-                case 3 -> structure.getMaxTemp();
-
-                // 4: [修复] 传输催化剂加成 (0.5 -> 50)
+                case 2 -> structure.getMaxColdRate();
+                case 3 -> structure.getMaxHeatRate();
                 case 4 -> (int) (currentBonusYield * 100);
-
-                // 5: [修复] 传输产量倍率 (Structure/Performance Yield)
                 case 5 -> (int) (performance.getYieldMultiplier() * 100);
-
                 case 6 -> (int) (catalystBuffer * 10);
-
-                // 7: 辅助数值
-                // Overheat -> 净输入速率; Shock -> 高温输入
                 case 7 -> mode == MachineMode.OVERHEATING ?
                         thermo.getLastInputRate() :
                         thermo.getCurrentHighTemp();
-
-                case 8 -> performance.isVirtual() ? itemHandler.getStackInSlot(1).getCount() : structure.getVolume();
+                case 8 -> structure.getVolume();
                 case 9 -> structure.isFormed() ? 1 : 0;
                 case 10 -> recipeLocked ? 1 : 0;
                 case 11 -> performance.getBatchSize();
                 case 12 -> (int) (accumulatedYield * 100);
                 case 13 -> mode.ordinal();
-
-                // 14: 辅助数值2
-                // Shock -> 低温输入
                 case 14 -> thermo.getCurrentLowTemp();
-
-                // 15: 结构基础效率 (用于显示 Efficiency)
                 case 15 -> (int) (performance.getEfficiency() * 100);
+                case 16 -> performance.isVirtual() ? performance.getBatchSize() : structure.getVolume();
 
                 default -> 0;
             };
@@ -171,7 +166,7 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
         }
 
         @Override
-        public int getCount() { return 16; }
+        public int getCount() { return 17; }
     };
 
     public SimulationChamberBlockEntity(BlockPos pos, BlockState blockState) {
@@ -182,64 +177,78 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
     // 1. 核心循环 (Tick Logic) - 极致优化版
     // =========================================================
 
+
+    // [新增] 唤醒机制：当有外部输入或变动时调用
+    public void wakeUp() {
+        if (this.isSleeping) {
+            this.isSleeping = false;
+            this.pendingProcess = true; // 标记需要执行一次处理
+            setChanged(); // 确保状态变化被保存
+        }
+    }
+
     public static void tick(Level level, BlockPos pos, BlockState state, SimulationChamberBlockEntity be) {
         if (level.isClientSide) return;
 
-        // =========================================================
-        // 1. 安全性优先：处理延迟的结构验证 (防止死锁)
-        // =========================================================
+        // 1. 安全性优先：处理延迟的结构验证
         if (be.validationPending) {
             be.performValidation(null);
             be.validationPending = false;
         }
 
-        // =========================================================
-        // 2. 红石状态机 (Redstone State Machine)
-        // =========================================================
+        // 2. 红石状态机
         boolean currentSignal = level.hasNeighborSignal(pos);
-
-        // 判定上升沿 (Pulse): 当前有信号 && 之前无信号
-        be.isPulseFrame = currentSignal && !be.lastPowered;
-        // 判定持续信号
-        be.isPowered = currentSignal;
-
-        // =========================================================
-        // 3. 运行条件拦截 (Hard Stop)
-        // =========================================================
-        // 规则：如果没有红石信号，且不是脉冲瞬间 -> 强制休眠
-        if (!be.isPowered && !be.isPulseFrame) {
-            if (be.litTimer > 0) {
-                be.litTimer--;
-                if (be.litTimer == 0) be.updateLitBlockState(false);
-            }
-            be.lastPowered = be.isPowered; // 记录状态供下一帧使用
-            return; // ⛔ 停止向下执行
+        if (currentSignal != be.lastPowered) {
+            be.isPulseFrame = currentSignal && !be.lastPowered;
+            be.isPowered = currentSignal;
+            be.updatePoweredState(currentSignal); // 唤醒
+        } else {
+            be.isPulseFrame = false;
         }
 
-        // =========================================================
+        // 3. 休眠检查
+        // 条件：处于休眠态 && 无待处理任务 && 非发光状态 && 非脉冲帧
+        if (be.isSleeping && !be.pendingProcess && be.litTimer <= 0 && !be.isPulseFrame) {
+            return;
+        }
+
         // 4. 业务逻辑执行
-        // =========================================================
-        if (be.portsDirty) {
-            be.refreshPortCache();
-        }
-
         if (be.structure.isFormed()) {
-            // 热力模拟
-            be.thermo.tick(be.mode);
-            // 催化剂逻辑
-            be.processCatalyst();
-            // 核心配方处理 (Process 内部会读取 isPulseFrame 来决定批处理策略)
-            be.process.tick(level);
+            // 基础更新 (无论是否有电都要算热量和催化剂)
+            be.thermo.updateLazy(level);
+
+            if (be.catalystDirty) {
+                be.processCatalyst();
+            }
+
+            if (be.portsDirty) {
+                be.refreshPortCache();
+            }
+
+            // [修复] 红石门控 (Redstone Gate)
+            // 只有在 持续通电 或 收到脉冲 时才执行配方处理
+            if (be.isPowered || be.isPulseFrame) {
+                be.process.tick(level);
+            }
         }
 
-        // =========================================================
         // 5. 状态收尾
-        // =========================================================
         if (be.litTimer > 0) {
             be.litTimer--;
             if (be.litTimer == 0) {
                 be.updateLitBlockState(false);
             }
+        }
+
+        // 6. 自动进入休眠判定
+        // 条件 A: 没有电源且不是脉冲帧 (无电强行休眠)
+        // 条件 B: 工作已完成 (无 Dirty 标记)
+        boolean lackPower = !be.isPowered && !be.isPulseFrame;
+        boolean workDone = !be.isInputsDirty();
+
+        if ((lackPower || workDone) && be.litTimer <= 0) {
+            be.isSleeping = true;
+            be.pendingProcess = false;
         }
 
         be.lastPowered = be.isPowered;
@@ -255,20 +264,18 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
      * @param targetPos    发生变动的坐标
      * @param isItemUpdate 是否仅为物品/实体变动
      */
-    /**
-     * 智能环境更新响应 (由 StructureManager 调用)
-     * [修复] 现在不再立即执行验证，而是设置 pending 标记
-     */
     public void onEnvironmentUpdate(BlockPos targetPos, boolean isItemUpdate) {
-        // 1. 如果只是物品/实体变动，或者接口内的库存变动 -> 仅标记实体脏
+        // 1. 如果只是物品/实体变动 -> 标记实体脏并唤醒
         if (isItemUpdate) {
             markEntityCacheDirty();
+            wakeUp();
             return;
         }
 
-        // 2. 如果结构尚未成型 -> 任何方块变动都标记为“待验证”
+        // 2. 如果结构尚未成型 -> 标记验证并唤醒 (验证逻辑在 tick 开头)
         if (!structure.isFormed()) {
             this.validationPending = true;
+            wakeUp();
             return;
         }
 
@@ -276,35 +283,42 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
         boolean isInternal = structure.isInterior(targetPos);
 
         if (!isInternal) {
-            // 如果是结构的一部分(含外壳) -> 必须重新验证完整性 (标记 pending)
+            // 如果是结构的一部分(含外壳) -> 标记验证并唤醒
             if (structure.contains(targetPos)) {
                 this.validationPending = true;
+                wakeUp();
             } else {
-                // 否则是外部热源变动 -> 仅重算热力缓存 (安全，无方块更新副作用)
+                // 否则是外部热源变动 -> 重建热力缓存并唤醒
                 thermo.rebuildCache(level, structure);
+                wakeUp();
             }
         } else {
-            // 是内部方块变动 (且结构本身未被破坏) -> 标记方块缓存脏
+            // 是内部方块变动 -> 标记方块缓存脏并唤醒
             markBlockCacheDirty();
+            wakeUp();
         }
     }
 
     public void markBlockCacheDirty() {
         this.blockCacheDirty = true;
+        wakeUp(); // [新增]
     }
 
     public void markEntityCacheDirty() {
         this.entityCacheDirty = true;
+        wakeUp(); // [新增]
     }
 
     public void markPortsDirty() {
         this.portsDirty = true;
         // 端口变动通常意味着库存能力变动，也应唤醒实体处理
         this.entityCacheDirty = true;
+        wakeUp(); // [新增]
     }
 
     public void markCatalystDirty() {
         this.catalystDirty = true;
+        wakeUp(); // [新增]
     }
 
     public void updatePoweredState(boolean newSignal) {
@@ -628,6 +642,7 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
         this.structure.setCamouflageStateOnly(s);
         setChanged();
         syncData();
+        wakeUp(); // [新增]
     }
 
     // =========================================================
@@ -636,7 +651,7 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
 
     public void requestModeChange() {
         this.mode = this.mode.next();
-        this.thermo.setHeatStored(0);
+        this.thermo.clearHeat(); // [修改] 使用 clearHeat()
         setChanged();
         syncData();
     }

@@ -92,6 +92,16 @@ public class ModRecipeProvider extends RecipeProvider {
                 ironRecipe,
                 null
         );
+        ClumpProcessingRecipe ironNuggetRecipe = new ClumpProcessingRecipe(
+                new ItemStack(Items.IRON_NUGGET), // 目标内容
+                100,  // 需要 100 度
+                500   // 消耗 500 热量
+        );
+        output.accept(
+                ResourceLocation.fromNamespaceAndPath(ThermalShock.MODID, "clump_process_iron_nugget"),
+                ironNuggetRecipe,
+                null
+        );
 
         // [新增] 金锭 Clump (需要更高温度)
         ClumpProcessingRecipe goldRecipe = new ClumpProcessingRecipe(

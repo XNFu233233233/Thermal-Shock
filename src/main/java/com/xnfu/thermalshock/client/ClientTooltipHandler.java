@@ -91,8 +91,9 @@ public class ClientTooltipHandler {
 
         // === A. 外壳属性 ===
         if (casingData != null) {
-            event.getToolTip().add(Component.translatable("tooltip.thermalshock.temp_range",
-                    casingData.minTemp(), casingData.maxTemp()).withStyle(ChatFormatting.RED));
+            // [修复] 使用 maxHeatRate 和 maxColdRate
+            event.getToolTip().add(Component.translatable("tooltip.thermalshock.rate_limit",
+                    casingData.maxHeatRate(), casingData.maxColdRate()).withStyle(ChatFormatting.RED));
             event.getToolTip().add(Component.translatable("tooltip.thermalshock.efficiency",
                     String.format("%.0f%%", casingData.efficiency() * 100)).withStyle(ChatFormatting.GREEN));
         }

@@ -25,10 +25,11 @@ public class ModDataMapProvider extends DataMapProvider {
     protected void gather(HolderLookup.Provider lookupProvider) {
         // 1. 外壳 (Casing)
         var casing = this.builder(ThermalShockDataMaps.CASING_PROPERTY);
-        casing.add(BlockTags.PLANKS, new CasingData(0, 300, 0.8f), false);
-        casing.add(key(Blocks.COBBLESTONE), new CasingData(-100, 1000, 1.0f), false);
-        casing.add(key(Blocks.IRON_BLOCK), new CasingData(-500, 2000, 1.0f), false);
-        casing.add(key(Blocks.OBSIDIAN), new CasingData(-3000, 4000, 1.0f), false);
+        // [更新] 参数: maxHeatRate, maxColdRate, efficiency
+        casing.add(BlockTags.PLANKS, new CasingData(50, 20, 0.8f), false);
+        casing.add(key(Blocks.COBBLESTONE), new CasingData(200, 100, 1.0f), false);
+        casing.add(key(Blocks.IRON_BLOCK), new CasingData(1000, 500, 1.0f), false);
+        casing.add(key(Blocks.OBSIDIAN), new CasingData(5000, 5000, 1.0f), false);
 
         // 2. 催化剂 (Catalyst)
         var catalyst = this.builder(ThermalShockDataMaps.CATALYST_PROPERTY);

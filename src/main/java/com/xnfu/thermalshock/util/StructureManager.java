@@ -39,10 +39,6 @@ public class StructureManager {
         }
     }
 
-    /**
-     * 检查方块变动是否影响周围的控制器
-     * 范围扩大 1 格以包含热源/冷源变动
-     */
     public static void checkActivity(ServerLevel level, BlockPos targetPos, boolean isItemUpdate) {
         String dim = level.dimension().location().toString();
         var chunkMap = ALL_CONTROLLERS.get(dim);
@@ -59,31 +55,26 @@ public class StructureManager {
 
                 if (controllers != null) {
                     for (BlockPos controllerPos : controllers) {
-                        // [优化] 第一步：纯数学距离检查 (AABB check)
-                        // 假设最大结构半径为 6 (5x5x5 + 1格缓冲)，如果距离太远直接跳过
-                        // 这避免了不必要的 isLoaded 和 getBlockEntity 调用
+                        // 1. 快速距离剔除 (最大结构半径 ~7格 + 1格缓冲) -> 16格足够
                         if (!controllerPos.closerThan(targetPos, 16.0)) continue;
 
-                        // 第二步：检查 Chunk 是否加载
+                        // 2. 加载检查
                         if (level.isLoaded(controllerPos)) {
                             BlockEntity be = level.getBlockEntity(controllerPos);
                             if (be instanceof SimulationChamberBlockEntity chamber) {
-
-                                // 第三步：精确范围检查
+                                // 3. 精确范围检查
                                 if (chamber.isFormed()) {
                                     BlockPos min = chamber.getMinPos();
                                     BlockPos max = chamber.getMaxPos();
-
-                                    // 检测范围扩大 1 格以包含热源/冷源变动
+                                    // 检测范围扩大 1 格以包含外部热源
                                     if (targetPos.getX() >= min.getX() - 1 && targetPos.getX() <= max.getX() + 1 &&
                                             targetPos.getY() >= min.getY() - 1 && targetPos.getY() <= max.getY() + 1 &&
                                             targetPos.getZ() >= min.getZ() - 1 && targetPos.getZ() <= max.getZ() + 1) {
-
                                         chamber.onEnvironmentUpdate(targetPos, isItemUpdate);
                                     }
                                 } else {
-                                    // 未成形时，只关心附近的变动 (尝试重新成形)
-                                    if (controllerPos.distSqr(targetPos) < 64.0) { // 8格内
+                                    // 未成形 -> 附近变动尝试重组
+                                    if (controllerPos.distSqr(targetPos) < 100.0) {
                                         chamber.onEnvironmentUpdate(targetPos, isItemUpdate);
                                     }
                                 }

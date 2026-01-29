@@ -47,7 +47,7 @@ public class ModEnLangProvider extends LanguageProvider {
         add("gui.thermalshock.label.efficiency", "Efficiency: %s%%");
         add("gui.thermalshock.label.bonus_yield", "Bonus: +%s%% (Next: %s%%)");
         add("gui.thermalshock.label.heat_io", "Rate: %s%s H/t");
-        add("gui.thermalshock.label.max_temp", "Max Temp: %s°C");
+        add("gui.thermalshock.label.max_rate", "Max Rate: +%s / -%s");
 
         // 4. GUI Tooltips (Hover Info)
         add("gui.thermalshock.tooltip.hold_shift", "[Shift] for details");
@@ -75,7 +75,7 @@ public class ModEnLangProvider extends LanguageProvider {
         // 对号图标详情
         add("gui.thermalshock.status.detail.size_casing", "%s (%s)");
         add("gui.thermalshock.status.detail.interior", "Interior Volume: %s blocks");
-        add("gui.thermalshock.status.detail.casing", "Temp Range: %s°C ~ %s°C");
+        add("gui.thermalshock.status.detail.casing", "Limit: +%s / -%s H/t");
         add("gui.thermalshock.status.detail.max_batch", "Batch Limit: %s items");
         add("gui.thermalshock.status.help", "Check Holo-Guide for structure rules.");
 
@@ -111,11 +111,6 @@ public class ModEnLangProvider extends LanguageProvider {
         add("gui.thermalshock.tooltip.input.low", "Low Input: %s H");
         add("gui.thermalshock.tooltip.input.net", "Net Input: %s H");
 
-        // Max Temp Tooltip
-        add("gui.thermalshock.tooltip.max_temp.title", "Structural Limit");
-        add("gui.thermalshock.tooltip.max_temp.desc", "Maximum safe temperature.");
-        add("gui.thermalshock.tooltip.max_temp.detail", "Determined by casing tier.");
-
         // Bars & Icons Tooltips
         add("gui.thermalshock.tooltip.heat_bar", "Heat Storage");
         add("gui.thermalshock.tooltip.heat_bar.desc", "Buffer for crafting operations.");
@@ -138,7 +133,7 @@ public class ModEnLangProvider extends LanguageProvider {
         // General Item Tooltips (Shift info on items)
         add("tooltip.thermalshock.hold_shift", "Hold [Shift] for Thermal Info");
         add("tooltip.thermalshock.header", "=== Thermal Shock Component ===");
-        add("tooltip.thermalshock.temp_range", "Temp Range: %s°C ~ %s°C");
+        add("tooltip.thermalshock.rate_limit", "Input Limit: +%s / -%s H/t");
         add("tooltip.thermalshock.efficiency", "Efficiency: %s");
         add("tooltip.thermalshock.heat_source_rate", "Heat Source: +%s H (Base)");
         add("tooltip.thermalshock.cold_source_rate", "Cold Source: %s H (Base)");
