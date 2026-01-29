@@ -15,6 +15,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.EntityJoinLevelEvent;
+import net.neoforged.neoforge.event.entity.EntityLeaveLevelEvent;
 import net.neoforged.neoforge.event.level.BlockEvent;
 import net.neoforged.neoforge.event.level.ExplosionEvent;
 import net.neoforged.neoforge.event.level.LevelEvent;
@@ -57,7 +58,6 @@ public class CommonModEvents {
     @SubscribeEvent
     public static void onBlockBreak(BlockEvent.BreakEvent event) {
         if (!event.getLevel().isClientSide() && event.getLevel() instanceof ServerLevel sl) {
-            // 破坏前检查 state
             if (isRelevantBlock(event.getState())) {
                 StructureManager.checkActivity(sl, event.getPos(), false);
             }
@@ -67,7 +67,6 @@ public class CommonModEvents {
     @SubscribeEvent
     public static void onBlockPlace(BlockEvent.EntityPlaceEvent event) {
         if (!event.getLevel().isClientSide() && event.getLevel() instanceof ServerLevel sl) {
-            // 放置后检查 placedBlock
             if (isRelevantBlock(event.getState())) {
                 StructureManager.checkActivity(sl, event.getPos(), false);
             }
@@ -77,8 +76,6 @@ public class CommonModEvents {
     @SubscribeEvent
     public static void onNeighborNotify(BlockEvent.NeighborNotifyEvent event) {
         if (!event.getLevel().isClientSide() && event.getLevel() instanceof ServerLevel sl) {
-            // 邻居更新比较敏感，通常涉及红石或流体流动
-            // 这里不过滤太死，否则可能漏掉红石信号
             StructureManager.checkActivity(sl, event.getPos(), false);
         }
     }
@@ -87,7 +84,6 @@ public class CommonModEvents {
     public static void onExplosionDetonate(ExplosionEvent.Detonate event) {
         if (!event.getLevel().isClientSide() && event.getLevel() instanceof ServerLevel sl) {
             for (BlockPos pos : event.getAffectedBlocks()) {
-                // 爆炸波及的方块，如果是相关的，触发检查
                 if (isRelevantBlock(sl.getBlockState(pos))) {
                     StructureManager.checkActivity(sl, pos, false);
                 }
@@ -99,9 +95,7 @@ public class CommonModEvents {
     public static void onPistonPre(PistonEvent.Pre event) {
         if (!event.getLevel().isClientSide() && event.getLevel() instanceof ServerLevel sl) {
             StructureManager.checkActivity(sl, event.getPos(), false);
-            // 活塞推拉涉及的方块如果包含相关方块，也触发
             if (event.getStructureHelper() != null) {
-                // 这里为了保险起见，全检查，活塞事件频率不高
                 event.getStructureHelper().getToDestroy().forEach(pos -> StructureManager.checkActivity(sl, pos, false));
                 event.getStructureHelper().getToPush().forEach(pos -> StructureManager.checkActivity(sl, pos, false));
             }
@@ -113,8 +107,16 @@ public class CommonModEvents {
         if (event.getLevel().isClientSide()) return;
         if (event.getEntity() instanceof ItemEntity itemEntity) {
             if (event.getLevel() instanceof ServerLevel sl) {
-                // 物品进入世界，可能是玩家丢弃或炸出的
-                // 标记为 itemUpdate=true，只唤醒内部扫描，不触发结构验证
+                StructureManager.checkActivity(sl, itemEntity.blockPosition(), true);
+            }
+        }
+    }
+
+    @SubscribeEvent
+    public static void onEntityLeave(EntityLeaveLevelEvent event) {
+        if (event.getLevel().isClientSide()) return;
+        if (event.getEntity() instanceof ItemEntity itemEntity) {
+            if (event.getLevel() instanceof ServerLevel sl) {
                 StructureManager.checkActivity(sl, itemEntity.blockPosition(), true);
             }
         }

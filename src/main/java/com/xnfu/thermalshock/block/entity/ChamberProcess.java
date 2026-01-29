@@ -172,24 +172,32 @@ public class ChamberProcess {
         }
 
         this.primaryOutputPos = null;
-        List<FoundMaterial> blockPool = scanInternalBlocks();
-        List<FoundMaterial> itemPool = scanInternalItems();
+
+        // [核心修改] 不再主动扫描，而是获取 BE 缓存的“工作副本”
+        // 我们必须复制一份，因为 tryMatchIngredient 会修改 remainingCount
+        // 如果直接用缓存，会导致一次失败的匹配影响该 Tick 后续的匹配逻辑
+        List<FoundMaterial> blockPool = copyMaterialList(be.getInternalBlockCache());
+        List<FoundMaterial> itemPool = copyMaterialList(be.getInternalEntityCache());
 
         AbstractSimulationRecipe recipeToRun = targetRecipe;
         if (isGenericClumpMode) {
             recipeToRun = findGenericClumpRecipeFromPool(level, itemPool);
             if (recipeToRun == null) {
-                be.setInputsDirty(false);
+                // 通用模式下没找到配方，说明不需要工作，清除脏标记
+                // 注意：这里不设为 false，因为可能只是当前热量不够，保持脏标记等待热量
+                // 但如果是原料不足，确实可以设为 false。为了安全，暂不操作
                 return;
             }
         } else {
             if (!canMatchRecipe(recipeToRun, blockPool, itemPool)) {
+                // 原料不足，清除脏标记让机器休眠
                 be.setInputsDirty(false);
                 return;
             }
         }
 
         if (!checkThermalConditions(recipeToRun)) {
+            // 原料够但热量不够，保持脏标记 (be.setInputsDirty(true)) 以便持续唤醒检查热量
             be.setInputsDirty(true);
             return;
         }
@@ -214,9 +222,17 @@ public class ChamberProcess {
         int heatToConsume = 0;
         List<ItemStack> rawOutputs = new ArrayList<>();
 
+        // 由于上面计算 batch 时没有实际扣减，这里执行实际扣减
+        // 注意：我们需要在一个循环中重新匹配并扣减，确保逻辑严密
+        // 因为 blockPool 和 itemPool 是副本，可以随意修改
+
+        // 重置副本状态用于实际消耗
+        blockPool = copyMaterialList(be.getInternalBlockCache());
+        itemPool = copyMaterialList(be.getInternalEntityCache());
+
         for (int i = 0; i < actualBatch; i++) {
             MatchResult match = tryMatchIngredient(recipeToRun, blockPool, itemPool);
-            if (match == null) break;
+            if (match == null) break; // 理论上不应发生，因为前面 calculateMax 算过了
 
             if (be.getMachineMode() == MachineMode.OVERHEATING && recipeToRun instanceof OverheatingRecipe ov) {
                 heatToConsume += ov.getHeatCost();
@@ -235,17 +251,34 @@ public class ChamberProcess {
             if (heatToConsume > 0) be.getThermo().consumeHeat(level, heatToConsume);
             be.consumeCatalystBuffer(successCount, be.performance.getEfficiency());
 
+            // 视觉与物理移除：这里会触发 BlockBreak/EntityRemove 事件
+            // 这些事件会回调 StructureManager -> BE.markDirty -> 下一 Tick 重建缓存
             consumeMaterialsVisuals(level, blockPool);
             consumeMaterialsVisuals(level, itemPool);
+
             spawnMergedResults(level, rawOutputs);
 
             be.onRecipeSuccess();
 
+            // 检查剩余原料：这里使用副本判断即可
             boolean hasRemainingInput = canMatchRecipe(recipeToRun, blockPool, itemPool);
             be.setInputsDirty(be.isLocked() && hasRemainingInput);
         } else {
             be.setInputsDirty(false);
         }
+    }
+
+    // 深拷贝材质列表，用于模拟计算
+    private List<FoundMaterial> copyMaterialList(List<FoundMaterial> original) {
+        List<FoundMaterial> copy = new ArrayList<>(original.size());
+        for (FoundMaterial m : original) {
+            // 创建新对象，但 source 和 stack 引用可以共享（stack 不会被修改，只会读取）
+            // 注意：FoundMaterial 内部有 remainingCount 和 consumedCount 是可变的
+            FoundMaterial newMat = new FoundMaterial(m.source, m.stack);
+            newMat.remainingCount = m.remainingCount; // 继承当前状态
+            copy.add(newMat);
+        }
+        return copy;
     }
 
     // =========================================================
@@ -762,7 +795,7 @@ public class ChamberProcess {
         }
     }
 
-    private static class FoundMaterial {
+    public static class FoundMaterial {
         final Object source;
         final ItemStack stack;
         int remainingCount;

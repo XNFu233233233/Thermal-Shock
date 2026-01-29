@@ -157,5 +157,6 @@ public class ModEnLangProvider extends LanguageProvider {
         add("message.thermalshock.too_many_vents", "Too many blast vents (1-9 allowed)");
         add("message.thermalshock.too_many_port", "Too many interfaces (0-16 allowed)");
         add("message.thermalshock.too_many_access","Too many sealed doors (0-4 allowed)");
+        add("message.thermalshock.port_mode", "Port mode changed: %s");
     }
 }

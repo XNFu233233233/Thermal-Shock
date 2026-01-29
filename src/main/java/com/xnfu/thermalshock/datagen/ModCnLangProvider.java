@@ -159,5 +159,6 @@ public class ModCnLangProvider extends LanguageProvider {
         add("message.thermalshock.too_many_vents", "排气口过多 (最多 9 个)");
         add("message.thermalshock.too_many_port", "接口过多 (最多 16 个)");
         add("message.thermalshock.too_many_access", "密封门过多 (最多 4 个)");
+        add("message.thermalshock.port_mode", "端口模式已切换: %s");
     }
 }

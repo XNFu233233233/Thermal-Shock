@@ -19,6 +19,7 @@ import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.MenuProvider;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
@@ -27,6 +28,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.AABB;
 import net.neoforged.neoforge.items.IItemHandler;
 import net.neoforged.neoforge.items.ItemStackHandler;
 import org.jetbrains.annotations.Nullable;
@@ -100,6 +102,10 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
     // 逻辑执行相关
     private boolean blockCacheDirty = true;  // 内部方块变动
     private boolean entityCacheDirty = true; // 内部实体/接口库存变动
+
+    // 内部快照缓存 (Snapshot)
+    private final List<ChamberProcess.FoundMaterial> internalBlockCache = new ArrayList<>();
+    private final List<ChamberProcess.FoundMaterial> internalEntityCache = new ArrayList<>();
 
     // 辅助缓存
     private boolean portsDirty = true;
@@ -186,6 +192,44 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
         }
     }
 
+    /**
+     * [新增] 重建内部缓存
+     * 只有在 blockCacheDirty 或 entityCacheDirty 为 true 时才会被调用
+     */
+    public void rebuildInternalCache() {
+        if (level == null || !structure.isFormed()) return;
+
+        // 1. 重建方块缓存
+        if (this.blockCacheDirty) {
+            this.internalBlockCache.clear();
+            BlockPos min = structure.getMinPos();
+            BlockPos max = structure.getMaxPos();
+            // 扫描内部 (排除外壳)
+            BlockPos.betweenClosed(min.offset(1, 1, 1), max.offset(-1, -1, -1))
+                    .forEach(p -> {
+                        BlockState s = level.getBlockState(p);
+                        if (!s.isAir()) {
+                            // 存入快照
+                            this.internalBlockCache.add(new ChamberProcess.FoundMaterial(p.immutable(), new ItemStack(s.getBlock())));
+                        }
+                    });
+            this.blockCacheDirty = false;
+        }
+
+        // 2. 重建实体缓存
+        if (this.entityCacheDirty) {
+            this.internalEntityCache.clear();
+            AABB box = AABB.encapsulatingFullBlocks(structure.getMinPos(), structure.getMaxPos());
+            List<ItemEntity> entities = level.getEntitiesOfClass(ItemEntity.class, box);
+            for (ItemEntity ie : entities) {
+                if (ie.isAlive()) {
+                    this.internalEntityCache.add(new ChamberProcess.FoundMaterial(ie, ie.getItem()));
+                }
+            }
+            this.entityCacheDirty = false;
+        }
+    }
+
     public static void tick(Level level, BlockPos pos, BlockState state, SimulationChamberBlockEntity be) {
         if (level.isClientSide) return;
 
@@ -224,8 +268,12 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
                 be.refreshPortCache();
             }
 
-            // [修复] 红石门控 (Redstone Gate)
-            // 只有在 持续通电 或 收到脉冲 时才执行配方处理
+            // 在处理配方前，如果有脏标记，先重建缓存
+            if (be.blockCacheDirty || be.entityCacheDirty) {
+                be.rebuildInternalCache();
+            }
+
+            // 红石门控 (Redstone Gate)
             if (be.isPowered || be.isPulseFrame) {
                 be.process.tick(level);
             }
@@ -240,10 +288,8 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
         }
 
         // 6. 自动进入休眠判定
-        // 条件 A: 没有电源且不是脉冲帧 (无电强行休眠)
-        // 条件 B: 工作已完成 (无 Dirty 标记)
         boolean lackPower = !be.isPowered && !be.isPulseFrame;
-        boolean workDone = !be.isInputsDirty();
+        boolean workDone = !be.pendingProcess;
 
         if ((lackPower || workDone) && be.litTimer <= 0) {
             be.isSleeping = true;
@@ -626,6 +672,14 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
 
     public List<BlockPos> getCachedOutputPorts() {
         return cachedOutputPorts;
+    }
+
+    public List<ChamberProcess.FoundMaterial> getInternalBlockCache() {
+        return internalBlockCache;
+    }
+
+    public List<ChamberProcess.FoundMaterial> getInternalEntityCache() {
+        return internalEntityCache;
     }
 
     public boolean isFormed() {
