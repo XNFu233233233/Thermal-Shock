@@ -157,34 +157,36 @@ public class MultiblockValidator {
                 for (int k = 0; k < size; k++) {
                     cursor.set(topLeft).move(right, i).move(down, j).move(back, k);
 
+                    // 忽略控制器自身位置
+                    if (cursor.equals(controllerPos)) continue;
+
+                    BlockState state = level.getBlockState(cursor);
+
+                    // ====================================================
+                    // 1. 全局唯一性检查 (Global Uniqueness)
+                    // ====================================================
+                    // 无论是在外壳还是内部，都不允许出现第二个控制器，避免多方块逻辑冲突
+                    if (state.is(ThermalShockBlocks.SIMULATION_CHAMBER_CONTROLLER.get())) {
+                        return fail(Component.translatable("message.thermalshock.multiple_controllers"), cursor.immutable());
+                    }
+
+                    // ====================================================
+                    // 2. 内部检查 (Interior) - 宽松模式
+                    // ====================================================
                     boolean isX = (i == 0 || i == size - 1);
                     boolean isY = (j == 0 || j == size - 1);
                     boolean isZ = (k == 0 || k == size - 1);
                     int edgeCount = (isX ? 1 : 0) + (isY ? 1 : 0) + (isZ ? 1 : 0);
 
-                    BlockState state = level.getBlockState(cursor);
-
-                    // ====================================================
-                    // 1. 全局唯一性检查
-                    // ====================================================
-                    // 即使是内部空间，也不允许藏有额外的控制器
-                    if (state.is(ThermalShockBlocks.SIMULATION_CHAMBER_CONTROLLER.get()) && !cursor.equals(controllerPos)) {
-                        return fail(Component.translatable("message.thermalshock.multiple_controllers"), cursor.immutable());
-                    }
-
-                    if (cursor.equals(controllerPos)) continue;
-
-                    // ====================================================
-                    // 2. 内部检查 (Interior)
-                    // ====================================================
+                    // edgeCount == 0 代表内部空间
                     if (edgeCount == 0) {
-                        // [修改] 彻底放开内部限制
-                        // 只要不是多控制器（上面已check），内部可以是空气、方块、液体等任何东西
+                        // [核心修改] 只要不是控制器（上面已检查），允许任何方块存在
+                        // 这样配方所需的输入方块（如圆石）或杂物都不会破坏结构完整性
                         continue;
                     }
 
                     // ====================================================
-                    // 3. 外部检查 (Shell)
+                    // 3. 外部检查 (Shell) - 严格模式
                     // ====================================================
                     BlockCheckResult check = checkBlockType(state);
 
@@ -201,6 +203,7 @@ public class MultiblockValidator {
                         }
                     }
 
+                    // 统计组件
                     if (check.isVent) {
                         ventCount++;
                         vents.add(cursor.immutable());
@@ -208,6 +211,7 @@ public class MultiblockValidator {
                     if (check.isAccess) access++;
                     if (state.is(ThermalShockBlocks.SIMULATION_CHAMBER_PORT.get())) ports.add(cursor.immutable());
 
+                    // 检查外壳材质一致性
                     if (check.isCasing) {
                         if (validCasingBlock == null) {
                             validCasingBlock = state.getBlock();

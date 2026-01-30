@@ -16,7 +16,6 @@ import net.minecraft.world.level.block.state.BlockState;
 public class ChamberThermodynamics {
 
     // 运行时状态
-    private long lastGameTime = -1; // 上次结算的时间戳
     private double heatStored = 0;   // 改为 double 以支持精确计算，存取时转 int
     private int maxHeatCapacity = 10000;
 
@@ -27,44 +26,17 @@ public class ChamberThermodynamics {
     private int cachedDelta = 0;
 
     /**
-     * [重构] 惰性更新：根据当前时间结算热量
-     * 在每次 getHeat, insertHeat, 或 GUI 同步前调用
+     * 判断热量是否已满
      */
-    public void updateLazy(Level level) {
-        if (level.isClientSide) return;
-
-        long currentTime = level.getGameTime();
-        if (lastGameTime == -1) {
-            lastGameTime = currentTime;
-            return;
-        }
-
-        long dt = currentTime - lastGameTime;
-        if (dt > 0) {
-            // 只在过热模式(需要存热)且速率不为0时计算
-            // 注意：这里需要从外部传入 mode，或者默认只在Overheating模式下累积
-            // 由于架构解耦，这里只负责数值结算。如果当前模式不支持存热，heatStored 应该在 setMode 时被清空，或者在这里被忽视。
-            // 为了安全，我们只处理简单的累加，模式逻辑由 Controller 控制。
-
-            if (cachedNetInput != 0) {
-                double added = cachedNetInput * dt;
-                this.heatStored += added;
-
-                // 边界限制
-                if (this.heatStored > maxHeatCapacity) this.heatStored = maxHeatCapacity;
-                if (this.heatStored < 0) this.heatStored = 0;
-            }
-            lastGameTime = currentTime;
-        }
+    public boolean isFull() {
+        return this.heatStored >= this.maxHeatCapacity;
     }
 
     /**
      * 重建热力缓存 (环境变动时调用)
      * 调用前会自动结算之前的热量
      */
-    public void rebuildCache(Level level, ChamberStructure structure) {
-        updateLazy(level); // 先结算
-
+    public void recalculate(Level level, ChamberStructure structure) {
         if (level == null || !structure.isFormed()) {
             resetCache();
             return;
@@ -77,6 +49,9 @@ public class ChamberThermodynamics {
             for (Direction dir : Direction.values()) {
                 BlockPos targetPos = portPos.relative(dir);
                 if (structure.contains(targetPos)) continue;
+
+                // [Fix] 防止访问未加载区块
+                if (!level.isLoaded(targetPos)) continue;
 
                 BlockState targetState = level.getBlockState(targetPos);
 
@@ -139,7 +114,6 @@ public class ChamberThermodynamics {
     // [删除] public void tick(...) - 不再需要每刻调用
 
     public void consumeHeat(Level level, int amount) {
-        updateLazy(level); // 消费前先结算
         this.heatStored = Math.max(0, this.heatStored - amount);
     }
 
@@ -161,16 +135,22 @@ public class ChamberThermodynamics {
 
     public void load(CompoundTag tag) {
         this.heatStored = tag.getInt("HeatStored");
-        // 加载后 lastGameTime 为 -1，将在第一次 updateLazy 时重置为当前时间
-        this.lastGameTime = -1;
     }
 
     // --- Getters (Auto Lazy Update) ---
     // 为了 GUI 显示准确，获取时尝试结算一下 (仅限服务端)
     // 客户端 heatStored 通过 ContainerData 同步，不需要计算
     public int getHeatStored(Level level) {
-        if (level != null && !level.isClientSide) updateLazy(level);
         return (int) heatStored;
+    }
+
+    /**
+     * 手动增加热量 (用于控制器 Tick 中的累积)
+     */
+    public void addHeat(double amount) {
+        this.heatStored += amount;
+        if (this.heatStored > maxHeatCapacity) this.heatStored = maxHeatCapacity;
+        if (this.heatStored < 0) this.heatStored = 0;
     }
 
     // 纯 Getter，不触发结算 (用于客户端或内部逻辑)

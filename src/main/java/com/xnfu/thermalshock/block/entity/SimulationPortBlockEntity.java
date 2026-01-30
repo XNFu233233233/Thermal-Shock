@@ -49,6 +49,10 @@ public class SimulationPortBlockEntity extends BlockEntity implements MenuProvid
     // 内部流体：3 个独立的 64B (64000mB) 储罐
     private final MultiFluidTank fluidHandler = new MultiFluidTank(3, 64000);
 
+    // [Fix] Capability Cache
+    private final IItemHandler itemHandlerCap;
+    private final IFluidHandler fluidHandlerCap;
+
     // 数据同步 (GUI 用)
     private final ContainerData data = new SimpleContainerData(9) {
         @Override
@@ -72,17 +76,15 @@ public class SimulationPortBlockEntity extends BlockEntity implements MenuProvid
 
     public SimulationPortBlockEntity(BlockPos pos, BlockState blockState) {
         super(ThermalShockBlockEntities.SIMULATION_PORT_BE.get(), pos, blockState);
+        this.itemHandlerCap = createItemHandlerCap();
+        this.fluidHandlerCap = createFluidHandlerCap();
     }
 
     // =========================================================
     // 核心逻辑：能力暴露 (Capability Wrappers)
     // =========================================================
 
-    /**
-     * 获取受模式限制的物品处理器
-     * 这里的逻辑决定了漏斗/管道能否存取
-     */
-    public IItemHandler getCapabilityItemHandler() {
+    private IItemHandler createItemHandlerCap() {
         return new RangedWrapper(itemHandler, 0, itemHandler.getSlots()) {
             @Override
             public @NotNull ItemStack insertItem(int slot, @NotNull ItemStack stack, boolean simulate) {
@@ -110,10 +112,7 @@ public class SimulationPortBlockEntity extends BlockEntity implements MenuProvid
         };
     }
 
-    /**
-     * 获取受模式限制的流体处理器
-     */
-    public IFluidHandler getCapabilityFluidHandler() {
+    private IFluidHandler createFluidHandlerCap() {
         return new IFluidHandler() {
             @Override
             public int getTanks() {
@@ -155,6 +154,25 @@ public class SimulationPortBlockEntity extends BlockEntity implements MenuProvid
                 return fluidHandler.drain(maxDrain, action);
             }
         };
+    }
+
+    public IItemHandler getCapabilityItemHandler() {
+        return this.itemHandlerCap;
+    }
+
+    public IFluidHandler getCapabilityFluidHandler() {
+        return this.fluidHandlerCap;
+    }
+
+    public void propagateUpdateToController(BlockPos updateSource) {
+        if (this.controllerPos != null && level != null && !level.isClientSide) {
+            // 只有当变动源不是控制器自己时才通知 (防止死循环)
+            if (!updateSource.equals(this.controllerPos)) {
+                if (level.isLoaded(this.controllerPos) && level.getBlockEntity(this.controllerPos) instanceof SimulationChamberBlockEntity controller) {
+                    controller.onEnvironmentUpdate(updateSource, false);
+                }
+            }
+        }
     }
 
     // =========================================================

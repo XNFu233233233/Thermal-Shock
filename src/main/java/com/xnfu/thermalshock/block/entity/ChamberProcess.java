@@ -38,63 +38,58 @@ public class ChamberProcess {
         this.be = be;
     }
 
-    public void tick(Level level) {
+    // [核心修改] 返回 boolean: true 表示需要继续循环，false 表示本次任务结束(或失败)
+    public boolean tick(Level level) {
         // 1. 结构检查
-        if (!be.getStructure().isFormed()) return;
+        if (!be.getStructure().isFormed()) return false;
 
         // 2. 配方检查
         ResourceLocation selectedId = be.getSelectedRecipeId();
         if (selectedId == null) {
             be.setInputsDirty(false);
-            return;
+            return false;
         }
 
-        // 3. 脏标记检查 (如果是脉冲，强制无视脏标记运行)
-        if (!be.isInputsDirty() && !be.isPulseFrame()) return;
-
-        // 4. 分支处理
+        // 3. 分支处理
         if (be.performance.isVirtual()) {
-            tickVirtual(level, selectedId);
+            return tickVirtual(level, selectedId);
         } else {
-            tickPhysical(level, selectedId);
+            return tickPhysical(level, selectedId);
         }
     }
 
     // =========================================================
     // 1. 虚拟化处理 (Virtual Mode)
     // =========================================================
-    private void tickVirtual(Level level, ResourceLocation selectedId) {
+    private boolean tickVirtual(Level level, ResourceLocation selectedId) {
         List<BlockPos> inputPosList = be.getCachedInputPorts();
         List<BlockPos> outputPosList = be.getCachedOutputPorts();
-        if (inputPosList.isEmpty() || outputPosList.isEmpty()) return;
+        if (inputPosList.isEmpty() || outputPosList.isEmpty()) return false;
 
         AbstractSimulationRecipe targetRecipe = resolveRecipeById(level, selectedId);
         boolean isGenericClumpMode = GENERIC_CLUMP_ID.equals(selectedId);
 
         if (!isGenericClumpMode && targetRecipe == null) {
             be.setSelectedRecipe(null);
-            return;
+            return false;
         }
 
         AbstractSimulationRecipe recipeToRun = targetRecipe;
         if (isGenericClumpMode) {
             recipeToRun = findFirstValidGenericRecipe(level, inputPosList);
-            if (recipeToRun == null) {
-                be.setInputsDirty(false);
-                return;
-            }
+            if (recipeToRun == null) return false;
         }
 
         // 计算
         int maxBatchByItems = calculateMaxBatchFromPorts(level, recipeToRun, inputPosList);
         if (maxBatchByItems <= 0) {
             be.setInputsDirty(checkForMatchingInputButInsufficient(level, recipeToRun, inputPosList));
-            return;
+            return false;
         }
 
         if (!checkThermalConditions(recipeToRun)) {
             be.setInputsDirty(true);
-            return;
+            return false;
         }
 
         // 空间预判
@@ -108,7 +103,7 @@ public class ChamberProcess {
             int totalSpace = calculateAvailableOutputSpace(level, resultTemplate, outputPosList);
             if (totalSpace < requiredSpacePerOp) {
                 be.setInputsDirty(false);
-                return;
+                return false;
             }
             int maxBatchByOutput = totalSpace / requiredSpacePerOp;
             maxBatchByItems = Math.min(maxBatchByItems, maxBatchByOutput);
@@ -119,10 +114,7 @@ public class ChamberProcess {
         int limit = Math.min(structureMax, maxBatchByItems);
         int actualBatch = calculateExecutionBatch(limit, recipeToRun);
 
-        if (actualBatch <= 0) {
-            be.setInputsDirty(isBatchLimitedByHeat(actualBatch, recipeToRun, maxBatchByItems));
-            return;
-        }
+        if (actualBatch <= 0) return false;
 
         // 执行
         consumeIngredientsFromPorts(level, recipeToRun, actualBatch, inputPosList);
@@ -149,26 +141,22 @@ public class ChamberProcess {
         }
 
         be.onRecipeSuccess();
-
-        // 锁定控制
-        if (!be.isLocked()) {
-            be.setInputsDirty(false);
-        } else {
-            // 如果不是脉冲触发，且还能跑，保持脏
-            be.setInputsDirty(hasRemainingInputAfterProcessing(level, recipeToRun, inputPosList));
-        }
+        
+        // [优化] 如果未锁定，返回 false 以便立即休眠 (因为配方已被清除)
+        // 如果锁定，返回 true，控制器会尝试在下一 Tick 继续运行
+        return be.isLocked();
     }
 
     // =========================================================
     // 2. 物理处理 (Physical Mode)
     // =========================================================
-    private void tickPhysical(Level level, ResourceLocation selectedId) {
+    private boolean tickPhysical(Level level, ResourceLocation selectedId) {
         AbstractSimulationRecipe targetRecipe = resolveRecipeById(level, selectedId);
         boolean isGenericClumpMode = GENERIC_CLUMP_ID.equals(selectedId);
 
         if (!isGenericClumpMode && targetRecipe == null) {
             be.setSelectedRecipe(null);
-            return;
+            return false;
         }
 
         this.primaryOutputPos = null;
@@ -182,24 +170,15 @@ public class ChamberProcess {
         AbstractSimulationRecipe recipeToRun = targetRecipe;
         if (isGenericClumpMode) {
             recipeToRun = findGenericClumpRecipeFromPool(level, itemPool);
-            if (recipeToRun == null) {
-                // 通用模式下没找到配方，说明不需要工作，清除脏标记
-                // 注意：这里不设为 false，因为可能只是当前热量不够，保持脏标记等待热量
-                // 但如果是原料不足，确实可以设为 false。为了安全，暂不操作
-                return;
-            }
+            if (recipeToRun == null) return false;
         } else {
             if (!canMatchRecipe(recipeToRun, blockPool, itemPool)) {
-                // 原料不足，清除脏标记让机器休眠
-                be.setInputsDirty(false);
-                return;
+                return false;
             }
         }
 
         if (!checkThermalConditions(recipeToRun)) {
-            // 原料够但热量不够，保持脏标记 (be.setInputsDirty(true)) 以便持续唤醒检查热量
-            be.setInputsDirty(true);
-            return;
+            return false;
         }
 
         int materialMax = calculateMaxMaterialBatch(recipeToRun, blockPool, itemPool);
@@ -207,15 +186,12 @@ public class ChamberProcess {
         int physicalLimit = Math.min(structureMax, Math.min(64, materialMax));
         int actualBatch = calculateExecutionBatch(physicalLimit, recipeToRun);
 
-        if (actualBatch <= 0) {
-            be.setInputsDirty(isBatchLimitedByHeat(actualBatch, recipeToRun, materialMax));
-            return;
-        }
+        if (actualBatch <= 0) return false;
 
         if (!be.performance.isVirtual()) {
             ItemStack resultStack = recipeToRun.getResultItem(level.registryAccess());
             long projectedTotal = (long) (actualBatch * resultStack.getCount() * be.performance.getYieldMultiplier());
-            if (projectedTotal > 1024) return;
+            if (projectedTotal > 1024) return false;
         }
 
         int successCount = 0;
@@ -260,11 +236,10 @@ public class ChamberProcess {
 
             be.onRecipeSuccess();
 
-            // 检查剩余原料：这里使用副本判断即可
-            boolean hasRemainingInput = canMatchRecipe(recipeToRun, blockPool, itemPool);
-            be.setInputsDirty(be.isLocked() && hasRemainingInput);
+            // [优化] 同上，由锁定状态决定是否继续循环
+            return be.isLocked();
         } else {
-            be.setInputsDirty(false);
+            return false;
         }
     }
 

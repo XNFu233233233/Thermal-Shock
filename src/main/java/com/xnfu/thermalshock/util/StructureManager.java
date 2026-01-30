@@ -70,6 +70,7 @@ public class StructureManager {
                                     if (targetPos.getX() >= min.getX() - 1 && targetPos.getX() <= max.getX() + 1 &&
                                             targetPos.getY() >= min.getY() - 1 && targetPos.getY() <= max.getY() + 1 &&
                                             targetPos.getZ() >= min.getZ() - 1 && targetPos.getZ() <= max.getZ() + 1) {
+                                        // 触发控制器的环境更新逻辑 (热量重算/结构验证)
                                         chamber.onEnvironmentUpdate(targetPos, isItemUpdate);
                                     }
                                 } else {

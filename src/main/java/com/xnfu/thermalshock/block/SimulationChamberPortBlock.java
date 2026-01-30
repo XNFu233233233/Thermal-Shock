@@ -57,6 +57,19 @@ public class SimulationChamberPortBlock extends Block implements EntityBlock {
     }
 
     @Override
+    public void neighborChanged(BlockState state, Level level, BlockPos pos, Block neighborBlock, BlockPos neighborPos, boolean movedByPiston) {
+        super.neighborChanged(state, level, pos, neighborBlock, neighborPos, movedByPiston);
+        if (!level.isClientSide) {
+            BlockEntity be = level.getBlockEntity(pos);
+            if (be instanceof SimulationPortBlockEntity port) {
+                // 将邻居更新事件转发给绑定的控制器
+                // 这样无论热源是贴在接口上，还是贴在控制器上，控制器都能收到通知
+                port.propagateUpdateToController(neighborPos);
+            }
+        }
+    }
+
+    @Override
     public void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean isMoving) {
         if (!state.is(newState.getBlock())) {
             BlockEntity be = level.getBlockEntity(pos);

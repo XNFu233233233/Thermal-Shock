@@ -90,7 +90,7 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
     private boolean recipeLocked = false;
 
     // [重构] 休眠与唤醒标记
-    private boolean isSleeping = true;
+    // 默认为 false (休眠)，只有事件能将其置为 true (唤醒)
     private boolean pendingProcess = false;
 
     // [关键修复] 验证逻辑懒加载
@@ -108,6 +108,7 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
     private final List<ChamberProcess.FoundMaterial> internalEntityCache = new ArrayList<>();
 
     // 辅助缓存
+    private boolean heatDirty = true; // [新增] 热量脏标记
     private boolean portsDirty = true;
     private boolean catalystDirty = true;
 
@@ -134,9 +135,8 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
     private final ContainerData data = new ContainerData() {
         @Override
         public int get(int index) {
-            if (level != null && !level.isClientSide) {
-                thermo.updateLazy(level);
-            }
+            // [修复] 移除主动计算，只读取缓存值，避免 GUI 打开时的高频计算
+            // 热量计算现在由 tick 中的 heatDirty 驱动
 
             return switch (index) {
                 case 0 -> mode == MachineMode.OVERHEATING ? thermo.getHeatStoredRaw() : thermo.getCurrentDelta();
@@ -182,10 +182,9 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
     // 1. 核心循环 (Tick Logic) - 极致优化版
     // =========================================================
 
-
     public void wakeUp() {
-        if (this.isSleeping) {
-            this.isSleeping = false;
+        // 只有当当前处于休眠状态时，才触发唤醒
+        if (!this.pendingProcess) {
             this.pendingProcess = true; // 标记需要执行一次处理
             setChanged(); // 确保状态变化被保存
         }
@@ -232,9 +231,10 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
     public static void tick(Level level, BlockPos pos, BlockState state, SimulationChamberBlockEntity be) {
         if (level.isClientSide) return;
 
-        // --- 阶段 0: 始终运行 (结构验证 + 热力学 + 红石) ---
+        // === 优先级 1: 结构验证 (必须优先且无条件执行) ===
+        // 确保错误框 (ErrorBox) 能实时响应方块变动
 
-        // 1. 结构验证 (必须优先处理，否则后续逻辑基于错误结构)
+        // 1. 结构验证 (必须优先)
         if (be.validationPending) {
             be.performValidation(null);
             be.validationPending = false;
@@ -243,53 +243,73 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
         // 2. 红石状态更新 (检测脉冲)
         boolean currentSignal = level.hasNeighborSignal(pos);
         if (currentSignal != be.lastPowered) {
-            be.isPulseFrame = currentSignal && !be.lastPowered;
+            // 上升沿 (0 -> 1) 视为脉冲帧
+            be.isPulseFrame = currentSignal && !be.lastPowered; 
             be.isPowered = currentSignal;
             be.updatePoweredState(currentSignal);
+            
+            // 红石变动是重要的唤醒事件 (特别是 0->1)
+            if (be.isPulseFrame || be.isPowered) be.wakeUp();
         } else {
             be.isPulseFrame = false;
         }
 
-        // 3. 热力学更新 (即使关机，热传导也不会停止)
-        if (be.structure.isFormed()) {
-            be.thermo.updateLazy(level);
+        // === 优先级 2: 热量实时更新 ===
+        // 只要结构存在且环境变了，立即重算，保证数据实时性
+        if (be.structure.isFormed() && be.heatDirty) {
+            be.thermo.recalculate(level, be.structure);
+            be.heatDirty = false;
+            // 热量变化可能满足配方条件，尝试唤醒
+            be.wakeUp();
         }
 
-        // --- 阶段 1: 停机过滤器 (Power Cutoff) ---
-        // 条件: 没电 且 非脉冲帧 且 视觉效果结束
-        boolean lackPower = !be.isPowered && !be.isPulseFrame;
-        if (lackPower && be.litTimer <= 0) {
-            be.isSleeping = true;
-            be.pendingProcess = false;
-            return; // 直接返回，不执行任何配方逻辑
+        // === 过热模式特殊逻辑: 热量累积 ===
+        // 如果是过热模式且有持续信号，每一刻都需要累积热量
+        if (be.structure.isFormed() && be.mode == MachineMode.OVERHEATING && be.isPowered) {
+            int netInput = be.thermo.getLastInputRate();
+            if (netInput != 0) {
+                be.thermo.addHeat(netInput);
+                // 热量变了，可能满足配方，唤醒
+                be.wakeUp(); 
+            }
         }
 
-        // --- 阶段 2: 唤醒过滤器 (Wake-Up Filter) ---
-        // 如果正在休眠，且不是脉冲帧，检查是否有唤醒信号
-        if (be.isSleeping && !be.pendingProcess && !be.isPulseFrame) {
-            // 注意：wakeUp() 方法会在外部事件（如物品变动）发生时将 isSleeping 设为 false
-            // 所以这里只需要检查 isSleeping 即可。如果它还是 true，说明没被唤醒。
-            return;
-        }
+        // === 优先级 3: 配方处理 (带休眠锁) ===
+        // 如果没有待办事项(pendingProcess)，且不是脉冲帧，且视觉效果已结束，直接跳过
+        if (!be.pendingProcess && !be.isPulseFrame && be.litTimer <= 0) return;
 
-        // --- 阶段 3: 业务处理 (Processing) ---
-        if (be.structure.isFormed()) {
+        // 权限检查：要么是脉冲触发，要么是持续供电
+        boolean hasPermission = be.isPulseFrame || be.isPowered;
 
-            // 3.1 预处理：催化剂与端口缓存
+        if (be.structure.isFormed() && hasPermission) {
+            // 4.1 预处理：催化剂与端口缓存
             if (be.catalystDirty) be.processCatalyst();
             if (be.portsDirty) be.refreshPortCache();
 
-            // 3.2 预处理：重建内部快照
-            // 只有在被标记为 dirty 时才执行，且只有物理模式或部分逻辑需要
+            // 4.2 预处理：重建内部快照
             if (be.blockCacheDirty || be.entityCacheDirty) {
                 be.rebuildInternalCache();
             }
 
-            // 3.3 执行配方逻辑
-            // 只有通电或脉冲时才执行
-            if (be.isPowered || be.isPulseFrame) {
-                be.process.tick(level);
+            // 4.3 执行配方逻辑
+            // [核心] Process 现在返回 boolean (是否成功运行)
+            boolean success = be.process.tick(level);
+            
+            if (success) {
+                // 自我维持：如果成功运行且有持续信号，保持唤醒进入下一 Tick
+                if (be.isPowered) {
+                    be.pendingProcess = true;
+                } else {
+                    // 脉冲触发的单次运行结束
+                    be.pendingProcess = false;
+                }
+            } else {
+                // 运行失败 (缺货/缺热)，强制休眠，等待下次事件唤醒
+                be.pendingProcess = false;
             }
+        } else {
+            // 结构无效或无权限 -> 休眠
+            be.pendingProcess = false;
         }
 
         // 3.4 视觉状态收尾
@@ -298,13 +318,6 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
             if (be.litTimer == 0) {
                 be.updateLitBlockState(false);
             }
-        }
-
-        // 3.5 自动休眠判定
-        // 如果工作完了(pendingProcess=false) 且 (没电 或 只是脉冲一闪而过)
-        // 则进入休眠等待下一次唤醒
-        if (!be.pendingProcess && (lackPower || be.isPulseFrame)) {
-            be.isSleeping = true;
         }
 
         // 重置单次处理标记
@@ -318,7 +331,7 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
     // =========================================================
 
     /**
-     * 智能环境更新响应 (由 StructureManager 调用)
+     * 智能环境更新响应 (由 StructureManager 或 Block.neighborChanged 调用)
      *
      * @param targetPos    发生变动的坐标
      * @param isItemUpdate 是否仅为物品/实体变动
@@ -331,7 +344,7 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
             return;
         }
 
-        // 2. 如果结构尚未成型 -> 标记验证并唤醒 (验证逻辑在 tick 开头)
+        // 2. 如果结构尚未成型 -> 标记验证并唤醒
         if (!structure.isFormed()) {
             this.validationPending = true;
             wakeUp();
@@ -342,19 +355,19 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
         boolean isInternal = structure.isInterior(targetPos);
 
         if (!isInternal) {
-            // 如果是结构的一部分(含外壳) -> 标记验证并唤醒
+            // A. 如果是结构的一部分(含外壳) -> 标记验证并唤醒 (可能是外壳被破坏)
             if (structure.contains(targetPos)) {
                 this.validationPending = true;
                 wakeUp();
-            } else {
-                // 否则是外部热源变动 -> 重建热力缓存并唤醒
-                thermo.rebuildCache(level, structure);
-                // 热量变化不一定会触发配方（因为热量是独立计算的），
-                // 但如果机器通电，建议唤醒检查一次是否达到了配方阈值
-                if (isPowered) wakeUp();
+            }
+            // B. 否则是外部热源变动 -> 重建热力缓存
+            else {
+                // 标记热量脏，交由 Tick 优先级 2 处理
+                this.heatDirty = true;
+                wakeUp();
             }
         } else {
-            // 是内部方块变动 -> 标记方块缓存脏并唤醒
+            // C. 是内部方块变动 (如放入圆石) -> 标记方块缓存脏并唤醒
             markBlockCacheDirty();
             wakeUp();
         }
@@ -372,17 +385,8 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
 
     public void markPortsDirty() {
         this.portsDirty = true;
-
-        // [差异化唤醒]
-        if (this.performance.isVirtual()) {
-            // 虚拟模式：端口是直接输入源，必须唤醒
-            // 复用 entityCacheDirty 标记来触发 ChamberProcess 的逻辑
-            this.entityCacheDirty = true;
-            wakeUp();
-        } else {
-            // 物理模式：端口通常只作为输出或被忽略
-            // 不唤醒，仅标记 dirty 等待下一次运行刷新缓存
-        }
+        // 端口变动可能涉及输入/输出变化，唤醒检查
+        wakeUp();
     }
 
     public void markCatalystDirty() {
@@ -452,8 +456,8 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
 
         if (structure.isFormed()) {
             errorPos = null;
-            // 结构成型，重建所有缓存
-            thermo.rebuildCache(level, structure);
+            // 结构成型，标记热量脏以便重算
+            this.heatDirty = true;
             updatePerformance();
             refreshPortCache();
             // 标记所有输入脏，确保立即扫描一次
@@ -803,7 +807,7 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
                 structure.recalculateStats(structure.getCamouflageState().getBlock());
 
                 // 2. 恢复热力环境缓存 (扫描周围热源)
-                thermo.rebuildCache(level, structure);
+                thermo.recalculate(level, structure);
 
                 // 3. 恢复性能参数 (升级卡影响)
                 updatePerformance();

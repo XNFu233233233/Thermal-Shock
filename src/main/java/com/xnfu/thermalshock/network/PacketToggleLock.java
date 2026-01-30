@@ -25,7 +25,8 @@ public record PacketToggleLock(BlockPos pos) implements CustomPacketPayload {
     public static void handle(PacketToggleLock payload, IPayloadContext context) {
         context.enqueueWork(() -> {
             if (context.player() instanceof ServerPlayer player) {
-                if (player.level().getBlockEntity(payload.pos) instanceof SimulationChamberBlockEntity be) {
+                if (player.distanceToSqr(payload.pos.getCenter()) < 64.0 &&
+                    player.level().getBlockEntity(payload.pos) instanceof SimulationChamberBlockEntity be) {
                     be.toggleLock();
                 }
             }

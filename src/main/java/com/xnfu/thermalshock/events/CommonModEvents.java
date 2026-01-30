@@ -25,31 +25,32 @@ import net.neoforged.neoforge.event.level.PistonEvent;
 public class CommonModEvents {
 
     /**
-     * 优化后的过滤器：判断方块变动是否需要触发多方块检查
+     * 核心过滤器：判断方块是否为多方块结构的关键组件
+     * 用于决定是否触发 StructureManager 的检查
      */
     private static boolean isRelevantBlock(BlockState state) {
         if (state.isAir()) return false;
 
         Block block = state.getBlock();
 
+        // 1. 核心机器组件
         if (block == ThermalShockBlocks.SIMULATION_CHAMBER_CONTROLLER.get() ||
                 block == ThermalShockBlocks.SIMULATION_CHAMBER_PORT.get() ||
                 block == ThermalShockBlocks.THERMAL_HEATER.get() ||
-                block == ThermalShockBlocks.THERMAL_FREEZER.get() ||
-                block == ThermalShockBlocks.THERMAL_CONVERTER.get()) {
+                block == ThermalShockBlocks.THERMAL_FREEZER.get()) {
             return true;
         }
 
-        // 2. DataMap 检查 (涵盖外壳、热源、冷源)
+        // 2. DataMap 检查 (外壳材质、热源、冷源)
         var holder = state.getBlockHolder();
         if (holder.getData(ThermalShockDataMaps.CASING_PROPERTY) != null) return true;
         if (holder.getData(ThermalShockDataMaps.HEAT_SOURCE_PROPERTY) != null) return true;
         if (holder.getData(ThermalShockDataMaps.COLD_SOURCE_PROPERTY) != null) return true;
 
-        // 3. 标签检查 (排气口、门/通道)
+        // 3. 标签检查 (排气口、密封门)
         if (state.is(ThermalShockTags.VENTS) || state.is(ThermalShockTags.CASING_ACCESS)) return true;
 
-        // 4. 流体检查 (水作为冷源)
+        // 4. 特殊流体 (水作为冷源)
         if (state.getFluidState().is(FluidTags.WATER)) return true;
 
         return false;
@@ -58,6 +59,7 @@ public class CommonModEvents {
     @SubscribeEvent
     public static void onBlockBreak(BlockEvent.BreakEvent event) {
         if (!event.getLevel().isClientSide() && event.getLevel() instanceof ServerLevel sl) {
+            // 只有破坏了机器零件才检查，破坏普通方块(如内部原料)不影响
             if (isRelevantBlock(event.getState())) {
                 StructureManager.checkActivity(sl, event.getPos(), false);
             }
@@ -67,16 +69,10 @@ public class CommonModEvents {
     @SubscribeEvent
     public static void onBlockPlace(BlockEvent.EntityPlaceEvent event) {
         if (!event.getLevel().isClientSide() && event.getLevel() instanceof ServerLevel sl) {
+            // 只有放置了机器零件才检查，放置普通方块视为内部填充
             if (isRelevantBlock(event.getState())) {
                 StructureManager.checkActivity(sl, event.getPos(), false);
             }
-        }
-    }
-
-    @SubscribeEvent
-    public static void onNeighborNotify(BlockEvent.NeighborNotifyEvent event) {
-        if (!event.getLevel().isClientSide() && event.getLevel() instanceof ServerLevel sl) {
-            StructureManager.checkActivity(sl, event.getPos(), false);
         }
     }
 
@@ -94,10 +90,18 @@ public class CommonModEvents {
     @SubscribeEvent
     public static void onPistonPre(PistonEvent.Pre event) {
         if (!event.getLevel().isClientSide() && event.getLevel() instanceof ServerLevel sl) {
+            // 活塞本体
             StructureManager.checkActivity(sl, event.getPos(), false);
+
             if (event.getStructureHelper() != null) {
-                event.getStructureHelper().getToDestroy().forEach(pos -> StructureManager.checkActivity(sl, pos, false));
-                event.getStructureHelper().getToPush().forEach(pos -> StructureManager.checkActivity(sl, pos, false));
+                // 智能过滤：只有当活塞推/拉的是“机器零件”时，才触发结构检查
+                // 这样允许活塞向机器内部推入圆石等原料而不破坏结构
+                event.getStructureHelper().getToDestroy().forEach(pos -> {
+                    if (isRelevantBlock(sl.getBlockState(pos))) StructureManager.checkActivity(sl, pos, false);
+                });
+                event.getStructureHelper().getToPush().forEach(pos -> {
+                    if (isRelevantBlock(sl.getBlockState(pos))) StructureManager.checkActivity(sl, pos, false);
+                });
             }
         }
     }

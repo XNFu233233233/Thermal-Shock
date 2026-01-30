@@ -145,7 +145,7 @@ public class ThermalSourceBlockEntity extends BlockEntity implements MenuProvide
         boolean dirty = false;
         boolean wasBurning = be.totalHeatOutput != 0;
 
-        // === 1. 燃料逻辑 (保持不变) ===
+        // === 1. 燃料逻辑 ===
         if (be.burnTime > 0) {
             be.burnTime--;
             dirty = true;
@@ -172,44 +172,39 @@ public class ThermalSourceBlockEntity extends BlockEntity implements MenuProvide
             }
         }
 
-        // === 2. 能量逻辑 (动态输出) ===
-        // 规则: 10 FE = 1 Heat
-        // 逻辑: 尽可能达到 Target，但受限于当前能量储备
+        // === 2. 能量逻辑 ===
         be.electricHeatOutput = 0;
-
         if (be.targetElectricHeat > 0 && be.energyStored >= 10) {
-            // 计算当前电量能支撑多少热量 (每 10 FE 换 1 H)
             long maxAffordableHeat = be.energyStored / 10;
-
-            // 实际产出 = Min(目标值, 钱包里的钱)
             int actualOutput = (int) Math.min(be.targetElectricHeat, maxAffordableHeat);
 
             if (actualOutput > 0) {
                 long cost = actualOutput * 10L;
                 be.energyStored -= cost;
-
-                // 设置输出 (如果是冷源，输出负数)
                 be.electricHeatOutput = isHeater ? actualOutput : -actualOutput;
                 dirty = true;
             }
         }
 
-        // === 3. 总热值更新与邻居通知 ===
+        // === 3. 状态更新与通知 ===
         be.totalHeatOutput = be.fuelHeatOutput + be.electricHeatOutput;
         boolean isBurning = be.totalHeatOutput != 0;
 
-        // 3.1 视觉更新 (LIT 状态)
+        // 3.1 视觉更新
         if (wasBurning != isBurning) {
             level.setBlock(pos, state.setValue(ThermalSourceBlock.LIT, isBurning), 3);
             dirty = true;
         }
 
-        // 3.2 数值更新通知 (关键修复)
-        // 只要输出数值变了，就必须通知邻居 (Simulation Chamber)，哪怕 LIT 状态没变
+        // 3.2 数值通知 (核心修复)
+        // 只要数值变化，强制通知邻居。这会触发 SimulationPortBlock.neighborChanged
         if (be.totalHeatOutput != be.lastHeatOutput) {
-            // 这会触发 Controller 的 onNeighborChanged -> StructureManager -> onEnvironmentUpdate
-            level.updateNeighborsAt(pos, state.getBlock());
-            be.lastHeatOutput = be.totalHeatOutput;
+            be.lastHeatOutput = be.totalHeatOutput; // 先更新缓存
+            // 通知邻居方块 (Flag 3 = Update Client + Block Update)
+            // 必须通知周围方块，触发 Port 的 neighborChanged -> Controller.onEnvironmentUpdate
+            level.updateNeighborsAt(pos, state.getBlock()); 
+            // 同时也更新自身状态，确保视觉同步
+            level.sendBlockUpdated(pos, state, state, 3);
             dirty = true;
         }
 

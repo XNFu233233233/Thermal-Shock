@@ -27,7 +27,8 @@ public record PacketSetTargetHeat(BlockPos pos, int targetHeat) implements Custo
     public static void handle(PacketSetTargetHeat payload, IPayloadContext context) {
         context.enqueueWork(() -> {
             if (context.player() instanceof ServerPlayer player) {
-                if (player.level().getBlockEntity(payload.pos) instanceof ThermalSourceBlockEntity be) {
+                if (player.distanceToSqr(payload.pos.getCenter()) < 64.0 &&
+                    player.level().getBlockEntity(payload.pos) instanceof ThermalSourceBlockEntity be) {
                     be.setTargetElectricHeat(payload.targetHeat);
                 }
             }
