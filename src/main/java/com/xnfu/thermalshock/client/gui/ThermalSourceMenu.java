@@ -28,8 +28,8 @@ public class ThermalSourceMenu extends AbstractContainerMenu {
         checkContainerDataCount(data, 8);
         addDataSlots(data);
 
-        // 燃料槽 (Slot 0)
-        this.addSlot(new SlotItemHandler(be.getItemHandler(), 0, 80, 35));
+        // 燃料槽 (Slot 0) - 上移至 y=26 以腾出下方空间
+        this.addSlot(new SlotItemHandler(be.getItemHandler(), 0, 80, 26));
 
         // 玩家背包
         addPlayerInventory(new InvWrapper(inv));

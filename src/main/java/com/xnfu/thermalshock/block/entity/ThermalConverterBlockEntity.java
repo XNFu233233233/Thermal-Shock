@@ -62,6 +62,21 @@ public class ThermalConverterBlockEntity extends BlockEntity implements MenuProv
         public int getSlotLimit(int slot) {
             return slot >= 3 ? 1 : 64;
         }
+
+        @Override
+        public void deserializeNBT(HolderLookup.Provider provider, CompoundTag nbt) {
+            super.deserializeNBT(provider, nbt);
+            // [Fix] 存档迁移：如果读取旧存档导致 slot 变少，强制扩容到 7
+            if (this.stacks.size() < 7) {
+                net.minecraft.core.NonNullList<ItemStack> oldStacks = this.stacks;
+                this.stacks = net.minecraft.core.NonNullList.withSize(7, ItemStack.EMPTY);
+                for (int i = 0; i < oldStacks.size(); i++) {
+                    this.stacks.set(i, oldStacks.get(i));
+                }
+                // 强制标记需要保存，确保下次存盘写入 Size: 7
+                setChanged();
+            }
+        }
     };
 
     // === Fluid ===

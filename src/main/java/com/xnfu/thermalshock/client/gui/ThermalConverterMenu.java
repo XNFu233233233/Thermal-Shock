@@ -57,9 +57,10 @@ public class ThermalConverterMenu extends AbstractContainerMenu {
         // 输出废料 (Slot 2) -> 对应 GUI x=113+1, y=35+1
         this.addSlot(new SlotItemHandler(be.getItemHandler(), 2, 114, 36));
 
-        // 升级槽 (Slot 3-6) -> 左侧, x=-22 (大致位置)
+        // 升级槽 (Slot 3-6) -> 左侧悬浮
+        // x=-20 (18宽 + 2px缝隙), y=10 (向上微调)
         for (int i = 0; i < 4; i++) {
-            this.addSlot(new SlotItemHandler(be.getItemHandler(), 3 + i, -22, 12 + i * 22));
+            this.addSlot(new SlotItemHandler(be.getItemHandler(), 3 + i, -20, 10 + i * 18));
         }
 
         addPlayerInventory(new InvWrapper(inv));

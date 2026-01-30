@@ -79,9 +79,16 @@ public class ThermalConverterScreen extends AbstractContainerScreen<ThermalConve
         drawSlot(gfx, SLOT_OUT1_X, SLOT_OUT1_Y);
         drawSlot(gfx, SLOT_OUT2_X, SLOT_OUT2_Y);
 
-        // 绘制升级槽背景 (左侧)
+        // 绘制升级槽空心边框 (透明底板)
+        // 坐标需与 Menu 保持一致: x=-20, y=10
         for (int i = 0; i < 4; i++) {
-            drawSlot(gfx, -23, 11 + i * 22); // Menu坐标是 -22, 12，这里微调背景位置以匹配
+            int sx = leftPos - 20;
+            int sy = topPos + 10 + i * 18;
+            // 绘制四条边 (颜色使用现有的 COLOR_SLOT_BORDER)
+            gfx.fill(sx, sy, sx + 18, sy + 1, COLOR_SLOT_BORDER);       // Top
+            gfx.fill(sx, sy + 17, sx + 18, sy + 18, COLOR_SLOT_BORDER); // Bottom
+            gfx.fill(sx, sy, sx + 1, sy + 18, COLOR_SLOT_BORDER);       // Left
+            gfx.fill(sx + 17, sy, sx + 18, sy + 18, COLOR_SLOT_BORDER); // Right
         }
 
         drawFluidTankBg(gfx, FLUID_L_X, FLUID_L_Y);

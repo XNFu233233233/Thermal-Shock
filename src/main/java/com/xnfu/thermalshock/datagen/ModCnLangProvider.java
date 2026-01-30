@@ -161,5 +161,12 @@ public class ModCnLangProvider extends LanguageProvider {
         add("message.thermalshock.too_many_port", "接口过多 (最多 16 个)");
         add("message.thermalshock.too_many_access", "密封门过多 (最多 4 个)");
         add("message.thermalshock.port_mode", "端口模式已切换: %s");
+
+        // 热/冷能发生器 GUI
+        add("gui.thermalshock.source.output", "输出: %s H");
+        add("gui.thermalshock.source.target", "目标温度");
+        add("gui.thermalshock.source.set", "设定");
+        add("gui.thermalshock.source.energy_input", "输入: %s FE/t");
+        add("gui.thermalshock.source.energy_buffer", "能量缓存");
     }
 }

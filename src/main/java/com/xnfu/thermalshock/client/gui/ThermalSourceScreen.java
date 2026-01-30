@@ -39,8 +39,8 @@ public class ThermalSourceScreen extends AbstractContainerScreen<ThermalSourceMe
     protected void init() {
         super.init();
 
-        // 1. 输入框
-        this.inputField = new EditBox(this.font, leftPos + 102, topPos + 20, 40, 16, Component.literal("Target Heat"));
+        // 1. 输入框 (右侧)
+        this.inputField = new EditBox(this.font, leftPos + 115, topPos + 26, 36, 16, Component.translatable("gui.thermalshock.source.target"));
         this.inputField.setMaxLength(6);
         this.inputField.setBordered(true);
         this.inputField.setVisible(true);
@@ -48,10 +48,10 @@ public class ThermalSourceScreen extends AbstractContainerScreen<ThermalSourceMe
         this.inputField.setFilter(s -> s.matches("\\d*")); // 仅数字
         this.addRenderableWidget(this.inputField);
 
-        // 2. 确认按钮
+        // 2. 确认按钮 (紧贴输入框右侧)
         this.confirmBtn = Button.builder(Component.literal("✔"), btn -> sendUpdate())
-                .bounds(leftPos + 144, topPos + 20, 16, 16)
-                .tooltip(Tooltip.create(Component.literal("Set Target Heat").withStyle(ChatFormatting.GREEN)))
+                .bounds(leftPos + 152, topPos + 26, 16, 16)
+                .tooltip(Tooltip.create(Component.translatable("gui.thermalshock.source.set").withStyle(ChatFormatting.GREEN)))
                 .build();
         this.addRenderableWidget(this.confirmBtn);
     }
@@ -86,9 +86,9 @@ public class ThermalSourceScreen extends AbstractContainerScreen<ThermalSourceMe
         // 能量条 Tooltip
         if (isHovering(10, 20, 12, 50, mouseX, mouseY)) {
             List<Component> tips = new ArrayList<>();
-            tips.add(Component.literal("Energy Buffer").withStyle(ChatFormatting.AQUA));
+            tips.add(Component.translatable("gui.thermalshock.source.energy_buffer").withStyle(ChatFormatting.AQUA));
             tips.add(Component.literal(menu.getEnergyStored() + " / " + menu.getMaxEnergyStored() + " FE").withStyle(ChatFormatting.GRAY));
-            tips.add(Component.literal("Input: " + menu.getLastTickEnergy() + " FE/t").withStyle(ChatFormatting.YELLOW));
+            tips.add(Component.translatable("gui.thermalshock.source.energy_input", menu.getLastTickEnergy()).withStyle(ChatFormatting.YELLOW));
             gfx.renderTooltip(font, tips, Optional.empty(), mouseX, mouseY);
         }
     }
@@ -106,11 +106,11 @@ public class ThermalSourceScreen extends AbstractContainerScreen<ThermalSourceMe
         for (int col = 0; col < 9; col++) drawSlotBg(gfx, leftPos + 8 + col * 18, topPos + 142);
 
         // 机器槽位
-        drawSlotBg(gfx, leftPos + 80, topPos + 35);
+        drawSlotBg(gfx, leftPos + 80, topPos + 26);
 
         // 进度条
         drawEnergyBar(gfx, leftPos + 10, topPos + 20);
-        drawProgressBar(gfx, leftPos + 102, topPos + 38); // 稍微下移，避开输入框
+        drawProgressBar(gfx, leftPos + 58, topPos + 48); // 居中于槽位下方
 
         drawInfoText(gfx);
     }
@@ -139,8 +139,8 @@ public class ThermalSourceScreen extends AbstractContainerScreen<ThermalSourceMe
 
     private void drawProgressBar(GuiGraphics gfx, int x, int y) {
         float progress = menu.getBurnProgress();
-        int barW = 56; // 宽度增加，放在输入框下面
-        int barH = 4;
+        int barW = 60; // 足够宽
+        int barH = 5;
         gfx.fill(x, y, x + barW, y + barH, 0xFF555555);
 
         if (progress > 0) {
@@ -157,11 +157,10 @@ public class ThermalSourceScreen extends AbstractContainerScreen<ThermalSourceMe
         int heat = menu.getTotalHeatOutput();
         String sign = heat > 0 ? "+" : "";
         int color = heat > 0 ? 0xFFAA0000 : (heat < 0 ? 0xFF0000AA : 0xFF555555);
-        String text = "Output: " + sign + heat + " H";
+        Component text = Component.translatable("gui.thermalshock.source.output", sign + heat);
 
-        // 居中显示
-        int textW = font.width(text);
-        gfx.drawString(font, text, leftPos + 102 + (56 - textW)/2, topPos + 46, color, false);
+        // 居中显示在进度条下方 (y=58)
+        gfx.drawCenteredString(font, text, leftPos + imageWidth / 2, topPos + 58, color);
     }
 
     @Override
