@@ -5,6 +5,7 @@ import com.xnfu.thermalshock.registries.ThermalShockMenus;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.*;
 import net.minecraft.world.item.ItemStack;
@@ -56,6 +57,11 @@ public class ThermalConverterMenu extends AbstractContainerMenu {
         // 输出废料 (Slot 2) -> 对应 GUI x=113+1, y=35+1
         this.addSlot(new SlotItemHandler(be.getItemHandler(), 2, 114, 36));
 
+        // 升级槽 (Slot 3-6) -> 左侧, x=-22 (大致位置)
+        for (int i = 0; i < 4; i++) {
+            this.addSlot(new SlotItemHandler(be.getItemHandler(), 3 + i, -22, 12 + i * 22));
+        }
+
         addPlayerInventory(new InvWrapper(inv));
     }
 
@@ -89,12 +95,13 @@ public class ThermalConverterMenu extends AbstractContainerMenu {
             ItemStack itemstack1 = slot.getItem();
             itemstack = itemstack1.copy();
             
-            if (index < 3) { 
-                // 机器槽位 (0,1,2) -> 玩家背包 (3-38)
-                if (!this.moveItemStackTo(itemstack1, 3, 39, true)) return ItemStack.EMPTY;
+            if (index < 7) {
+                // 机器槽位 (0,1,2 + 3,4,5,6) -> 玩家背包 (7-42)
+                if (!this.moveItemStackTo(itemstack1, 7, 43, true)) return ItemStack.EMPTY;
             } else { 
                 // 玩家背包 -> 机器输入槽 (0)
-                // 注意：输出槽 (1,2) 不允许放入
+                // [需求] 不允许 shift 移入升级槽(3-6)，只允许移入输入槽(0)
+                // 注意：输出槽 (1,2) 本身逻辑就不允许放入
                 if (!this.moveItemStackTo(itemstack1, 0, 1, false)) return ItemStack.EMPTY;
             }
             

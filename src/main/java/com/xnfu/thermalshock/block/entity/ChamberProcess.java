@@ -17,8 +17,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.items.IItemHandler;
 import net.neoforged.neoforge.items.ItemHandlerHelper;
@@ -317,19 +315,6 @@ public class ChamberProcess {
     // 辅助方法
     // =========================================================
 
-    private boolean isBatchLimitedByHeat(int actualBatch, AbstractSimulationRecipe recipe, int maxByItems) {
-        if (actualBatch > 0) return false;
-        if (be.getMachineMode() == MachineMode.OVERHEATING && recipe instanceof OverheatingRecipe ov) {
-            int costPerOp = ov.getHeatCost();
-            if (costPerOp <= 0) return false;
-            // [修复] 使用 Raw 读取
-            int currentHeat = be.getThermo().getHeatStoredRaw();
-            int maxByStored = currentHeat / costPerOp;
-            return maxByItems > 0 && maxByStored <= 0;
-        }
-        return false;
-    }
-
     private boolean checkForMatchingInputButInsufficient(Level level, AbstractSimulationRecipe recipe, List<BlockPos> ports) {
         for (SimulationIngredient simIng : recipe.getSimulationIngredients()) {
             boolean foundAny = false;
@@ -358,10 +343,6 @@ public class ChamberProcess {
             if (foundAny) return true;
         }
         return false;
-    }
-
-    private boolean hasRemainingInputAfterProcessing(Level level, AbstractSimulationRecipe recipe, List<BlockPos> ports) {
-        return checkForMatchingInputButInsufficient(level, recipe, ports);
     }
 
     private AbstractSimulationRecipe resolveRecipeById(Level level, ResourceLocation id) {

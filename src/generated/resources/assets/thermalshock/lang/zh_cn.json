@@ -62,6 +62,7 @@
   "item.thermalshock.material_clump": "物质团块",
   "item.thermalshock.material_clump.empty": "物质团块 (空)",
   "item.thermalshock.material_clump.filled": "物质团块 (%s)",
+  "item.thermalshock.overclock_upgrade": "超频升级",
   "item.thermalshock.simulation_upgrade": "模拟升级",
   "item.thermalshock.simulation_upgrade.desc": "控制器专用升级组件",
   "item.thermalshock.simulation_upgrade.detail.batch": "- 每个升级提供 +4 批处理量。",

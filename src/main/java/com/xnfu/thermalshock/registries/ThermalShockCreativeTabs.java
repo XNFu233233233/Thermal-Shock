@@ -25,6 +25,7 @@ public class ThermalShockCreativeTabs {
                         output.accept(ThermalShockBlocks.THERMAL_CONVERTER);
                         output.accept(ThermalShockItems.MATERIAL_CLUMP);
                         output.accept(ThermalShockItems.SIMULATION_UPGRADE);
+                        output.accept(ThermalShockItems.OVERCLOCK_UPGRADE);
 
                     })
                     .build());

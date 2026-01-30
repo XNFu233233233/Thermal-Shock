@@ -26,13 +26,6 @@ public class ChamberThermodynamics {
     private int cachedDelta = 0;
 
     /**
-     * 判断热量是否已满
-     */
-    public boolean isFull() {
-        return this.heatStored >= this.maxHeatCapacity;
-    }
-
-    /**
      * 重建热力缓存 (环境变动时调用)
      * 调用前会自动结算之前的热量
      */
@@ -163,8 +156,4 @@ public class ChamberThermodynamics {
     public int getCurrentLowTemp() { return cachedLowTemp; }
     public int getCurrentDelta() { return cachedDelta; }
     public int getLastInputRate() { return cachedNetInput; }
-
-    public void setHeatStored(int amount) {
-        this.heatStored = amount;
-    }
 }

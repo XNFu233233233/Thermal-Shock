@@ -17,6 +17,9 @@ public class ThermalShockItems {
     public static final DeferredItem<SimulationUpgradeItem> SIMULATION_UPGRADE = ITEMS.register("simulation_upgrade",
             () -> new SimulationUpgradeItem(new Item.Properties()));
 
+    public static final DeferredItem<Item> OVERCLOCK_UPGRADE = ITEMS.register("overclock_upgrade",
+            () -> new Item(new Item.Properties().stacksTo(64)));
+
     public static void register(IEventBus eventBus) {
         ITEMS.register(eventBus);
     }

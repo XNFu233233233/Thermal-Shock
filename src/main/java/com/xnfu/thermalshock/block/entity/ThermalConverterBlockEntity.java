@@ -7,6 +7,7 @@ import com.xnfu.thermalshock.recipe.ConverterRecipeInput;
 import com.xnfu.thermalshock.recipe.ThermalConverterRecipe;
 import com.xnfu.thermalshock.registries.ThermalShockBlockEntities;
 import com.xnfu.thermalshock.registries.ThermalShockDataMaps;
+import com.xnfu.thermalshock.registries.ThermalShockItems;
 import com.xnfu.thermalshock.registries.ThermalShockRecipes;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -41,11 +42,25 @@ public class ThermalConverterBlockEntity extends BlockEntity implements MenuProv
 
     // === Inventory ===
     // 0: Input, 1: Output Main, 2: Output Scrap
-    private final ItemStackHandler itemHandler = new ItemStackHandler(3) {
+    // 3, 4, 5, 6: Overclock Upgrades
+    private final ItemStackHandler itemHandler = new ItemStackHandler(7) {
         @Override
         protected void onContentsChanged(int slot) {
             setChanged();
             markRecipeDirty(); // 库存变动 -> 可能改变配方匹配结果
+        }
+
+        @Override
+        public boolean isItemValid(int slot, @NotNull ItemStack stack) {
+            if (slot >= 3) {
+                return stack.is(ThermalShockItems.OVERCLOCK_UPGRADE.get());
+            }
+            return super.isItemValid(slot, stack);
+        }
+
+        @Override
+        public int getSlotLimit(int slot) {
+            return slot >= 3 ? 1 : 64;
         }
     };
 

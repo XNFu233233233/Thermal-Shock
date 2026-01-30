@@ -79,6 +79,11 @@ public class ThermalConverterScreen extends AbstractContainerScreen<ThermalConve
         drawSlot(gfx, SLOT_OUT1_X, SLOT_OUT1_Y);
         drawSlot(gfx, SLOT_OUT2_X, SLOT_OUT2_Y);
 
+        // 绘制升级槽背景 (左侧)
+        for (int i = 0; i < 4; i++) {
+            drawSlot(gfx, -23, 11 + i * 22); // Menu坐标是 -22, 12，这里微调背景位置以匹配
+        }
+
         drawFluidTankBg(gfx, FLUID_L_X, FLUID_L_Y);
         drawFluidTankBg(gfx, FLUID_R_X, FLUID_R_Y);
 

@@ -18,5 +18,6 @@ public class ModItemModelProvider extends ItemModelProvider {
                 .texture("layer0", modLoc("item/material_clump"));
 
         basicItem(ThermalShockItems.SIMULATION_UPGRADE.get());
+        basicItem(ThermalShockItems.OVERCLOCK_UPGRADE.get());
     }
 }

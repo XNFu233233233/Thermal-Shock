@@ -22,6 +22,7 @@ public class ModCnLangProvider extends LanguageProvider {
         add(ThermalShockBlocks.THERMAL_CONVERTER.get(), "热力转换器");
         add(ThermalShockItems.MATERIAL_CLUMP.get(), "物质团块");
         add(ThermalShockItems.SIMULATION_UPGRADE.get(), "模拟升级");
+        add(ThermalShockItems.OVERCLOCK_UPGRADE.get(), "超频升级");
 
         // 模拟升级相关
         add("item.thermalshock.simulation_upgrade.desc", "控制器专用升级组件");

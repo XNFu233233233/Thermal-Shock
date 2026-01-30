@@ -62,6 +62,7 @@
   "item.thermalshock.material_clump": "Material Clump",
   "item.thermalshock.material_clump.empty": "Material Clump (Empty)",
   "item.thermalshock.material_clump.filled": "Material Clump (%s)",
+  "item.thermalshock.overclock_upgrade": "Overclock Upgrade",
   "item.thermalshock.simulation_upgrade": "Simulation Upgrade",
   "item.thermalshock.simulation_upgrade.desc": "Component for Chamber Controller",
   "item.thermalshock.simulation_upgrade.detail.batch": "- +4 Processing Batch per upgrade.",

@@ -22,6 +22,7 @@ public class ModEnLangProvider extends LanguageProvider {
         add(ThermalShockBlocks.THERMAL_CONVERTER.get(), "Thermal Converter");
         add(ThermalShockItems.MATERIAL_CLUMP.get(), "Material Clump");
         add(ThermalShockItems.SIMULATION_UPGRADE.get(), "Simulation Upgrade");
+        add(ThermalShockItems.OVERCLOCK_UPGRADE.get(), "Overclock Upgrade");
 
         // 模拟升级相关
         add("item.thermalshock.simulation_upgrade.desc", "Component for Chamber Controller");
