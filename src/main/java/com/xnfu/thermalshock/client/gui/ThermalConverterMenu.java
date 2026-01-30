@@ -46,12 +46,15 @@ public class ThermalConverterMenu extends AbstractContainerMenu {
         addDataSlots(fluidData);
 
         // Slots
-        // 输入 (Slot 0)
-        this.addSlot(new SlotItemHandler(be.getItemHandler(), 0, 44, 35));
-        // 输出主 (Slot 1)
-        this.addSlot(new SlotItemHandler(be.getItemHandler(), 1, 116, 35));
-        // 输出废料 (Slot 2)
-        this.addSlot(new SlotItemHandler(be.getItemHandler(), 2, 142, 35));
+
+        // 输入 (Slot 0) -> 对应 GUI x=44+1, y=35+1
+        this.addSlot(new SlotItemHandler(be.getItemHandler(), 0, 45, 36));
+
+        // 输出主 (Slot 1) -> 对应 GUI x=95+1, y=35+1
+        this.addSlot(new SlotItemHandler(be.getItemHandler(), 1, 96, 36));
+
+        // 输出废料 (Slot 2) -> 对应 GUI x=113+1, y=35+1
+        this.addSlot(new SlotItemHandler(be.getItemHandler(), 2, 114, 36));
 
         addPlayerInventory(new InvWrapper(inv));
     }
@@ -77,5 +80,27 @@ public class ThermalConverterMenu extends AbstractContainerMenu {
     public int getFluidCapacity(int tank) { return fluidData.get(tank * 3 + 2); }
 
     @Override public boolean stillValid(Player player) { return ContainerLevelAccess.create(be.getLevel(), be.getBlockPos()).evaluate((l, p) -> player.distanceToSqr(p.getCenter()) <= 64.0, true); }
-    @Override public ItemStack quickMoveStack(Player p, int i) { return ItemStack.EMPTY; } // 简化略
+    
+    @Override 
+    public ItemStack quickMoveStack(Player p, int index) {
+        ItemStack itemstack = ItemStack.EMPTY;
+        Slot slot = this.slots.get(index);
+        if (slot != null && slot.hasItem()) {
+            ItemStack itemstack1 = slot.getItem();
+            itemstack = itemstack1.copy();
+            
+            if (index < 3) { 
+                // 机器槽位 (0,1,2) -> 玩家背包 (3-38)
+                if (!this.moveItemStackTo(itemstack1, 3, 39, true)) return ItemStack.EMPTY;
+            } else { 
+                // 玩家背包 -> 机器输入槽 (0)
+                // 注意：输出槽 (1,2) 不允许放入
+                if (!this.moveItemStackTo(itemstack1, 0, 1, false)) return ItemStack.EMPTY;
+            }
+            
+            if (itemstack1.isEmpty()) slot.set(ItemStack.EMPTY);
+            else slot.setChanged();
+        }
+        return itemstack;
+    }
 }

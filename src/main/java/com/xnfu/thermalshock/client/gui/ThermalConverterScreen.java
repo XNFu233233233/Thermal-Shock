@@ -13,147 +13,223 @@ import net.minecraft.world.level.material.Fluid;
 import net.neoforged.neoforge.client.extensions.common.IClientFluidTypeExtensions;
 import net.neoforged.neoforge.fluids.FluidStack;
 
+import java.util.List;
+import java.util.Optional;
+
 public class ThermalConverterScreen extends AbstractContainerScreen<ThermalConverterMenu> {
 
-    // 颜色常量
-    private static final int BG_COLOR = 0xFFC6C6C6;
-    private static final int SLOT_BG = 0xFF8B8B8B;
-    private static final int SLOT_BORDER = 0xFF373737;
+    // === 颜色常量 ===
+    private static final int COLOR_BG_BASE = 0xFFC6C6C6;
+    private static final int COLOR_SLOT_BORDER = 0xFF373737;
+    private static final int COLOR_SLOT_BG = 0xFF8B8B8B;
+    private static final int COLOR_BAR_BG = 0xFF000000;
+
+    // === 布局坐标常量 ===
+    private static final int FLUID_L_X = 18;
+    private static final int FLUID_L_Y = 20;
+
+    private static final int SLOT_IN_X = 44;
+    private static final int SLOT_IN_Y = 35;
+
+    private static final int ARROW_X = 66;
+    private static final int ARROW_Y = 36;
+    private static final int ARROW_W = 24;
+    private static final int ARROW_H = 16;
+
+    private static final int SLOT_OUT1_X = 95;
+    private static final int SLOT_OUT1_Y = 35;
+
+    private static final int SLOT_OUT2_X = 113;
+    private static final int SLOT_OUT2_Y = 35;
+
+    private static final int FLUID_R_X = 142;
+    private static final int FLUID_R_Y = 20;
+
+    private static final int FLUID_W = 16;
+    private static final int FLUID_H = 48;
+
+    // 底部热力条 (加宽)
+    private static final int HEAT_BAR_X = 28;
+    private static final int HEAT_BAR_Y = 72; // 稍微上移一点
+    private static final int HEAT_BAR_W = 120;
+    private static final int HEAT_BAR_H = 8; // 从 5 改为 8，加宽
+    private static final int VISUAL_MAX_HEAT = 2000;
 
     public ThermalConverterScreen(ThermalConverterMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title);
         this.imageWidth = 176;
         this.imageHeight = 166;
+        this.inventoryLabelY = 72 + 12;
+    }
+
+    @Override
+    public void render(GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
+        this.renderBackground(gfx, mouseX, mouseY, partialTick);
+        super.render(gfx, mouseX, mouseY, partialTick);
+        this.renderTooltip(gfx, mouseX, mouseY);
+        renderFluidTooltips(gfx, mouseX, mouseY);
     }
 
     @Override
     protected void renderBg(GuiGraphics gfx, float partialTick, int mouseX, int mouseY) {
-        // 1. 基础背景
         gfx.fill(leftPos, topPos, leftPos + imageWidth, topPos + imageHeight, 0xFF000000);
-        gfx.fill(leftPos + 2, topPos + 2, leftPos + imageWidth - 2, topPos + imageHeight - 2, BG_COLOR);
+        gfx.fill(leftPos + 2, topPos + 2, leftPos + imageWidth - 2, topPos + imageHeight - 2, COLOR_BG_BASE);
 
-        // 2. 槽位背景
-        drawSlot(gfx, 44, 35); // In Item
-        drawSlot(gfx, 116, 35); // Out Item
-        drawSlot(gfx, 142, 35); // Scrap
+        drawSlot(gfx, SLOT_IN_X, SLOT_IN_Y);
+        drawSlot(gfx, SLOT_OUT1_X, SLOT_OUT1_Y);
+        drawSlot(gfx, SLOT_OUT2_X, SLOT_OUT2_Y);
 
-        // 3. 流体槽背景 (In: 26,20 | Out: 80, 55 (下方))
-        drawFluidTankBg(gfx, 26, 20);
-        drawFluidTankBg(gfx, 80, 55); // 假设输出流体在中间下方
+        drawFluidTankBg(gfx, FLUID_L_X, FLUID_L_Y);
+        drawFluidTankBg(gfx, FLUID_R_X, FLUID_R_Y);
 
-        // 4. 渲染流体
-        renderFluid(gfx, 0, 26, 20);
-        renderFluid(gfx, 1, 80, 55);
+        // 渲染流体
+        renderFluid(gfx, 0, FLUID_L_X, FLUID_L_Y);
+        renderFluid(gfx, 1, FLUID_R_X, FLUID_R_Y);
 
-        // 5. 创新进度条：热力脉冲 (Thermal Pulse)
-        // 位置: 66, 36 (输入和输出之间)
-        renderThermalPulse(gfx, 66, 36);
-
-        // 6. 温度计 (右侧)
-        renderThermometer(gfx, 160, 20);
-
-        // 玩家背包
+        renderProgressBar(gfx);
+        renderHeatGauge(gfx);
         drawPlayerInv(gfx);
     }
 
-    private void renderThermalPulse(GuiGraphics gfx, int x, int y) {
-        int w = 44;
-        int h = 16;
-        int sx = leftPos + x;
-        int sy = topPos + y;
+    // ==========================================
+    // 绘图组件逻辑
+    // ==========================================
+
+    private void renderHeatGauge(GuiGraphics gfx) {
+        int sx = leftPos + HEAT_BAR_X;
+        int sy = topPos + HEAT_BAR_Y;
+        int cx = sx + HEAT_BAR_W / 2;
 
         // 背景轨道
-        gfx.fill(sx, sy + 6, sx + w, sy + 10, 0xFF333333);
+        gfx.fill(sx, sy, sx + HEAT_BAR_W, sy + HEAT_BAR_H, COLOR_BAR_BG);
+
+        int heat = menu.getCurrentHeat();
+        float ratio = (float) Math.abs(heat) / VISUAL_MAX_HEAT;
+        ratio = Mth.clamp(ratio, 0.0f, 1.0f);
+
+        int barLength = (int) (ratio * (HEAT_BAR_W / 2));
+
+        if (heat > 0) {
+            gfx.fillGradient(cx, sy + 1, cx + barLength, sy + HEAT_BAR_H - 1, 0xFFFF0000, 0xFFFFAA00);
+        } else if (heat < 0) {
+            gfx.fillGradient(cx - barLength, sy + 1, cx, sy + HEAT_BAR_H - 1, 0xFF00AAAA, 0xFF0055FF);
+        }
+
+        // 中心点
+        gfx.fill(cx - 1, sy - 1, cx + 1, sy + HEAT_BAR_H + 1, 0xFFFFFFFF);
+    }
+
+    private void renderProgressBar(GuiGraphics gfx) {
+        int sx = leftPos + ARROW_X;
+        int sy = topPos + ARROW_Y;
+
+        // 背景 (加粗)
+        gfx.fill(sx, sy + 4, sx + ARROW_W, sy + 12, 0xFF555555);
 
         int total = menu.getTotalProcessTime();
         int current = menu.getProcessTime();
         if (total > 0 && current > 0) {
-            float pct = (float)current / total;
-            int fillW = (int)(pct * w);
+            float pct = (float) current / total;
+            int fillW = (int) (pct * ARROW_W);
 
-            // 脉冲效果：根据时间生成正弦波颜色
-            long time = System.currentTimeMillis() / 50;
-            int brightness = (int)(180 + 75 * Math.sin(time * 0.2));
-            int color = 0xFF000000 | (brightness << 16) | (brightness / 2 << 8); // 橙红色脉冲
-
-            gfx.fill(sx, sy + 7, sx + fillW, sy + 9, color);
-
-            // 头部高亮
             if (fillW > 0) {
-                gfx.fill(sx + fillW - 2, sy + 5, sx + fillW, sy + 11, 0xFFFFFFFF);
+                gfx.fill(sx, sy + 4, sx + fillW, sy + 12, 0xFF00FF00);
             }
         }
-    }
-
-    private void renderThermometer(GuiGraphics gfx, int x, int y) {
-        int sx = leftPos + x;
-        int sy = topPos + y;
-        int w = 8, h = 50;
-
-        gfx.fill(sx, sy, sx + w, sy + h, 0xFF333333);
-
-        int heat = menu.getCurrentHeat();
-        // 动态归一化显示：假设最大显示范围 ±2000
-        float ratio = Mth.clamp((float)heat / 2000.0f, -1.0f, 1.0f);
-
-        int center = sy + h / 2;
-        int barH = (int)(Math.abs(ratio) * (h / 2));
-
-        if (heat > 0) {
-            // 正热 (红) -> 向上
-            gfx.fill(sx + 1, center - barH, sx + w - 1, center, 0xFFFF5555);
-        } else if (heat < 0) {
-            // 负热 (蓝) -> 向下
-            gfx.fill(sx + 1, center, sx + w - 1, center + barH, 0xFF5555FF);
-        }
-        // 零点线
-        gfx.fill(sx, center, sx + w, center + 1, 0xFFFFFFFF);
     }
 
     private void renderFluid(GuiGraphics gfx, int tankIdx, int x, int y) {
         int id = menu.getFluidId(tankIdx);
         int amount = menu.getFluidAmount(tankIdx);
         int cap = menu.getFluidCapacity(tankIdx);
+
         if (amount <= 0 || cap <= 0) return;
 
         Fluid fluid = BuiltInRegistries.FLUID.byId(id);
+        if (fluid == net.minecraft.world.level.material.Fluids.EMPTY) return;
+
         FluidStack stack = new FluidStack(fluid, amount);
         IClientFluidTypeExtensions clientFluid = IClientFluidTypeExtensions.of(fluid);
         TextureAtlasSprite sprite = this.minecraft.getTextureAtlas(InventoryMenu.BLOCK_ATLAS).apply(clientFluid.getStillTexture(stack));
         int color = clientFluid.getTintColor(stack);
 
-        int h = 50;
-        int drawH = (int)((float)amount / cap * h);
-        int sx = leftPos + x + 1;
-        int sy = topPos + y + 1 + (h - drawH);
+        // [修复] 强制 Alpha 通道：如果流体颜色没有 Alpha (0x00RRGGBB)，强制设为不透明 (0xFFRRGGBB)
+        if (((color >> 24) & 0xFF) == 0) {
+            color |= 0xFF000000;
+        }
 
         float r = ((color >> 16) & 0xFF) / 255f;
         float g = ((color >> 8) & 0xFF) / 255f;
         float b = (color & 0xFF) / 255f;
+        float a = ((color >> 24) & 0xFF) / 255f;
 
-        RenderSystem.setShaderColor(r, g, b, 1.0f);
-        gfx.blit(sx, sy, 0, 16, drawH, sprite);
+        RenderSystem.setShaderColor(r, g, b, a);
+
+        int drawH = (int) ((float) amount / cap * FLUID_H);
+        int sx = leftPos + x + 1; // +1 因为背景有1px边框
+        int bottomY = topPos + y + 1 + FLUID_H; // 槽底 Y
+
+        // 平铺绘制 (从下往上)
+        int renderedH = 0;
+        int width = FLUID_W; // 16
+
+        while (renderedH < drawH) {
+            int segmentH = Math.min(drawH - renderedH, 16); // 每次最多画16高
+            int drawY = bottomY - renderedH - segmentH;
+
+            // [关键] 使用 blit 的重载方法精确控制 UV，防止贴图拉伸
+            // 参数: x, y, blitOffset, width, height, sprite
+            gfx.blit(sx, drawY, 0, width, segmentH, sprite);
+
+            renderedH += segmentH;
+        }
+
         RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
     }
 
+    private void renderFluidTooltips(GuiGraphics gfx, int mouseX, int mouseY) {
+        for (int i = 0; i < 2; i++) {
+            int x = (i == 0) ? FLUID_L_X : FLUID_R_X;
+            int y = (i == 0) ? FLUID_L_Y : FLUID_R_Y;
+
+            if (isHovering(x, y, FLUID_W + 2, FLUID_H + 2, mouseX, mouseY)) {
+                int id = menu.getFluidId(i);
+                int amount = menu.getFluidAmount(i);
+                int cap = menu.getFluidCapacity(i);
+
+                if (amount > 0) {
+                    Fluid fluid = BuiltInRegistries.FLUID.byId(id);
+                    Component name = fluid.getFluidType().getDescription();
+                    gfx.renderTooltip(font, Component.translatable("gui.thermalshock.tooltip.fluid", name, amount, cap), mouseX, mouseY);
+                } else {
+                    gfx.renderTooltip(font, Component.literal("Empty"), mouseX, mouseY);
+                }
+            }
+        }
+    }
+
+    // ==========================================
+    // 基础绘制辅助方法
+    // ==========================================
+
     private void drawSlot(GuiGraphics gfx, int x, int y) {
-        gfx.fill(leftPos + x, topPos + y, leftPos + x + 18, topPos + y + 18, SLOT_BORDER);
-        gfx.fill(leftPos + x + 1, topPos + y + 1, leftPos + x + 17, topPos + y + 17, SLOT_BG);
+        gfx.fill(leftPos + x, topPos + y, leftPos + x + 18, topPos + y + 18, COLOR_SLOT_BORDER);
+        gfx.fill(leftPos + x + 1, topPos + y + 1, leftPos + x + 17, topPos + y + 17, COLOR_SLOT_BG);
     }
 
     private void drawFluidTankBg(GuiGraphics gfx, int x, int y) {
-        gfx.fill(leftPos + x, topPos + y, leftPos + x + 18, topPos + y + 52, SLOT_BORDER);
-        gfx.fill(leftPos + x + 1, topPos + y + 1, leftPos + x + 17, topPos + y + 51, SLOT_BG);
+        gfx.fill(leftPos + x, topPos + y, leftPos + x + 18, topPos + y + 50, COLOR_SLOT_BORDER);
+        gfx.fill(leftPos + x + 1, topPos + y + 1, leftPos + x + 17, topPos + y + 49, COLOR_SLOT_BG);
     }
 
     private void drawPlayerInv(GuiGraphics gfx) {
-        for (int r = 0; r < 3; r++) for (int c = 0; c < 9; c++) drawSlot(gfx, 8 + c * 18, 84 + r * 18);
-        for (int c = 0; c < 9; c++) drawSlot(gfx, 8 + c * 18, 142);
-    }
-
-    @Override public void render(GuiGraphics gfx, int mx, int my, float pt) {
-        renderBackground(gfx, mx, my, pt);
-        super.render(gfx, mx, my, pt);
-        renderTooltip(gfx, mx, my);
+        for (int r = 0; r < 3; r++) {
+            for (int c = 0; c < 9; c++) {
+                drawSlot(gfx, 8 + c * 18, 84 + r * 18);
+            }
+        }
+        for (int c = 0; c < 9; c++) {
+            drawSlot(gfx, 8 + c * 18, 142);
+        }
     }
 }

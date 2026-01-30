@@ -37,17 +37,17 @@ public class ThermalSourceBlockEntity extends BlockEntity implements MenuProvide
     // 燃烧相关
     private int burnTime;
     private int maxBurnTime;
-    private int fuelHeatOutput = 0; // 燃料提供的热值
+    private int fuelHeatOutput = 0;
 
     // 能量相关
     private long energyStored = 0;
-    private long maxEnergyStored = 10000;
-    private int targetElectricHeat = 0; // 玩家设定的目标电子热值
-    private int electricHeatOutput = 0; // 实际产生的电子热值
+    // 动态上限：根据目标热量动态调整缓存大小，防止小目标存太多电，或者大目标存不够
+    private int targetElectricHeat = 0;
+    private int electricHeatOutput = 0;
 
     // 总输出
     private int totalHeatOutput = 0;
-    private int lastHeatOutput = 0;
+    private int lastHeatOutput = 0; // 用于检测变化
 
     // 物品处理
     private final ItemStackHandler itemHandler = new ItemStackHandler(1) {
@@ -55,9 +55,9 @@ public class ThermalSourceBlockEntity extends BlockEntity implements MenuProvide
         protected void onContentsChanged(int slot) {
             setChanged();
         }
+
         @Override
         public boolean isItemValid(int slot, ItemStack stack) {
-            // 简单校验，允许服务端后续精确判断
             return true;
         }
     };
@@ -66,8 +66,8 @@ public class ThermalSourceBlockEntity extends BlockEntity implements MenuProvide
     private final IEnergyStorage energyStorage = new IEnergyStorage() {
         @Override
         public int receiveEnergy(int maxReceive, boolean simulate) {
-            // 动态上限
-            long capacity = Math.max(1000, (long) targetElectricHeat * 100);
+            // 缓存上限至少 10,000，或者 目标热量 * 100 (保证至少能维持10tick满载)
+            long capacity = Math.max(10000, (long) targetElectricHeat * 100);
             long space = capacity - energyStored;
             int accepted = (int) Math.min(maxReceive, Math.min(space, Integer.MAX_VALUE));
 
@@ -79,22 +79,32 @@ public class ThermalSourceBlockEntity extends BlockEntity implements MenuProvide
         }
 
         @Override
-        public int extractEnergy(int maxExtract, boolean simulate) { return 0; }
+        public int extractEnergy(int maxExtract, boolean simulate) {
+            return 0;
+        }
 
         @Override
-        public int getEnergyStored() { return (int) Math.min(energyStored, Integer.MAX_VALUE); }
+        public int getEnergyStored() {
+            return (int) Math.min(energyStored, Integer.MAX_VALUE);
+        }
 
         @Override
-        public int getMaxEnergyStored() { return (int) Math.min(Math.max(1000, (long) targetElectricHeat * 100), Integer.MAX_VALUE); }
+        public int getMaxEnergyStored() {
+            return (int) Math.min(Math.max(10000, (long) targetElectricHeat * 100), Integer.MAX_VALUE);
+        }
 
         @Override
-        public boolean canExtract() { return false; }
+        public boolean canExtract() {
+            return false;
+        }
 
         @Override
-        public boolean canReceive() { return true; }
+        public boolean canReceive() {
+            return true;
+        }
     };
 
-    // 数据同步 (大小 8: 燃烧2 + 热值2 + 能量2(Low/High) + 目标1 + 最大能量低位1 + 瞬时能耗1)
+    // 数据同步 (修复了之前 Size=7 导致的崩溃，现在是 8)
     private final ContainerData data = new SimpleContainerData(8) {
         @Override
         public int get(int index) {
@@ -105,8 +115,8 @@ public class ThermalSourceBlockEntity extends BlockEntity implements MenuProvide
                 case 3 -> (int) (energyStored & 0xFFFF_FFFFL); // Energy Low
                 case 4 -> (int) (energyStored >>> 32);         // Energy High
                 case 5 -> targetElectricHeat;
-                case 6 -> (int) (Math.max(1000, (long) targetElectricHeat * 100) & 0xFFFF_FFFFL); // Max Energy Low (简化同步)
-                case 7 -> 0; // [修复] LastTickEnergy 占位符，防止 GUI 崩溃
+                case 6 -> (int) (Math.max(10000, (long) targetElectricHeat * 100) & 0xFFFF_FFFFL); // Max Energy Low
+                case 7 -> electricHeatOutput * 10; // 实时能耗 (FE/t)
                 default -> 0;
             };
         }
@@ -133,9 +143,9 @@ public class ThermalSourceBlockEntity extends BlockEntity implements MenuProvide
 
         boolean isHeater = be.isHeater();
         boolean dirty = false;
-        boolean wasBurning = be.burnTime > 0;
+        boolean wasBurning = be.totalHeatOutput != 0;
 
-        // === 1. 燃料逻辑 ===
+        // === 1. 燃料逻辑 (保持不变) ===
         if (be.burnTime > 0) {
             be.burnTime--;
             dirty = true;
@@ -162,32 +172,42 @@ public class ThermalSourceBlockEntity extends BlockEntity implements MenuProvide
             }
         }
 
-        // === 2. 能量逻辑 (非线性消耗) ===
+        // === 2. 能量逻辑 (动态输出) ===
+        // 规则: 10 FE = 1 Heat
+        // 逻辑: 尽可能达到 Target，但受限于当前能量储备
         be.electricHeatOutput = 0;
-        if (be.targetElectricHeat > 0) {
-            // 基础转换: 10 FE = 1 H
-            // 非线性惩罚: (Heat^2) / 50
-            // 总消耗 = (Target * 10) + (Target * Target / 50)
-            long cost = (long) be.targetElectricHeat * 10 + ((long) be.targetElectricHeat * be.targetElectricHeat / 50);
 
-            if (be.energyStored >= cost) {
+        if (be.targetElectricHeat > 0 && be.energyStored >= 10) {
+            // 计算当前电量能支撑多少热量 (每 10 FE 换 1 H)
+            long maxAffordableHeat = be.energyStored / 10;
+
+            // 实际产出 = Min(目标值, 钱包里的钱)
+            int actualOutput = (int) Math.min(be.targetElectricHeat, maxAffordableHeat);
+
+            if (actualOutput > 0) {
+                long cost = actualOutput * 10L;
                 be.energyStored -= cost;
-                // 注意：如果是 Freezer，产生的“电子热值”应该是负数
-                be.electricHeatOutput = isHeater ? be.targetElectricHeat : -be.targetElectricHeat;
+
+                // 设置输出 (如果是冷源，输出负数)
+                be.electricHeatOutput = isHeater ? actualOutput : -actualOutput;
                 dirty = true;
             }
         }
 
-        // === 3. 总热值计算与状态更新 ===
+        // === 3. 总热值更新与邻居通知 ===
         be.totalHeatOutput = be.fuelHeatOutput + be.electricHeatOutput;
+        boolean isBurning = be.totalHeatOutput != 0;
 
-        boolean isBurning = be.totalHeatOutput != 0; // 只要有输出就算工作
-
+        // 3.1 视觉更新 (LIT 状态)
         if (wasBurning != isBurning) {
             level.setBlock(pos, state.setValue(ThermalSourceBlock.LIT, isBurning), 3);
             dirty = true;
-        } else if (be.totalHeatOutput != be.lastHeatOutput) {
-            // 数值变化触发更新
+        }
+
+        // 3.2 数值更新通知 (关键修复)
+        // 只要输出数值变了，就必须通知邻居 (Simulation Chamber)，哪怕 LIT 状态没变
+        if (be.totalHeatOutput != be.lastHeatOutput) {
+            // 这会触发 Controller 的 onNeighborChanged -> StructureManager -> onEnvironmentUpdate
             level.updateNeighborsAt(pos, state.getBlock());
             be.lastHeatOutput = be.totalHeatOutput;
             dirty = true;
@@ -209,8 +229,14 @@ public class ThermalSourceBlockEntity extends BlockEntity implements MenuProvide
     }
 
     public void setTargetElectricHeat(int heat) {
-        this.targetElectricHeat = Math.max(0, heat); // 只能设置绝对值
-        this.setChanged();
+        // 仅在数值改变时触发保存
+        if (this.targetElectricHeat != Math.max(0, heat)) {
+            this.targetElectricHeat = Math.max(0, heat);
+            this.setChanged();
+            // 注意：这里不需要手动 updateNeighborsAt，
+            // 因为 target 改变会导致下一 tick 的 electricHeatOutput 改变，
+            // 从而在 tick() 里触发 updateNeighborsAt。
+        }
     }
 
     public int getCurrentHeatOutput() {
@@ -221,10 +247,14 @@ public class ThermalSourceBlockEntity extends BlockEntity implements MenuProvide
         return this.getBlockState().is(ThermalShockBlocks.THERMAL_HEATER.get());
     }
 
-    public IEnergyStorage getEnergyStorage() { return energyStorage; }
-    public ItemStackHandler getItemHandler() { return itemHandler; }
+    public IEnergyStorage getEnergyStorage() {
+        return energyStorage;
+    }
 
-    // --- GUI ---
+    public ItemStackHandler getItemHandler() {
+        return itemHandler;
+    }
+
     @Override
     public Component getDisplayName() {
         return isHeater()
@@ -238,7 +268,6 @@ public class ThermalSourceBlockEntity extends BlockEntity implements MenuProvide
         return new com.xnfu.thermalshock.client.gui.ThermalSourceMenu(id, inventory, this, this.data);
     }
 
-    // --- NBT ---
     @Override
     protected void saveAdditional(CompoundTag tag, HolderLookup.Provider r) {
         super.saveAdditional(tag, r);
@@ -261,7 +290,6 @@ public class ThermalSourceBlockEntity extends BlockEntity implements MenuProvide
         targetElectricHeat = tag.getInt("TargetElec");
     }
 
-    // ... UpdatePacket methods same as before ...
     @Override
     public CompoundTag getUpdateTag(HolderLookup.Provider r) {
         CompoundTag t = new CompoundTag();

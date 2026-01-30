@@ -13,6 +13,7 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.CraftingBookCategory;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.level.block.Blocks;
+import net.neoforged.neoforge.fluids.FluidStack;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -141,5 +142,56 @@ public class ModRecipeProvider extends RecipeProvider {
         // 蓝冰: 19200 ticks, -500 heat
         ThermalFuelRecipeBuilder.fuel(Ingredient.of(Items.BLUE_ICE), 19200, -500)
                 .save(output, ResourceLocation.fromNamespaceAndPath(ThermalShock.MODID, "coolant_blue_ice"));
+
+
+        // =================================================================
+        // 7. [热力转换器测试] - 熔融 (Melting)
+        // =================================================================
+        // 逻辑: 1 圆石 + 高温(>500) -> 250mB 岩浆
+        // 测试点: 物品输入 -> 流体输出，正热量阈值检查
+        ThermalConverterRecipeBuilder.create()
+                .inputItem(Ingredient.of(Blocks.COBBLESTONE), 1, 1.0f)
+                .outputFluid(new FluidStack(net.minecraft.world.level.material.Fluids.LAVA, 250), 1.0f)
+                .minHeat(500) // 需要至少 500度 (例如旁边放个岩浆块或加热器)
+                .time(200)    // 10秒
+                .save(output, ResourceLocation.fromNamespaceAndPath(ThermalShock.MODID, "converter_melt_cobble"));
+
+        // =================================================================
+        // 8. [热力转换器测试] - 冷冻 (Freezing)
+        // =================================================================
+        // 逻辑: 1000mB 水 + 低温(<0) -> 1 冰
+        // 测试点: 流体输入 -> 物品输出，负热量阈值检查
+        ThermalConverterRecipeBuilder.create()
+                .inputFluid(new FluidStack(net.minecraft.world.level.material.Fluids.WATER, 1000), 1.0f)
+                .outputItem(new ItemStack(Blocks.ICE), 1.0f)
+                .maxHeat(0)   // 需要 0度以下 (例如旁边放个冰块或冷冻机)
+                .time(100)
+                .save(output, ResourceLocation.fromNamespaceAndPath(ThermalShock.MODID, "converter_freeze_water"));
+
+        // =================================================================
+        // 9. [热力转换器测试] - 分离/干燥 (Extraction)
+        // =================================================================
+        // 逻辑: 1 湿海绵 + 微热(>50) -> 1 干海绵 + 1000mB 水
+        // 测试点: 物品输入 -> 物品+流体双输出，低热量阈值
+        ThermalConverterRecipeBuilder.create()
+                .inputItem(Ingredient.of(Blocks.WET_SPONGE), 1, 1.0f)
+                .outputItem(new ItemStack(Blocks.SPONGE), 1.0f)
+                .outputFluid(new FluidStack(net.minecraft.world.level.material.Fluids.WATER, 1000), 1.0f)
+                .minHeat(50)
+                .time(60)
+                .save(output, ResourceLocation.fromNamespaceAndPath(ThermalShock.MODID, "converter_dry_sponge"));
+
+        // =================================================================
+        // 10. [热力转换器测试] - 概率副产物 (Byproduct)
+        // =================================================================
+        // 逻辑: 1 沙砾 + 高温(>200) -> 1 沙子(100%) + 铁粒(10% 概率)
+        // 测试点: 双物品输出，概率判定，无流体产出
+        ThermalConverterRecipeBuilder.create()
+                .inputItem(Ingredient.of(Blocks.GRAVEL), 1, 1.0f)
+                .outputItem(new ItemStack(Blocks.SAND), 1.0f)
+                .outputItem(new ItemStack(Items.IRON_NUGGET), 0.1f) // 10% 概率出铁粒作为废料
+                .minHeat(200)
+                .time(80)
+                .save(output, ResourceLocation.fromNamespaceAndPath(ThermalShock.MODID, "converter_sift_gravel"));
     }
 }
