@@ -28,9 +28,6 @@ public class MultiblockValidator {
             List<BlockPos> ventPositions
     ) {}
 
-    // 置信度阈值：骨架完整度超过 80% 才认为是有效尝试
-    private static final float CONFIDENCE_THRESHOLD = 0.80f;
-
     public static ValidationResult validate(Level level, BlockPos controllerPos, Direction controllerFacing) {
         Direction backDir = controllerFacing.getOpposite();
         Direction upDir = Direction.UP;
@@ -38,22 +35,14 @@ public class MultiblockValidator {
 
         int bestSize = 0;
         BlockPos bestTopLeft = null;
-        float bestScore = -1.0f;
-
         BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
 
-        // 1. 骨架扫描 (Wireframe Scoring)
-        // 倒序遍历尺寸 (13 -> 3)
+        // 1. 直接尝试扫描 (Direct Scan)
+        // 倒序遍历尺寸 (13 -> 3)，优先匹配大结构
         for (int size = 13; size >= 3; size--) {
-            // 只遍历控制器可能存在的棱位
+            // 控制器可能在任意一条棱上
             for (int u = 0; u < size; u++) {
-                int[] vCandidates;
-                if (u == 0 || u == size - 1) {
-                    vCandidates = new int[size];
-                    for(int k=0; k<size; k++) vCandidates[k] = k;
-                } else {
-                    vCandidates = new int[]{0, size - 1};
-                }
+                int[] vCandidates = (u == 0 || u == size - 1) ? getAllIndices(size) : new int[]{0, size - 1};
 
                 for (int v : vCandidates) {
                     cursor.set(controllerPos)
@@ -62,27 +51,16 @@ public class MultiblockValidator {
 
                     BlockPos topLeft = cursor.immutable();
 
-                    float score = calculateFrameConfidence(level, topLeft, size, rightDir, Direction.DOWN, backDir);
-
-                    if (score > bestScore) {
-                        bestScore = score;
-                        bestSize = size;
-                        bestTopLeft = topLeft;
+                    // 直接执行严格扫描，成功即返回
+                    ValidationResult result = performStrictScan(level, topLeft, size, rightDir, Direction.DOWN, backDir, controllerPos);
+                    if (result.isValid()) {
+                        return result;
                     }
-
-                    if (score >= 0.99f) break;
                 }
-                if (bestScore >= 0.99f) break;
             }
-            if (bestScore >= 0.99f) break;
         }
 
-        // 2. 决策
-        if (bestScore < CONFIDENCE_THRESHOLD || bestTopLeft == null) {
-            return fail(Component.translatable("message.thermalshock.incomplete"), null);
-        }
-
-        return performStrictScan(level, bestTopLeft, bestSize, rightDir, Direction.DOWN, backDir, controllerPos);
+        return fail(Component.translatable("message.thermalshock.incomplete"), null);
     }
 
     private static float calculateFrameConfidence(Level level, BlockPos topLeft, int size, Direction right, Direction down, Direction back) {
@@ -129,6 +107,12 @@ public class MultiblockValidator {
         return state.getBlockHolder().getData(ThermalShockDataMaps.CASING_PROPERTY) != null
                 || state.is(ThermalShockBlocks.SIMULATION_CHAMBER_CONTROLLER.get())
                 || state.is(ThermalShockBlocks.SIMULATION_CHAMBER_PORT.get());
+    }
+
+    private static int[] getAllIndices(int size) {
+        int[] arr = new int[size];
+        for(int k=0; k<size; k++) arr[k] = k;
+        return arr;
     }
 
     private static ValidationResult performStrictScan(Level level, BlockPos topLeft, int size, Direction right, Direction down, Direction back, BlockPos controllerPos) {

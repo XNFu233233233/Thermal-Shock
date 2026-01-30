@@ -3,91 +3,52 @@ package com.xnfu.thermalshock.util;
 import com.xnfu.thermalshock.block.entity.SimulationChamberBlockEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.phys.AABB;
 
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class StructureManager {
-    // 维度 -> (Chunk -> 控制器列表)
-    private static final Map<String, Map<ChunkPos, Set<BlockPos>>> ALL_CONTROLLERS = new ConcurrentHashMap<>();
+    // 维度 -> (控制器坐标 -> 结构包围盒)
+    // 包围盒已预先 Inflate(1) 以包含外部热源
+    private static final Map<String, Map<BlockPos, AABB>> STRUCTURE_REGISTRY = new ConcurrentHashMap<>();
 
-    public static void trackController(Level level, BlockPos pos) {
+    public static void updateStructure(Level level, BlockPos controllerPos, AABB bounds) {
         if (level.isClientSide) return;
         String dim = level.dimension().location().toString();
-        ChunkPos chunk = new ChunkPos(pos);
-        ALL_CONTROLLERS.computeIfAbsent(dim, k -> new ConcurrentHashMap<>())
-                .computeIfAbsent(chunk, k -> new HashSet<>())
-                .add(pos);
+        STRUCTURE_REGISTRY.computeIfAbsent(dim, k -> new ConcurrentHashMap<>())
+                .put(controllerPos, bounds.inflate(1.0));
     }
 
-    public static void untrackController(Level level, BlockPos pos) {
+    public static void removeStructure(Level level, BlockPos controllerPos) {
         if (level == null || level.isClientSide) return;
         String dim = level.dimension().location().toString();
-        ChunkPos chunk = new ChunkPos(pos);
-        var chunkMap = ALL_CONTROLLERS.get(dim);
-        if (chunkMap != null) {
-            var set = chunkMap.get(chunk);
-            if (set != null) {
-                set.remove(pos);
-                if (set.isEmpty()) chunkMap.remove(chunk);
-            }
-        }
+        var map = STRUCTURE_REGISTRY.get(dim);
+        if (map != null) map.remove(controllerPos);
     }
 
     public static void checkActivity(ServerLevel level, BlockPos targetPos, boolean isItemUpdate) {
         String dim = level.dimension().location().toString();
-        var chunkMap = ALL_CONTROLLERS.get(dim);
+        var map = STRUCTURE_REGISTRY.get(dim);
+        if (map == null || map.isEmpty()) return;
 
-        if (chunkMap == null || chunkMap.isEmpty()) return;
-
-        ChunkPos centerChunk = new ChunkPos(targetPos);
-
-        // 遍历 3x3 Chunk 寻找控制器
-        for (int x = -1; x <= 1; x++) {
-            for (int z = -1; z <= 1; z++) {
-                ChunkPos checkChunk = new ChunkPos(centerChunk.x + x, centerChunk.z + z);
-                Set<BlockPos> controllers = chunkMap.get(checkChunk);
-
-                if (controllers != null) {
-                    for (BlockPos controllerPos : controllers) {
-                        // 1. 快速距离剔除 (最大结构半径 ~7格 + 1格缓冲) -> 16格足够
-                        if (!controllerPos.closerThan(targetPos, 16.0)) continue;
-
-                        // 2. 加载检查
-                        if (level.isLoaded(controllerPos)) {
-                            BlockEntity be = level.getBlockEntity(controllerPos);
-                            if (be instanceof SimulationChamberBlockEntity chamber) {
-                                // 3. 精确范围检查
-                                if (chamber.isFormed()) {
-                                    BlockPos min = chamber.getMinPos();
-                                    BlockPos max = chamber.getMaxPos();
-                                    // 检测范围扩大 1 格以包含外部热源
-                                    if (targetPos.getX() >= min.getX() - 1 && targetPos.getX() <= max.getX() + 1 &&
-                                            targetPos.getY() >= min.getY() - 1 && targetPos.getY() <= max.getY() + 1 &&
-                                            targetPos.getZ() >= min.getZ() - 1 && targetPos.getZ() <= max.getZ() + 1) {
-                                        // 触发控制器的环境更新逻辑 (热量重算/结构验证)
-                                        chamber.onEnvironmentUpdate(targetPos, isItemUpdate);
-                                    }
-                                } else {
-                                    // 未成形 -> 附近变动尝试重组
-                                    if (controllerPos.distSqr(targetPos) < 100.0) {
-                                        chamber.onEnvironmentUpdate(targetPos, isItemUpdate);
-                                    }
-                                }
-                            }
-                        }
+        // O(N) 遍历，但 N 通常很小 (服务器内加载的结构数量)
+        // 相比 Chunk 遍历 + TileEntity 获取 + 距离计算，纯内存 AABB 检测极快
+        map.forEach((controllerPos, bounds) -> {
+            if (bounds.contains(targetPos.getX(), targetPos.getY(), targetPos.getZ())) {
+                if (level.isLoaded(controllerPos)) {
+                    BlockEntity be = level.getBlockEntity(controllerPos);
+                    if (be instanceof SimulationChamberBlockEntity chamber) {
+                        chamber.onEnvironmentUpdate(targetPos, isItemUpdate);
                     }
                 }
             }
-        }
+        });
     }
 
     public static void clearCache(String dimensionId) {
-        ALL_CONTROLLERS.remove(dimensionId);
+        STRUCTURE_REGISTRY.remove(dimensionId);
     }
 }

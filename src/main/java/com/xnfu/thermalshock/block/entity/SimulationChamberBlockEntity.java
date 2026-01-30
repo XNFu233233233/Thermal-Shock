@@ -231,23 +231,21 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
     public static void tick(Level level, BlockPos pos, BlockState state, SimulationChamberBlockEntity be) {
         if (level.isClientSide) return;
 
-        // === 优先级 1: 结构验证 (必须优先且无条件执行) ===
-        // 确保错误框 (ErrorBox) 能实时响应方块变动
-
-        // 1. 结构验证 (必须优先)
         if (be.validationPending) {
             be.performValidation(null);
             be.validationPending = false;
+            // [优化] 如果验证失败，直接中断后续逻辑
+            if (!be.structure.isFormed()) return;
         }
 
         // 2. 红石状态更新 (检测脉冲)
         boolean currentSignal = level.hasNeighborSignal(pos);
         if (currentSignal != be.lastPowered) {
             // 上升沿 (0 -> 1) 视为脉冲帧
-            be.isPulseFrame = currentSignal && !be.lastPowered; 
+            be.isPulseFrame = currentSignal && !be.lastPowered;
             be.isPowered = currentSignal;
             be.updatePoweredState(currentSignal);
-            
+
             // 红石变动是重要的唤醒事件 (特别是 0->1)
             if (be.isPulseFrame || be.isPowered) be.wakeUp();
         } else {
@@ -270,13 +268,15 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
             if (netInput != 0) {
                 be.thermo.addHeat(netInput);
                 // 热量变了，可能满足配方，唤醒
-                be.wakeUp(); 
+                be.wakeUp();
             }
         }
 
-        // === 优先级 3: 配方处理 (带休眠锁) ===
+        // === 优先级 3: 配方处理 (事件驱动核心) ===
         // 如果没有待办事项(pendingProcess)，且不是脉冲帧，且视觉效果已结束，直接跳过
-        if (!be.pendingProcess && !be.isPulseFrame && be.litTimer <= 0) return;
+        if (!be.pendingProcess && !be.isPulseFrame && be.litTimer <= 0) {
+            return;
+        }
 
         // 权限检查：要么是脉冲触发，要么是持续供电
         boolean hasPermission = be.isPulseFrame || be.isPowered;
@@ -434,6 +434,7 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
     public void notifyStructureBroken() {
         if (this.structure.isFormed()) {
             // 1. 立即逻辑失效，停止配方处理
+            StructureManager.removeStructure(level, worldPosition);
             this.structure.reset(this.level);
             // 2. 标记需要验证，但等到下一次 Tick 且世界稳定时才执行
             this.validationPending = true;
@@ -460,6 +461,11 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
             this.heatDirty = true;
             updatePerformance();
             refreshPortCache();
+
+            // [新增] 注册结构包围盒 (用于事件驱动)
+            AABB bounds = AABB.encapsulatingFullBlocks(structure.getMinPos(), structure.getMaxPos());
+            StructureManager.updateStructure(level, worldPosition, bounds);
+
             // 标记所有输入脏，确保立即扫描一次
             markBlockCacheDirty();
             markEntityCacheDirty();
@@ -799,8 +805,6 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
     public void onLoad() {
         super.onLoad();
         if (level != null && !level.isClientSide) {
-            StructureManager.trackController(level, worldPosition);
-
             // [核心修复] 进服/区块加载时，恢复内存中的临时数据
             if (structure.isFormed()) {
                 // 1. 恢复结构属性 (效率、体积等)，依赖 NBT 加载的 camouflageState
@@ -814,9 +818,12 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
 
                 // 4. 强制刷新端口缓存 (因为 cachedInputPorts 列表是空的)
                 this.portsDirty = true;
+
+                AABB bounds = AABB.encapsulatingFullBlocks(structure.getMinPos(), structure.getMaxPos());
+                StructureManager.updateStructure(level, worldPosition, bounds);
             }
 
-            // 延迟一刻验证，防止区块加载时的顺序问题 (保留原有逻辑，作为双重保险)
+            // 延迟一刻验证，防止区块加载时的顺序问题
             level.scheduleTick(worldPosition, getBlockState().getBlock(), 1);
         }
     }
@@ -825,7 +832,7 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
     public void setRemoved() {
         super.setRemoved();
         if (level != null && !level.isClientSide) {
-            StructureManager.untrackController(level, worldPosition);
+            StructureManager.removeStructure(level, worldPosition);
         }
     }
 

@@ -85,7 +85,11 @@ public class ThermalConverterBlockEntity extends BlockEntity implements MenuProv
         @Override protected void onContentsChanged() { setChanged(); markRecipeDirty(); }
     };
     private final FluidTank outputTank = new FluidTank(4000) {
-        @Override protected void onContentsChanged() { setChanged(); markRecipeDirty(); }
+        @Override protected void onContentsChanged() { 
+            setChanged(); 
+            // 输出变化时也需要唤醒，以检查是否腾出了空间
+            wakeUp(); 
+        }
     };
 
     // 包装器：用于 Capability 暴露
@@ -328,10 +332,7 @@ public class ThermalConverterBlockEntity extends BlockEntity implements MenuProv
     // =========================================================
 
     public void wakeUp() {
-        if (this.isSleeping) {
-            this.isSleeping = false;
-            // 不调用 setChanged()，因为 wakeUp 通常伴随着其他数据变化已经 setChanged 了
-        }
+        this.isSleeping = false;
     }
 
     public void markHeatDirty() {
