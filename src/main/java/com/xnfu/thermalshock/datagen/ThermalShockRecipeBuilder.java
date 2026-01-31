@@ -46,13 +46,15 @@ public class ThermalShockRecipeBuilder implements RecipeBuilder {
     }
 
     public ThermalShockRecipeBuilder inputBlock(Ingredient ingredient) {
-        if (this.ingredients.size() >= 3) throw new IllegalStateException("Max 3 inputs allowed!");
+        long count = this.ingredients.stream().filter(i -> i.type() == RecipeSourceType.BLOCK).count();
+        if (count >= 3) throw new IllegalStateException("Max 3 block inputs allowed!");
         this.ingredients.add(new SimulationIngredient(ingredient, RecipeSourceType.BLOCK));
         return this;
     }
 
     public ThermalShockRecipeBuilder inputItem(Ingredient ingredient) {
-        if (this.ingredients.size() >= 3) throw new IllegalStateException("Max 3 inputs allowed!");
+        long count = this.ingredients.stream().filter(i -> i.type() == RecipeSourceType.ITEM).count();
+        if (count >= 3) throw new IllegalStateException("Max 3 item inputs allowed!");
         this.ingredients.add(new SimulationIngredient(ingredient, RecipeSourceType.ITEM));
         return this;
     }

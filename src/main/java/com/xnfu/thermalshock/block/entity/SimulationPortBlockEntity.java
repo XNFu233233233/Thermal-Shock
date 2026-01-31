@@ -3,10 +3,12 @@ package com.xnfu.thermalshock.block.entity;
 
 import com.xnfu.thermalshock.client.gui.SimulationPortMenu;
 import com.xnfu.thermalshock.registries.ThermalShockBlockEntities;
+import com.xnfu.thermalshock.util.StructureManager;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtUtils;
 import net.minecraft.network.Connection;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.Packet;
@@ -169,7 +171,7 @@ public class SimulationPortBlockEntity extends BlockEntity implements MenuProvid
             // 只有当变动源不是控制器自己时才通知 (防止死循环)
             if (!updateSource.equals(this.controllerPos)) {
                 if (level.isLoaded(this.controllerPos) && level.getBlockEntity(this.controllerPos) instanceof SimulationChamberBlockEntity controller) {
-                    controller.onEnvironmentUpdate(updateSource, false);
+                    controller.onEnvironmentUpdate(updateSource, StructureManager.UpdateType.PLACE);
                 }
             }
         }
@@ -257,7 +259,7 @@ public class SimulationPortBlockEntity extends BlockEntity implements MenuProvid
         tag.put("Inventory", itemHandler.serializeNBT(registries));
         tag.put("Fluids", fluidHandler.serializeNBT(registries));
         tag.putString("Mode", portMode.name());
-        if (camouflageState != null) tag.put("Camouflage", net.minecraft.nbt.NbtUtils.writeBlockState(camouflageState));
+        if (camouflageState != null) tag.put("Camouflage", NbtUtils.writeBlockState(camouflageState));
         if (controllerPos != null) tag.putLong("ControllerPos", controllerPos.asLong());
     }
 
@@ -268,7 +270,7 @@ public class SimulationPortBlockEntity extends BlockEntity implements MenuProvid
         fluidHandler.deserializeNBT(registries, tag.getCompound("Fluids"));
         if (tag.contains("Mode")) portMode = PortMode.valueOf(tag.getString("Mode"));
         if (tag.contains("Camouflage"))
-            this.camouflageState = net.minecraft.nbt.NbtUtils.readBlockState(BuiltInRegistries.BLOCK.asLookup(), tag.getCompound("Camouflage"));
+            this.camouflageState = NbtUtils.readBlockState(BuiltInRegistries.BLOCK.asLookup(), tag.getCompound("Camouflage"));
         if (tag.contains("ControllerPos")) controllerPos = BlockPos.of(tag.getLong("ControllerPos"));
     }
 

@@ -24,6 +24,10 @@ public class Config {
             .comment("What you want the introduction message to be for the magic number")
             .define("magicNumberIntroduction", "The magic number is... ");
 
+    public static final ModConfigSpec.IntValue FE_PER_HEAT = BUILDER
+            .comment("FE consumed per 1 Heat produced")
+            .defineInRange("fePerHeat", 10, 1, 1000000);
+
     // a list of strings that are treated as resource locations for items
     public static final ModConfigSpec.ConfigValue<List<? extends String>> ITEM_STRINGS = BUILDER
             .comment("A list of items to log on common setup.")

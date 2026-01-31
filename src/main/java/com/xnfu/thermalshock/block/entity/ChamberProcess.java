@@ -78,8 +78,24 @@ public class ChamberProcess {
         AbstractSimulationRecipe recipeToRun = targetRecipe;
         if (isGenericClumpMode) {
             recipeToRun = findFirstValidGenericRecipe(level, inputPosList);
-            if (recipeToRun == null) return false;
+            if (recipeToRun == null) {
+                be.setMatchedRecipe(null, null);
+                return false;
+            }
         }
+        
+        // 实时更新匹配成功的配方，供 Jade 等显示
+        AbstractSimulationRecipe matchedRecipeRef = recipeToRun;
+        ResourceLocation matchedId = selectedId;
+        if (isGenericClumpMode && level != null) {
+            var overType = ThermalShockRecipes.OVERHEATING_TYPE.get();
+            var shockType = ThermalShockRecipes.THERMAL_SHOCK_TYPE.get();
+            matchedId = level.getRecipeManager().getAllRecipesFor(overType).stream()
+                        .filter(h -> h.value() == matchedRecipeRef).findFirst().map(net.minecraft.world.item.crafting.RecipeHolder::id)
+                        .orElseGet(() -> level.getRecipeManager().getAllRecipesFor(shockType).stream()
+                                .filter(h -> h.value() == matchedRecipeRef).findFirst().map(net.minecraft.world.item.crafting.RecipeHolder::id).orElse(null));
+        }
+        be.setMatchedRecipe(matchedId, recipeToRun);
 
         // 计算
         int maxBatchByItems = calculateMaxBatchFromPorts(level, recipeToRun, inputPosList);
@@ -93,8 +109,24 @@ public class ChamberProcess {
             return false;
         }
 
-        // 空间预判
-        ItemStack resultTemplate = recipeToRun.assemble(new SimulationRecipeInput(ItemStack.EMPTY, RecipeSourceType.ITEM), level.registryAccess());
+        // 空间预判 (收集 Pool)
+        List<ItemStack> poolIn = new ArrayList<>();
+        List<RecipeSourceType> poolTy = new ArrayList<>();
+        for (BlockPos pos : inputPosList) {
+            BlockEntity pbe = level.getBlockEntity(pos);
+            if (pbe instanceof SimulationPortBlockEntity port) {
+                IItemHandler handler = port.getItemHandler();
+                for (int i = 0; i < handler.getSlots(); i++) {
+                    ItemStack s = handler.getStackInSlot(i);
+                    if (!s.isEmpty()) {
+                        poolIn.add(s);
+                        poolTy.add(RecipeSourceType.ITEM);
+                    }
+                }
+            }
+        }
+
+        ItemStack resultTemplate = recipeToRun.assemble(new SimulationRecipeInput(ItemStack.EMPTY, poolIn, poolTy), level.registryAccess());
         if (!resultTemplate.isEmpty()) {
             float yieldMult = be.performance.getYieldMultiplier();
             float catalystBonus = be.calculateCatalystBonus(be.performance.getEfficiency());
@@ -170,8 +202,7 @@ public class ChamberProcess {
         // 如果机器处于空闲稳定状态且内容无变化，直接跳过扫描
         // [核心修改] 性能优化：引入脏标记检查 -> 由于会导致逻辑卡顿，暂时移除，每一刻都执行检查
         // boolean isDirty = be.isValidAndChanged();
-        AbstractSimulationRecipe runRecipe = be.getRuntimeRecipe();
-
+        // AbstractSimulationRecipe runRecipe = be.getRuntimeRecipe();
 
         List<FoundMaterial> blockPool = copyMaterialList(be.getInternalBlockCache());
         List<FoundMaterial> itemPool = copyMaterialList(be.getInternalEntityCache());
@@ -179,12 +210,29 @@ public class ChamberProcess {
         AbstractSimulationRecipe recipeToRun = targetRecipe;
         if (isGenericClumpMode) {
              recipeToRun = findGenericClumpRecipeFromPool(level, itemPool);
-             if (recipeToRun == null) return false;
+             if (recipeToRun == null) {
+                 be.setMatchedRecipe(null, null);
+                 return false;
+             }
         } else {
              if (!canMatchRecipe(recipeToRun, blockPool, itemPool)) {
+                 be.setMatchedRecipe(selectedId, recipeToRun); // 虽然无法运行但 ID 已选
                  return false;
              }
         }
+
+        // 实时更新匹配成功的配方
+        AbstractSimulationRecipe matchedRecipeRef = recipeToRun;
+        ResourceLocation matchedId = selectedId;
+        if (isGenericClumpMode && level != null) {
+            var overType = ThermalShockRecipes.OVERHEATING_TYPE.get();
+            var shockType = ThermalShockRecipes.THERMAL_SHOCK_TYPE.get();
+            matchedId = level.getRecipeManager().getAllRecipesFor(overType).stream()
+                        .filter(h -> h.value() == matchedRecipeRef).findFirst().map(net.minecraft.world.item.crafting.RecipeHolder::id)
+                        .orElseGet(() -> level.getRecipeManager().getAllRecipesFor(shockType).stream()
+                                .filter(h -> h.value() == matchedRecipeRef).findFirst().map(net.minecraft.world.item.crafting.RecipeHolder::id).orElse(null));
+        }
+        be.setMatchedRecipe(matchedId, recipeToRun);
 
         if (!checkThermalConditions(recipeToRun)) {
             return false;
@@ -225,7 +273,14 @@ public class ChamberProcess {
 
             successCount++;
             ItemStack mainInput = match.consumedInputs.get(0);
-            rawOutputs.add(recipeToRun.assemble(new SimulationRecipeInput(mainInput, RecipeSourceType.ITEM), level.registryAccess()));
+            
+            // 构建当前物理池快照
+            List<ItemStack> physPoolIn = new ArrayList<>();
+            List<RecipeSourceType> physPoolTy = new ArrayList<>();
+            for (FoundMaterial m : blockPool) { physPoolIn.add(m.stack); physPoolTy.add(RecipeSourceType.BLOCK); }
+            for (FoundMaterial m : itemPool) { physPoolIn.add(m.stack); physPoolTy.add(RecipeSourceType.ITEM); }
+
+            rawOutputs.add(recipeToRun.assemble(new SimulationRecipeInput(mainInput, physPoolIn, physPoolTy), level.registryAccess()));
 
             if (primaryOutputPos == null) capturePrimaryPos(match.foundMaterials);
             // [修复] 移除空方法调用
@@ -283,7 +338,7 @@ public class ChamberProcess {
             int costPerOp = ov.getHeatCost();
             if (costPerOp <= 0) return limitByStructureAndItems;
 
-            int currentHeat = be.getThermo().getHeatStoredRaw();
+            int currentHeat = be.getThermo().getCurrentHeat();
             // 计算当前缓存够跑多少次
             int maxByStored = currentHeat / costPerOp;
 
@@ -715,7 +770,7 @@ public class ChamberProcess {
 
             boolean highOk = be.getThermo().getCurrentHighTemp() >= ts.getMinHotTemp();
             boolean lowOk = be.getThermo().getCurrentLowTemp() <= ts.getMaxColdTemp(); // e.g. -50 < -20
-            boolean deltaOk = be.getThermo().getCurrentDelta() >= ts.getRequiredDelta();
+            boolean deltaOk = be.getThermo().getDeltaT() >= ts.getRequiredDelta();
 
             return highOk && lowOk && deltaOk;
         }

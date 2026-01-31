@@ -1,16 +1,15 @@
 package com.xnfu.thermalshock.client;
 
 import com.xnfu.thermalshock.ThermalShock;
+import com.xnfu.thermalshock.client.gui.RecipePreviewClientTooltipComponent;
 import com.xnfu.thermalshock.client.gui.SimulationChamberScreen;
 import com.xnfu.thermalshock.client.gui.SimulationPortScreen;
 import com.xnfu.thermalshock.client.gui.ThermalConverterScreen;
 import com.xnfu.thermalshock.client.gui.ThermalSourceScreen;
+import com.xnfu.thermalshock.client.gui.tooltip.RecipePreviewTooltip;
 import com.xnfu.thermalshock.client.renderer.SimulationChamberRenderer;
 import com.xnfu.thermalshock.data.ClumpInfo;
-import com.xnfu.thermalshock.registries.ThermalShockBlockEntities;
-import com.xnfu.thermalshock.registries.ThermalShockDataComponents;
-import com.xnfu.thermalshock.registries.ThermalShockItems;
-import com.xnfu.thermalshock.registries.ThermalShockMenus;
+import com.xnfu.thermalshock.registries.*;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.resources.model.BakedModel;
 import net.minecraft.client.resources.model.ModelResourceLocation;
@@ -20,6 +19,8 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import net.neoforged.neoforge.client.event.ModelEvent;
+import net.neoforged.neoforge.client.event.RegisterClientTooltipComponentFactoriesEvent;
+import net.neoforged.neoforge.client.event.RegisterItemDecorationsEvent;
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 
 @EventBusSubscriber(modid = ThermalShock.MODID, value = Dist.CLIENT)
@@ -40,6 +41,11 @@ public class ClientModEvents {
     }
 
     @SubscribeEvent
+    public static void registerClientTooltips(RegisterClientTooltipComponentFactoriesEvent event) {
+        event.register(RecipePreviewTooltip.class, RecipePreviewClientTooltipComponent::new);
+    }
+
+    @SubscribeEvent
     public static void modifyBakingResult(ModelEvent.ModifyBakingResult event) {
         ModelResourceLocation location = new ModelResourceLocation(
                 ThermalShockItems.MATERIAL_CLUMP.getId(),
@@ -52,8 +58,10 @@ public class ClientModEvents {
         }
     }
 
+    public static boolean SUPPRESS_CLUMP_SHIFT_RENDER = false;
+
     @SubscribeEvent
-    public static void registerItemDecorators(net.neoforged.neoforge.client.event.RegisterItemDecorationsEvent event) {
+    public static void registerItemDecorators(RegisterItemDecorationsEvent event) {
         event.register(ThermalShockItems.MATERIAL_CLUMP.get(), (guiGraphics, font, stack, x, y) -> {
             ClumpInfo info = stack.get(ThermalShockDataComponents.TARGET_OUTPUT);
             if (info == null || info.result().isEmpty()) return false;
@@ -62,7 +70,7 @@ public class ClientModEvents {
 
             guiGraphics.pose().pushPose();
 
-            if (Screen.hasShiftDown()) {
+            if (Screen.hasShiftDown() && !SUPPRESS_CLUMP_SHIFT_RENDER) {
                 guiGraphics.pose().translate(x, y, 100);
                 guiGraphics.renderItem(subStack, 0, 0);
             } else {

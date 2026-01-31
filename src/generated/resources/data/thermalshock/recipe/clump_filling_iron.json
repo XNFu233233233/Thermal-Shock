@@ -3,12 +3,19 @@
   "category": "misc",
   "group": "clump_filling",
   "heat_cost": 1000,
-  "ingredients": [
-    {
+  "key": {
+    "C": {
+      "item": "thermalshock:material_clump"
+    },
+    "I": {
       "item": "minecraft:iron_ore"
     }
-  ],
+  },
   "min_heat_rate": 200,
+  "pattern": [
+    "I",
+    "C"
+  ],
   "result_item": {
     "count": 1,
     "id": "minecraft:iron_ingot"

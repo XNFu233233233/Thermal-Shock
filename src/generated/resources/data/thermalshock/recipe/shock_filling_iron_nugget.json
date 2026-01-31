@@ -1,5 +1,7 @@
 {
   "type": "thermalshock:thermal_shock_filling",
+  "clump_heat_cost": 500,
+  "clump_min_temp": 100,
   "delta": 150,
   "ingredients": [
     {

@@ -38,7 +38,7 @@ public class ClumpItemModel implements BakedModel {
 
     @Override
     public List<BakedQuad> getQuads(@Nullable BlockState state, @Nullable Direction side, RandomSource rand) {
-        if (isGuiContext && hasData && Screen.hasShiftDown()) {
+        if (isGuiContext && hasData && net.minecraft.client.gui.screens.Screen.hasShiftDown() && !ClientModEvents.SUPPRESS_CLUMP_SHIFT_RENDER) {
             return Collections.emptyList();
         }
         return originalModel.getQuads(state, side, rand);

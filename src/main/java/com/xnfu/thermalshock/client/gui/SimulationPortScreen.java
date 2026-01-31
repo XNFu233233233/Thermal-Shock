@@ -43,7 +43,6 @@ public class SimulationPortScreen extends AbstractContainerScreen<SimulationPort
     private boolean isScrolling = false;
 
     private Button btnMode;
-    private Button btnExpand;
 
     public SimulationPortScreen(SimulationPortMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title);
@@ -61,8 +60,7 @@ public class SimulationPortScreen extends AbstractContainerScreen<SimulationPort
             PacketDistributor.sendToServer(new PacketTogglePortMode(menu.be.getBlockPos()));
         }).bounds(leftPos + 8, topPos + 35, 20, 20).build());
 
-        // 2. 展开按钮: 右上角, 12x12
-        this.btnExpand = addRenderableWidget(Button.builder(Component.literal("≡"), btn -> {
+        addRenderableWidget(Button.builder(Component.literal("≡"), btn -> {
             boolean newState = !menu.isExpanded();
             menu.setExpanded(newState);
             btn.setMessage(Component.literal(newState ? "×" : "≡"));
@@ -172,7 +170,6 @@ public class SimulationPortScreen extends AbstractContainerScreen<SimulationPort
 
                 // 计算高度
                 int height = (int)((float)amount / cap * FLUID_H);
-                int renderY = fy + FLUID_H - height;
                 int width = FLUID_W;
 
                 // 循环绘制 (Tiling)

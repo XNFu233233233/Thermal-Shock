@@ -37,10 +37,7 @@ public class MaterialClumpItem extends Item {
             tooltipComponents.add(Component.translatable("tooltip.thermalshock.clump_instruction")
                     .withStyle(ChatFormatting.GRAY, ChatFormatting.ITALIC));
             if (Screen.hasShiftDown()) {
-                tooltipComponents.add(Component.empty());
-                tooltipComponents.add(Component.translatable("gui.thermalshock.tooltip.mode.overheating").withStyle(ChatFormatting.RED));
-                tooltipComponents.add(Component.literal("Req: >" + info.minHeatRate() + "H/t").withStyle(ChatFormatting.GRAY));
-                tooltipComponents.add(Component.literal("Cost: " + info.heatCost() + " Heat").withStyle(ChatFormatting.GRAY));
+               // [Modified] Removed extra tooltip details as they are handled by SimulationChamberScreen recipe preview.
             }
         }
     }

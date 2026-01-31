@@ -89,8 +89,12 @@ public class ThermalSourceScreen extends AbstractContainerScreen<ThermalSourceMe
             tips.add(Component.translatable("gui.thermalshock.source.energy_buffer").withStyle(ChatFormatting.AQUA));
             tips.add(Component.literal(menu.getEnergyStored() + " / " + menu.getMaxEnergyStored() + " FE").withStyle(ChatFormatting.GRAY));
             tips.add(Component.translatable("gui.thermalshock.source.energy_input", menu.getLastTickEnergy()).withStyle(ChatFormatting.YELLOW));
+            
+            // 已移除手动添加的 JEI 提示，因为点击区域已移至进度条
             gfx.renderTooltip(font, tips, Optional.empty(), mouseX, mouseY);
         }
+        
+        // [修改] 移除了燃烧进度的 Tooltip，改为直接文本显示
     }
 
     @Override
@@ -139,7 +143,7 @@ public class ThermalSourceScreen extends AbstractContainerScreen<ThermalSourceMe
 
     private void drawProgressBar(GuiGraphics gfx, int x, int y) {
         float progress = menu.getBurnProgress();
-        int barW = 60; // 足够宽
+        int barW = 60;
         int barH = 5;
         gfx.fill(x, y, x + barW, y + barH, 0xFF555555);
 
@@ -157,10 +161,22 @@ public class ThermalSourceScreen extends AbstractContainerScreen<ThermalSourceMe
         int heat = menu.getTotalHeatOutput();
         String sign = heat > 0 ? "+" : "";
         int color = heat > 0 ? 0xFFAA0000 : (heat < 0 ? 0xFF0000AA : 0xFF555555);
-        Component text = Component.translatable("gui.thermalshock.source.output", sign + heat);
+        
+        // 1. 剩余时间信息 (移到上面)
+        float seconds = Math.max(0, menu.getBurnTime() / 20.0f);
+        String timeText = Component.translatable("gui.thermalshock.source.remaining_time", String.format("%.2f", seconds)).getString();
+        // 2. 输出信息 (移到下面)
+        String outText = Component.translatable("gui.thermalshock.source.output", sign + heat).getString();
 
         // 居中显示在进度条下方 (y=58)
-        gfx.drawCenteredString(font, text, leftPos + imageWidth / 2, topPos + 58, color);
+        int cx = leftPos + imageWidth / 2;
+        int yBase = topPos + 58;
+
+        // 无论是否正在燃烧，都始终显示状态文字，保证界面整齐且顺序一致
+        // 1. 剩余时间 (yBase)
+        gfx.drawString(font, timeText, cx - font.width(timeText) / 2, yBase, 0xFF404040, false);
+        // 2. 输出 (yBase + 10)
+        gfx.drawString(font, outText, cx - font.width(outText) / 2, yBase + 10, color, false);
     }
 
     @Override

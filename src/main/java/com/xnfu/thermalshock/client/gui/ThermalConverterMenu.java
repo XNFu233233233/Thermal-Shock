@@ -5,7 +5,6 @@ import com.xnfu.thermalshock.registries.ThermalShockMenus;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.entity.player.Inventory;
-import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.*;
 import net.minecraft.world.item.ItemStack;
@@ -58,9 +57,8 @@ public class ThermalConverterMenu extends AbstractContainerMenu {
         this.addSlot(new SlotItemHandler(be.getItemHandler(), 2, 114, 36));
 
         // 升级槽 (Slot 3-6) -> 左侧悬浮
-        // x=-20 (18宽 + 2px缝隙), y=10 (向上微调)
         for (int i = 0; i < 4; i++) {
-            this.addSlot(new SlotItemHandler(be.getItemHandler(), 3 + i, -20, 10 + i * 18));
+            this.addSlot(new SlotItemHandler(be.getItemHandler(), 3 + i, -19, 11 + i * 18));
         }
 
         addPlayerInventory(new InvWrapper(inv));
@@ -69,11 +67,11 @@ public class ThermalConverterMenu extends AbstractContainerMenu {
     private void addPlayerInventory(net.neoforged.neoforge.items.IItemHandler playerInventory) {
         for (int row = 0; row < 3; ++row) {
             for (int col = 0; col < 9; ++col) {
-                this.addSlot(new SlotItemHandler(playerInventory, col + row * 9 + 9, 8 + col * 18, 84 + row * 18));
+                this.addSlot(new SlotItemHandler(playerInventory, col + row * 9 + 9, 9 + col * 18, 85 + row * 18));
             }
         }
         for (int col = 0; col < 9; ++col) {
-            this.addSlot(new SlotItemHandler(playerInventory, col, 8 + col * 18, 142));
+            this.addSlot(new SlotItemHandler(playerInventory, col, 9 + col * 18, 143));
         }
     }
 

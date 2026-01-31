@@ -30,12 +30,12 @@ public class SimulationPortMenu extends AbstractContainerMenu {
     public static final int VISIBLE_ROWS = 3;
 
     // 默认列表位置
-    public static final int SLOT_START_X = 35;
-    public static final int SLOT_START_Y = 20;
+    public static final int SLOT_START_X = 36;
+    public static final int SLOT_START_Y = 21;
 
     // 展开列表位置
-    public static final int EXPANDED_START_X = 7;
-    public static final int EXPANDED_START_Y = 20;
+    public static final int EXPANDED_START_X = 8;
+    public static final int EXPANDED_START_Y = 21;
 
     // 状态变量
     private boolean isExpanded = false;
@@ -100,7 +100,7 @@ public class SimulationPortMenu extends AbstractContainerMenu {
             }
 
             // 使用 NeoForge 标准 SlotItemHandler
-            this.addSlot(new SlotItemHandler(be.getItemHandler(), i, x, y) {
+            this.addSlot(new SlotItemHandler(be.getItemHandler(), i, x + 1, y + 1) {
                 @Override
                 public boolean mayPlace(ItemStack stack) {
                     PortMode mode = be.getPortMode();
@@ -139,11 +139,11 @@ public class SimulationPortMenu extends AbstractContainerMenu {
     private void addPlayerInventory(net.neoforged.neoforge.items.IItemHandler playerInventory) {
         for (int row = 0; row < 3; ++row) {
             for (int col = 0; col < 9; ++col) {
-                this.addSlot(new SlotItemHandler(playerInventory, col + row * 9 + 9, 8 + col * 18, 84 + row * 18));
+                this.addSlot(new SlotItemHandler(playerInventory, col + row * 9 + 9, 9 + col * 18, 85 + row * 18));
             }
         }
         for (int col = 0; col < 9; ++col) {
-            this.addSlot(new SlotItemHandler(playerInventory, col, 8 + col * 18, 142));
+            this.addSlot(new SlotItemHandler(playerInventory, col, 9 + col * 18, 143));
         }
     }
 

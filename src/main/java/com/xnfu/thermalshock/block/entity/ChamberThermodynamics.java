@@ -112,6 +112,10 @@ public class ChamberThermodynamics {
 
     public void setMaxHeatCapacity(int capacity) {
         this.maxHeatCapacity = capacity;
+        // [新增] 当上限降低时，截断多余热量
+        if (this.heatStored > this.maxHeatCapacity) {
+            this.heatStored = this.maxHeatCapacity;
+        }
     }
 
     // 清空热量 (切换模式时调用)
@@ -147,13 +151,13 @@ public class ChamberThermodynamics {
     }
 
     // 纯 Getter，不触发结算 (用于客户端或内部逻辑)
-    public int getHeatStoredRaw() {
+    public int getCurrentHeat() {
         return (int) heatStored;
     }
 
     public int getMaxHeatCapacity() { return maxHeatCapacity; }
     public int getCurrentHighTemp() { return cachedHighTemp; }
     public int getCurrentLowTemp() { return cachedLowTemp; }
-    public int getCurrentDelta() { return cachedDelta; }
+    public int getDeltaT() { return cachedDelta; }
     public int getLastInputRate() { return cachedNetInput; }
 }

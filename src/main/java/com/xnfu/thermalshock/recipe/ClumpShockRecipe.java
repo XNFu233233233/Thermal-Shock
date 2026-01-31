@@ -26,14 +26,14 @@ public class ClumpShockRecipe extends OverheatingRecipe {
 
     @Override
     public boolean matches(SimulationRecipeInput input, Level level) {
-        ItemStack stack = input.ingredient();
+        ItemStack stack = input.primary();
         if (!stack.is(ThermalShockItems.MATERIAL_CLUMP.get())) return false;
         return stack.has(ThermalShockDataComponents.TARGET_OUTPUT);
     }
 
     @Override
     public ItemStack assemble(SimulationRecipeInput input, HolderLookup.Provider registries) {
-        ItemStack stack = input.ingredient();
+        ItemStack stack = input.primary();
         ClumpInfo info = stack.get(ThermalShockDataComponents.TARGET_OUTPUT);
         if (info != null) {
             return info.result().copy();

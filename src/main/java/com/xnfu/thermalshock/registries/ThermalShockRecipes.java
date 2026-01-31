@@ -68,7 +68,7 @@ public class ThermalShockRecipes {
     // 类型 D: 热力转换器 (Universal)
     // =========================================
     public static final DeferredHolder<RecipeType<?>, RecipeType<ThermalConverterRecipe>> CONVERTER_TYPE =
-            RECIPE_TYPES.register("thermal_converter", () -> new RecipeType<>() {
+            RECIPE_TYPES.register("thermal_converter", () -> new RecipeType<ThermalConverterRecipe>() {
                 @Override public String toString() { return "thermalshock:thermal_converter"; }
             });
 

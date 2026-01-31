@@ -3,6 +3,9 @@ package com.xnfu.thermalshock.datagen;
 import com.xnfu.thermalshock.ThermalShock;
 import com.xnfu.thermalshock.recipe.ClumpFillingRecipe;
 import com.xnfu.thermalshock.recipe.ClumpProcessingRecipe;
+import com.xnfu.thermalshock.recipe.RecipeSourceType;
+import com.xnfu.thermalshock.recipe.SimulationIngredient;
+import com.xnfu.thermalshock.registries.ThermalShockItems;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.data.PackOutput;
 import net.minecraft.data.recipes.RecipeOutput;
@@ -10,13 +13,14 @@ import net.minecraft.data.recipes.RecipeProvider;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.item.crafting.CraftingBookCategory;
-import net.minecraft.world.item.crafting.Ingredient;
+import net.minecraft.world.item.crafting.*;
 import net.minecraft.world.level.block.Blocks;
 import net.neoforged.neoforge.fluids.FluidStack;
 
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import net.minecraft.world.item.crafting.ShapedRecipePattern;
 
 public class ModRecipeProvider extends RecipeProvider {
 
@@ -55,14 +59,20 @@ public class ModRecipeProvider extends RecipeProvider {
         // =================================================================
         // 3. [Clump 填装 - 工作台] 铁矿石 -> 铁锭数据
         // =================================================================
-        // 模式: 工作台有序/无序合成
+        // 模式: 工作台有序合成
         // 逻辑: 铁矿石 + 空Clump -> 带有铁锭数据的Clump
         // 参数: 设定后续处理需要 200度, 1000热量
         ResourceLocation ironFillId = ResourceLocation.fromNamespaceAndPath(ThermalShock.MODID, "clump_filling_iron");
         ClumpFillingRecipe ironFillRecipe = new ClumpFillingRecipe(
                 "clump_filling",
                 CraftingBookCategory.MISC,
-                List.of(Ingredient.of(Items.IRON_ORE)), // 原料
+                ShapedRecipePattern.of(
+                        Map.of(
+                                'I', Ingredient.of(Items.IRON_ORE),
+                                'C', Ingredient.of(ThermalShockItems.MATERIAL_CLUMP.get())
+                        ),
+                        List.of("I", "C")
+                ),
                 new ItemStack(Items.IRON_INGOT),        // 目标产物 (Clump内的数据)
                 200,                                    // 后续过热需求: 200度
                 1000                                    // 后续过热需求: 1000热量
@@ -79,11 +89,13 @@ public class ModRecipeProvider extends RecipeProvider {
                 Ingredient.of(Items.IRON_BARS),      // 输入原料 (会自动检测为物品)
                 new ItemStack(Items.IRON_NUGGET),    // 目标产物 (Clump内的数据)
                 100, 10, 150                         // 机器运行条件
-        ).save(output, ResourceLocation.fromNamespaceAndPath(ThermalShock.MODID, "shock_filling_iron_nugget"));
+        ).clumpParams(100, 500)                      // 设定产出的团块后续需要 100度/500热量处理
+        .save(output, ResourceLocation.fromNamespaceAndPath(ThermalShock.MODID, "shock_filling_iron_nugget"));
 
         // [新增] 铁锭 Clump 处理配方 (Iron Clump -> Iron Ingot)
         // 这是一个手写 JSON 风格的生成，对应 ClumpProcessingRecipe
         ClumpProcessingRecipe ironRecipe = new ClumpProcessingRecipe(
+                List.of(new SimulationIngredient(Ingredient.of(ThermalShockItems.MATERIAL_CLUMP.get()), RecipeSourceType.ITEM)),
                 new ItemStack(Items.IRON_INGOT), // 目标内容
                 200,  // 需要 200 度
                 1000  // 消耗 1000 热量
@@ -94,6 +106,7 @@ public class ModRecipeProvider extends RecipeProvider {
                 null
         );
         ClumpProcessingRecipe ironNuggetRecipe = new ClumpProcessingRecipe(
+                List.of(new SimulationIngredient(Ingredient.of(ThermalShockItems.MATERIAL_CLUMP.get()), RecipeSourceType.ITEM)),
                 new ItemStack(Items.IRON_NUGGET), // 目标内容
                 100,  // 需要 100 度
                 500   // 消耗 500 热量
@@ -106,6 +119,7 @@ public class ModRecipeProvider extends RecipeProvider {
 
         // [新增] 金锭 Clump (需要更高温度)
         ClumpProcessingRecipe goldRecipe = new ClumpProcessingRecipe(
+                List.of(new com.xnfu.thermalshock.recipe.SimulationIngredient(Ingredient.of(com.xnfu.thermalshock.registries.ThermalShockItems.MATERIAL_CLUMP.get()), com.xnfu.thermalshock.recipe.RecipeSourceType.ITEM)),
                 new ItemStack(Items.GOLD_INGOT),
                 500,  // 需要 500 度
                 2000  // 消耗 2000 热量

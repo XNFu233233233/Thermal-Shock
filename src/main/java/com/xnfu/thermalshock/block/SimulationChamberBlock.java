@@ -2,7 +2,7 @@ package com.xnfu.thermalshock.block;
 
 import com.mojang.serialization.MapCodec;
 import com.xnfu.thermalshock.block.entity.SimulationChamberBlockEntity;
-import com.xnfu.thermalshock.registries.ThermalShockBlockEntities;
+import com.xnfu.thermalshock.util.StructureManager;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
@@ -83,8 +83,8 @@ public class SimulationChamberBlock extends BaseEntityBlock {
                 // 1. 更新红石状态 (可能触发 process)
                 chamber.updatePoweredState(level.hasNeighborSignal(pos));
 
-                // 2. 响应环境变化 (热源数值波动/方块更替)
-                chamber.onEnvironmentUpdate(neighborPos, false);
+                // 2. 响应环境变化 (通常是邻居更新，视为 PLACE/BREAK 变动触发扫描)
+                chamber.onEnvironmentUpdate(neighborPos, StructureManager.UpdateType.PLACE);
             }
         }
     }

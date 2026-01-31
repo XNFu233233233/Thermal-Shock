@@ -43,7 +43,7 @@ public class SimulationChamberMenu extends AbstractContainerMenu {
         this.blockEntity = entity;
         this.data = data;
 
-        checkContainerDataCount(data, 16);
+        checkContainerDataCount(data, 17);
         this.addDataSlots(data);
 
         IItemHandler itemHandler = this.blockEntity.getItemHandler();
@@ -57,7 +57,6 @@ public class SimulationChamberMenu extends AbstractContainerMenu {
             }
         });
 
-        // Index 1: 模拟升级槽 (Strict Check)
         this.addSlot(new SlotItemHandler(itemHandler, 1, SLOT_UPGRADE_X + 1, SLOT_UPGRADE_Y + 1) {
             @Override
             public boolean mayPlace(ItemStack stack) {

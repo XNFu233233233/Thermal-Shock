@@ -1,14 +1,10 @@
 package com.xnfu.thermalshock.block.entity;
 
-import com.mojang.logging.LogUtils;
 import com.xnfu.thermalshock.block.SimulationChamberBlock;
-import org.slf4j.Logger;
 import com.xnfu.thermalshock.client.gui.SimulationChamberMenu;
 import com.xnfu.thermalshock.recipe.AbstractSimulationRecipe;
 import com.xnfu.thermalshock.item.SimulationUpgradeItem;
-import com.xnfu.thermalshock.registries.ThermalShockBlockEntities;
-import com.xnfu.thermalshock.registries.ThermalShockBlocks;
-import com.xnfu.thermalshock.registries.ThermalShockDataMaps;
+import com.xnfu.thermalshock.registries.*;
 import com.xnfu.thermalshock.util.MultiblockValidator;
 import com.xnfu.thermalshock.util.StructureManager;
 import net.minecraft.core.BlockPos;
@@ -28,7 +24,6 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ContainerData;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
@@ -40,7 +35,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class SimulationChamberBlockEntity extends BlockEntity implements MenuProvider {
-    private static final Logger LOGGER = LogUtils.getLogger();
 
     // === 核心组件 ===
     private final ChamberStructure structure = new ChamberStructure();
@@ -99,6 +93,8 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
     private boolean validationPending = false;
     private boolean forceRevalidate = false; // [新增]
     private AbstractSimulationRecipe selectedRecipe = null; // [新增]
+    private ResourceLocation matchedRecipeId = null; // [新增] 实时匹配成功的配方 ID
+    private AbstractSimulationRecipe matchedRecipe = null; // [新增] 实时匹配成功的配方实例
 
     // === 缓存与脏标记 (Granular Dirty Flags) ===
     private BlockPos errorPos = null;
@@ -118,7 +114,6 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
 
     // === 红石状态 (核心修复) ===
     private boolean isPowered = false;    // 持续信号
-    private boolean lastPowered = false;  // 上一刻信号
     private boolean isPulseFrame = false; // 脉冲触发帧
 
     // === 视觉 ===
@@ -143,7 +138,7 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
             // 热量计算现在由 tick 中的 heatDirty 驱动
 
             return switch (index) {
-                case 0 -> mode == MachineMode.OVERHEATING ? thermo.getHeatStoredRaw() : thermo.getCurrentDelta();
+                case 0 -> mode == MachineMode.OVERHEATING ? thermo.getCurrentHeat() : thermo.getDeltaT();
                 case 1 -> thermo.getMaxHeatCapacity();
                 case 2 -> structure.getMaxColdRate();
                 case 3 -> structure.getMaxHeatRate();
@@ -242,92 +237,86 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
 
         // === 优先级 1: 结构验证 ===
         if (validationPending) {
-            performValidation(null);
+            StructureManager.requestValidation(worldPosition);
             validationPending = false;
-            if (!structure.isFormed()) return;
+            return; 
         }
 
-        // === 优先级 2: 红石状态检测 ===
+        // === 优先级 2: 环境状态检测 (Redstone) ===
         boolean currentSignal = level.hasNeighborSignal(worldPosition);
-        // [修复] 始终更新 isPowered 以反映当前信号状态
-        isPowered = currentSignal;
-        if (currentSignal != lastPowered) {
-            isPulseFrame = currentSignal && !lastPowered;
-            updatePoweredState(currentSignal);
-        } else {
-            isPulseFrame = false;
+        isPulseFrame = currentSignal && !isPowered;
+        
+        if (currentSignal != isPowered) {
+            isPowered = currentSignal;
+            updatePoweredState(isPowered);
         }
 
-        // === 优先级 3: 热量计算 ===
+        // === 优先级 3: 环境热量计算 (Recalculate) ===
         if (structure.isFormed() && heatDirty) {
             thermo.recalculate(level, structure);
             heatDirty = false;
         }
 
-        // === 优先级 4: 过热模式热量累积 ===
-        // 持续信号时每刻累积热量，需要链式 scheduleTick
-        if (structure.isFormed() && mode == MachineMode.OVERHEATING && isPowered) {
+        boolean shouldLoopFast = false;
+
+        // === 优先级 4: 热量动态更新 (Accumulation) ===
+        if (structure.isFormed()) {
             int netInput = thermo.getLastInputRate();
-            if (netInput != 0) {
+            int currentHeat = thermo.getCurrentHeat();
+            int maxHeat = thermo.getMaxHeatCapacity();
+
+            // [核心优化] 严格限流：只有在热量确实会发生变化时（未满且输入>0，或未空且输入<0），才执行累积并维持高频更新
+            if (netInput > 0 && currentHeat < maxHeat) {
                 thermo.addHeat(netInput);
+                shouldLoopFast = true;
+            } else if (netInput < 0 && currentHeat > 0) {
+                thermo.addHeat(netInput);
+                shouldLoopFast = true;
             }
         }
 
-        // === 优先级 5: 配方处理 ===
+        // === 优先级 5: 配方逻辑处理 ===
         boolean hasPermission = isPulseFrame || isPowered;
-
         if (structure.isFormed() && hasPermission) {
-            // 预处理缓存
+            // 同步所有缓存
             if (catalystDirty) processCatalyst();
             if (portsDirty) refreshPortCache();
             if (blockCacheDirty || entityCacheDirty) rebuildInternalCache();
 
-            // 执行配方
+            // 执行核心配方逻辑
             boolean success = process.tick(level);
-
             if (success) {
-                // 成功运行 - 如果持续供电，继续链式唤醒
-                if (isPowered) {
-                    level.scheduleTick(worldPosition, getBlockState().getBlock(), 1);
-                }
-            } else if (isPowered && recipeLocked && selectedRecipeId != null) {
-                // [修复] 失败但仍在供电且配方锁定 - 继续链式唤醒以检测新输入
-                // 这确保热冲击模式在等待输入时不会休眠
-                level.scheduleTick(worldPosition, getBlockState().getBlock(), 10); // 较低频率检查
+                shouldLoopFast = true; // 配方运行中，维持高频更新
             }
-            // 否则休眠，等待下次事件唤醒
         }
 
-        // === 优先级 6: 视觉状态处理 ===
+        // === 优先级 6: 视觉状态管理 ===
         if (litTimer > 0) {
             litTimer--;
             if (litTimer == 0) {
                 updateLitBlockState(false);
             } else {
-                // 视觉计时器未结束，继续调度
-                level.scheduleTick(worldPosition, getBlockState().getBlock(), 1);
+                shouldLoopFast = true; // 视觉动画进行中，维持高频更新
             }
         }
 
-        lastPowered = isPowered;
+        // === 总结决策：是否需要维持链式唤醒？ ===
+        if (shouldLoopFast) {
+            level.scheduleTick(worldPosition, getBlockState().getBlock(), 1);
+        } else if (isPowered && recipeLocked && selectedRecipeId != null) {
+            // [优化] 如果只是供电中但暂时无事可做（如配方锁定了但没材料），此时不使用 1t 更新。
+            // 使用较低频的 10t 心跳检查新输入的掉落物，节省性能
+            level.scheduleTick(worldPosition, getBlockState().getBlock(), 10);
+        }
     }
-
-
-
 
     // =========================================================
     // 2. 事件响应与脏标记 (Event Driven API)
     // =========================================================
 
-    /**
-     * 智能环境更新响应 (由 StructureManager 或 Block.neighborChanged 调用)
-     *
-     * @param targetPos    发生变动的坐标
-     * @param isItemUpdate 是否仅为物品/实体变动
-     */
-    public void onEnvironmentUpdate(BlockPos targetPos, boolean isItemUpdate) {
+    public void onEnvironmentUpdate(BlockPos targetPos, StructureManager.UpdateType type) {
         // 1. 如果只是物品/实体变动 -> 标记实体脏并唤醒
-        if (isItemUpdate) {
+        if (type == StructureManager.UpdateType.ITEM) {
             markEntityCacheDirty();
             wakeUp();
             return;
@@ -340,26 +329,32 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
             return;
         }
 
-        // 3. 判断变动位置类型
-        boolean isInternal = structure.isInterior(targetPos);
-
-        if (!isInternal) {
-            // A. 如果是结构的一部分(含外壳) -> 标记验证并唤醒 (可能是外壳被破坏)
-            if (structure.contains(targetPos)) {
-                this.validationPending = true;
-                wakeUp();
+        // [核心修复] 结构成型时的智能触发
+        if (structure.contains(targetPos)) {
+            // A. 破坏方块 (BREAK) -> 如果是外壳/组件，必须重扫描
+            if (type == StructureManager.UpdateType.BREAK) {
+                if (structure.isInterior(targetPos)) {
+                    markBlockCacheDirty();
+                } else {
+                    this.validationPending = true;
+                    wakeUp();
+                }
             }
-            // B. 否则是外部热源变动 -> 重建热力缓存
-            else {
-                // 标记热量脏，交由 Tick 优先级 2 处理
-                this.heatDirty = true;
-                wakeUp();
+            // B. 放置方块 (PLACE) -> 执行完整性校验
+            else if (type == StructureManager.UpdateType.PLACE) {
+                if (performIntegrityCheck(targetPos)) {
+                    markBlockCacheDirty();
+                } else {
+                    this.validationPending = true;
+                    wakeUp();
+                }
             }
-        } else {
-            // C. 是内部方块变动 (如放入圆石) -> 标记方块缓存脏并唤醒
-            markBlockCacheDirty();
-            wakeUp();
+            return;
         }
+
+        // 3. 外部环境变动 (热源等) -> 重建热力缓存
+        this.heatDirty = true;
+        wakeUp();
     }
 
     public void markBlockCacheDirty() {
@@ -384,11 +379,9 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
     }
 
     public void updatePoweredState(boolean newSignal) {
-        this.isPowered = newSignal;
         // 红石信号变化可能触发脉冲配方，强制唤醒实体检测
-        if (this.isPowered != this.lastPowered) {
-            markEntityCacheDirty();
-        }
+        markEntityCacheDirty();
+        wakeUp();
     }
 
     /**
@@ -409,6 +402,10 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
             newCapacity = 10000 + (vol * 1000);
         }
         this.thermo.setMaxHeatCapacity(newCapacity);
+        
+        // [新增] 性能变动可能改变速率限制，标记热脏并唤醒
+        this.heatDirty = true;
+        wakeUp();
     }
 
     // =========================================================
@@ -422,17 +419,51 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
      */
     public void notifyStructureBroken() {
         if (this.structure.isFormed()) {
-            // 1. 立即逻辑失效，停止配方处理
+            // 1. 立即逻辑失效
             StructureManager.removeStructure(level, worldPosition);
             this.structure.reset(this.level);
-            // 2. 标记需要验证，但等到下一次 Tick 且世界稳定时才执行
+            // 2. 标记验证，并注册到未成型列表监听后续变化
             this.validationPending = true;
-            // 3. 强制标记所有缓存脏，防止复用旧数据
+            StructureManager.registerPending(level, worldPosition, getSearchBox());
+            
             this.blockCacheDirty = true;
             this.entityCacheDirty = true;
             this.portsDirty = true;
             this.catalystDirty = true;
         }
+    }
+
+    /**
+     * [新增] 获取 13x13x13 的扫描监听范围
+     */
+    public AABB getSearchBox() {
+        // 根据控制器朝向，它总是位于结构的一条棱上（通常是后端或侧端）
+        // 这里提供一个包含最大可能结构的保守 AABB (13x13x13)
+        // 由于控制器在侧棱，我们向所有方向扩展 12 格以确保覆盖
+        return new AABB(worldPosition).inflate(12);
+    }
+
+    /**
+     * [新增] 完整性校验
+     * @return true 如果结构依然被认为是完整的，false 需要全量重扫描
+     */
+    private boolean performIntegrityCheck(BlockPos pos) {
+        if (level == null || !structure.isFormed()) return false;
+        BlockState state = level.getBlockState(pos);
+        
+        // 如果是空气，绝对破坏了完整性
+        if (state.isAir()) return false;
+        
+        // 如果是内部空间变动，不影响结构完整性
+        if (structure.isInterior(pos)) return true;
+        
+        // 核心规则：如果是外壳，检查它是否仍然是合法的组件且材质一致
+        if (state.is(ThermalShockBlocks.SIMULATION_CHAMBER_CONTROLLER.get())) return true;
+        if (state.is(ThermalShockBlocks.SIMULATION_CHAMBER_PORT.get())) return true;
+        if (state.is(ThermalShockTags.VENTS)) return true;
+        
+        // 检查外壳方块一致性 (解决用户提到的“放置不同方块不更新”问题)
+        return state.is(structure.getCamouflageState().getBlock());
     }
 
     /**
@@ -475,7 +506,9 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
         } else {
             updatePerformance(); // 重置为0效率
             errorPos = result.errorPos();
-
+            
+            // [新增] 注册到未成型列表，监听 13x13x13 范围内的变动
+            StructureManager.registerPending(level, worldPosition, getSearchBox());
 
             // [修复] 验证失败时必须同步 errorPos 到客户端，否则无法渲染红框
             setChanged();
@@ -488,6 +521,15 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
         syncData();
     }
 
+    public MachineMode getMode() { return mode; }
+    public int getHeat() { return thermo.getCurrentHeat(); }
+    public int getDelta() { return thermo.getDeltaT(); }
+    public int getNetInputRate() { 
+        return mode == MachineMode.OVERHEATING ? thermo.getLastInputRate() : (int) thermo.getCurrentHighTemp(); 
+    }
+    public int getMaxBatchSize() { return performance.getBatchSize(); }
+    public boolean isRecipeLocked() { return recipeLocked; }
+
     // [新增] 检查是否有效且有变更 (Dirty Flag Check)
     // 用于 ChamberProcess 决定是否需要重新扫描配方
     public boolean isValidAndChanged() {
@@ -495,11 +537,36 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
     }
     
     public AbstractSimulationRecipe getRuntimeRecipe() {
+        if (selectedRecipe == null && selectedRecipeId != null && level != null) {
+            this.selectedRecipe = resolveRecipeById(selectedRecipeId);
+        }
         return this.selectedRecipe;
+    }
+
+    private AbstractSimulationRecipe resolveRecipeById(ResourceLocation id) {
+        if (id == null || level == null) return null;
+        var recipe = level.getRecipeManager().byKey(id).orElse(null);
+        if (recipe != null && recipe.value() instanceof AbstractSimulationRecipe r) {
+            return r;
+        }
+        return null;
     }
     
     public void setRuntimeRecipe(AbstractSimulationRecipe recipe) {
         this.selectedRecipe = recipe;
+    }
+
+    public ResourceLocation getMatchedRecipeId() {
+        return matchedRecipeId != null ? matchedRecipeId : selectedRecipeId;
+    }
+
+    public void setMatchedRecipe(ResourceLocation id, AbstractSimulationRecipe recipe) {
+        this.matchedRecipeId = id;
+        this.matchedRecipe = recipe;
+    }
+
+    public AbstractSimulationRecipe getMatchedRecipe() {
+        return matchedRecipe != null ? matchedRecipe : getRuntimeRecipe();
     }
 
     private void refreshPortCache() {
@@ -647,7 +714,7 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
     }
 
     public boolean isRisingEdge() {
-        return isPowered && !lastPowered;
+        return isPulseFrame;
     }
 
     public MachineMode getMachineMode() {
@@ -759,6 +826,7 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
 
     public void setSelectedRecipe(ResourceLocation id) {
         this.selectedRecipeId = id;
+        this.selectedRecipe = resolveRecipeById(id);
         if (id != null) {
             // 切换配方时，强制唤醒检查
             markEntityCacheDirty();
@@ -846,6 +914,9 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
 
                 AABB bounds = AABB.encapsulatingFullBlocks(structure.getMinPos(), structure.getMaxPos());
                 StructureManager.updateStructure(level, worldPosition, bounds);
+            } else {
+                // 未成型时也需要加入待定列表
+                StructureManager.registerPending(level, worldPosition, getSearchBox());
             }
 
             // 延迟一刻验证，防止区块加载时的顺序问题

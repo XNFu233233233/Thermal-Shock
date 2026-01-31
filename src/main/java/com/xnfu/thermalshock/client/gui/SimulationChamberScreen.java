@@ -9,9 +9,8 @@ import com.xnfu.thermalshock.client.gui.component.InfoPanelWidget;
 import com.xnfu.thermalshock.network.PacketSelectRecipe;
 import com.xnfu.thermalshock.network.PacketToggleLock;
 import com.xnfu.thermalshock.network.PacketToggleMode;
-import com.xnfu.thermalshock.recipe.AbstractSimulationRecipe; // 新增
-import com.xnfu.thermalshock.recipe.OverheatingRecipe;        // 新增
-import com.xnfu.thermalshock.recipe.ThermalShockRecipe;       // 新增
+import com.xnfu.thermalshock.recipe.AbstractSimulationRecipe;
+import com.xnfu.thermalshock.registries.ThermalShockItems;
 import com.xnfu.thermalshock.registries.ThermalShockRecipes;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
@@ -24,6 +23,8 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.neoforged.neoforge.network.PacketDistributor;
 
@@ -47,6 +48,10 @@ public class SimulationChamberScreen extends AbstractContainerScreen<SimulationC
     private static final int LIST_BG_COLOR = 0xFF000000;
     private static final int STATUS_X = 140;
     private static final int STATUS_Y = 10;
+    public static final int BTN_RECIPE_X = 153;
+    public static final int BTN_RECIPE_Y = 23;
+    public static final int BTN_RECIPE_W = 16;
+    public static final int BTN_RECIPE_H = 16;
 
     // --- 状态变量 ---
     private final List<RecipeButton> filteredButtons = new ArrayList<>();
@@ -105,7 +110,15 @@ public class SimulationChamberScreen extends AbstractContainerScreen<SimulationC
             playClickSound(this.modeSwitchStartTime > 0 ? 1.0f : 0.8f);
         }).bounds(leftPos + 153, topPos + 5, 16, 16).build());
 
-        // --- 3. 热量条 ---
+        // --- 3. 配方按钮 (JEI 交互) ---
+        addRenderableWidget(Button.builder(Component.literal("R"), btn -> {
+            // 这里留空，由于我们在 JEI Plugin 注册了该区域，JEI 会拦截点击
+        })
+        .bounds(leftPos + BTN_RECIPE_X, topPos + BTN_RECIPE_Y, BTN_RECIPE_W, BTN_RECIPE_H)
+        .tooltip(Tooltip.create(Component.translatable("gui.thermalshock.tooltip.show_recipes.desc").withStyle(ChatFormatting.GRAY)))
+        .build());
+
+        // --- 4. 热量条 ---
         this.heatBar = addRenderableWidget(new HeatBarWidget(
                 leftPos + HEAT_BAR_X,
                 topPos + LIST_LAYOUT_Y,
@@ -186,6 +199,7 @@ public class SimulationChamberScreen extends AbstractContainerScreen<SimulationC
         super.render(gfx, mouseX, mouseY, partialTick);
         renderRecipeList(gfx, mouseX, mouseY);
         renderUnifiedTooltips(gfx, mouseX, mouseY);
+        renderRecipeButtonPreview(gfx, mouseX, mouseY);
     }
 
     @Override
@@ -193,15 +207,26 @@ public class SimulationChamberScreen extends AbstractContainerScreen<SimulationC
         gfx.fill(leftPos, topPos, leftPos + imageWidth, topPos + imageHeight, 0xFF000000);
         gfx.fill(leftPos + 2, topPos + 2, leftPos + imageWidth - 2, topPos + imageHeight - 2, BG_COLOR);
 
-        // 绘制催化剂槽背景
+        // 绘制槽位背景
         drawSlotBg(gfx, leftPos + SLOT_CATALYST_X, topPos + SLOT_CATALYST_Y);
-
-        // [新增] 绘制升级槽背景
         drawSlotBg(gfx, leftPos + SLOT_UPGRADE_X, topPos + SLOT_UPGRADE_Y);
-        // [新增] 绘制升级槽图标提示 (半透明 'S' 或类似的标记)
-        if (menu.getSlot(1).getItem().isEmpty()) {
-            gfx.drawString(this.font, "S", leftPos + SLOT_UPGRADE_X + 6, topPos + SLOT_UPGRADE_Y + 5, 0x44FFFFFF, false);
+
+        // [核心修改] 渲染高度透明的背景图标
+        RenderSystem.enableBlend();
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 0.12f); // 12% 透明度 (极淡，接近水印)
+
+        // 催化剂槽图标
+        if (menu.getSlot(0).getItem().isEmpty()) {
+            gfx.renderItem(new ItemStack(ThermalShockItems.MATERIAL_CLUMP.get()), leftPos + SLOT_CATALYST_X + 1, topPos + SLOT_CATALYST_Y + 1);
         }
+
+        // 升级槽图标
+        if (menu.getSlot(1).getItem().isEmpty()) {
+            gfx.renderItem(new ItemStack(ThermalShockItems.SIMULATION_UPGRADE.get()), leftPos + SLOT_UPGRADE_X + 1, topPos + SLOT_UPGRADE_Y + 1);
+        }
+
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f); // 恢复颜色
+        RenderSystem.disableBlend();
 
         for (int row = 0; row < 3; row++) {
             for (int col = 0; col < 9; col++) drawSlotBg(gfx, leftPos + INV_X + col * 18, topPos + INV_Y + row * 18);
@@ -275,7 +300,15 @@ public class SimulationChamberScreen extends AbstractContainerScreen<SimulationC
             double relY = mouseY - (topPos + LIST_LAYOUT_Y) + currentScroll;
             for (RecipeButton btn : filteredButtons) {
                 if (btn.isMouseOver(relX, relY)) {
-                    tooltip.addAll(btn.getTooltipComponents());
+                    // [Fix] GenericClumpButton 不显示悬浮配方
+                    if (shift && !(btn instanceof GenericClumpButton)) {
+                         gfx.renderTooltip(font, btn.getTooltipComponents(), 
+                             Optional.of(new com.xnfu.thermalshock.client.gui.tooltip.RecipePreviewTooltip(btn.holder.value())), 
+                             mouseX, mouseY);
+                    } else {
+                        // Standard tooltip
+                        tooltip.addAll(btn.getTooltipComponents());
+                    }
                     break;
                 }
             }
@@ -313,6 +346,73 @@ public class SimulationChamberScreen extends AbstractContainerScreen<SimulationC
 
         if (!tooltip.isEmpty()) gfx.renderTooltip(font, tooltip, Optional.empty(), mouseX, mouseY);
         else this.renderTooltip(gfx, mouseX, mouseY);
+    }
+
+    private void renderRecipeButtonPreview(GuiGraphics gfx, int mouseX, int mouseY) {
+        if (!isHovering(BTN_RECIPE_X, BTN_RECIPE_Y, BTN_RECIPE_W, BTN_RECIPE_H, mouseX - leftPos, mouseY - topPos)) return;
+        if (!Screen.hasShiftDown()) return;
+
+        // 获取当前选中的配方
+        var selectedId = menu.getBlockEntity().getMatchedRecipeId();
+        AbstractSimulationRecipe recipeToShow = null;
+        if (selectedId != null && !GENERIC_CLUMP_ID.equals(selectedId)) {
+            var opt = minecraft.level.getRecipeManager().byKey(selectedId);
+            if (opt.isPresent() && opt.get().value() instanceof AbstractSimulationRecipe r) {
+                recipeToShow = r;
+            }
+        }
+
+        if (recipeToShow != null) {
+            // 显示特定配方预览
+            int x = mouseX + 10;
+            int y = mouseY - 20;
+            if (x + RecipePreviewRenderer.WIDTH > this.width) x = mouseX - RecipePreviewRenderer.WIDTH - 10;
+            
+            gfx.pose().pushPose();
+            gfx.pose().translate(0, 0, 500);
+            RecipePreviewRenderer.render(gfx, recipeToShow, x, y);
+            gfx.pose().popPose();
+            return;
+        }
+
+        // 回退：显示支持的分类列表 (Fallback)
+        int x = mouseX + 10;
+        int y = mouseY - 20;
+        int w = 140;
+
+        record PreviewCat(Component name, ItemStack icon, int color) {}
+        List<PreviewCat> cats = List.of(
+            new PreviewCat(Component.translatable("gui.thermalshock.jei.category.overheating"), new ItemStack(Items.BLAZE_POWDER), 0xffaa0000),
+            new PreviewCat(Component.translatable("gui.thermalshock.jei.category.shock"), new ItemStack(Blocks.BLUE_ICE), 0xff55ffff),
+            new PreviewCat(Component.translatable("gui.thermalshock.jei.category.clump_filling_shock"), new ItemStack(ThermalShockItems.MATERIAL_CLUMP.get()), 0xffaaaaaa),
+            new PreviewCat(Component.translatable("gui.thermalshock.jei.category.clump_filling_crafting"), new ItemStack(Blocks.CRAFTING_TABLE), 0xffaaaaaa),
+            new PreviewCat(Component.translatable("gui.thermalshock.jei.category.clump_extraction"), new ItemStack(Blocks.BLAST_FURNACE), 0xffaa0000)
+        );
+
+        int h = cats.size() * 18 + 22;
+        if (x + w > this.width) x = mouseX - w - 10;
+
+        gfx.pose().pushPose();
+        gfx.pose().translate(0, 0, 500); 
+
+        gfx.fill(x, y, x + w, y + h, 0xf0202020);
+        gfx.renderOutline(x, y, w, h, 0xff444444);
+
+        gfx.drawString(this.font, Component.translatable("gui.thermalshock.jei.preview.title").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD), x + 5, y + 5, 0xffffffff, false);
+        gfx.fill(x + 5, y + 16, x + w - 5, y + 17, 0x44ffffff);
+
+        for (int i = 0; i < cats.size(); i++) {
+            PreviewCat cat = cats.get(i);
+            int iy = y + 20 + i * 18;
+            gfx.renderItem(cat.icon, x + 5, iy);
+            
+            gfx.pose().pushPose();
+            gfx.pose().translate(x + 24, iy + 4, 0);
+            gfx.drawString(this.font, cat.name, 0, 0, cat.color, false);
+            gfx.pose().popPose();
+        }
+
+        gfx.pose().popPose();
     }
 
     // ==========================================
@@ -462,25 +562,9 @@ public class SimulationChamberScreen extends AbstractContainerScreen<SimulationC
             List<Component> tooltip = new ArrayList<>(Screen.getTooltipFromItem(mc, icon));
 
             // 2. 追加机器配方特定的硬性条件 (Req/Cost/Delta)
-            AbstractSimulationRecipe recipe = holder.value();
-
-            // 添加一个分隔行或者空行，让视觉更清晰
-            // tooltip.add(Component.empty());
-
-            if (recipe.getMachineMode() == MachineMode.OVERHEATING) {
-                if (recipe instanceof OverheatingRecipe ov) {
-                    tooltip.add(Component.literal("Req: >" + ov.getMinHeatRate() + "H/t").withStyle(ChatFormatting.GRAY));
-                    tooltip.add(Component.literal("Cost: " + ov.getHeatCost() + " Heat").withStyle(ChatFormatting.RED));
-                }
-            } else {
-                if (recipe instanceof ThermalShockRecipe ts) {
-                    // 显示更详细的 High/Low/Delta 要求
-                    tooltip.add(Component.literal("High > " + ts.getMinHotTemp()).withStyle(ChatFormatting.RED));
-                    tooltip.add(Component.literal("Low < " + ts.getMaxColdTemp()).withStyle(ChatFormatting.AQUA));
-                    tooltip.add(Component.literal("Delta: " + ts.getRequiredDelta()).withStyle(ChatFormatting.GOLD));
-                }
-            }
-
+            // 2. 追加机器配方特定的硬性条件 (Req/Cost/Delta)
+            // [Modified] Removed text tooltips as per user request to implement graphical preview instead.
+            
             return tooltip;
         }
     }

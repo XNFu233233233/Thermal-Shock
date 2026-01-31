@@ -23,8 +23,11 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
+import net.neoforged.neoforge.client.model.data.ModelData;
 import org.joml.Matrix4f;
 import org.joml.Quaternionf;
+
+import java.util.OptionalDouble;
 
 // 泛型改为 BlockEntity 以同时支持 Controller 和 Port
 public class SimulationChamberRenderer implements BlockEntityRenderer<BlockEntity> {
@@ -62,7 +65,7 @@ public class SimulationChamberRenderer implements BlockEntityRenderer<BlockEntit
             poseStack.translate(-0.5, -0.5, -0.5);
 
             // 渲染伪装方块
-            blockDispatcher.renderSingleBlock(camouflageState, poseStack, bufferSource, combinedLight, combinedOverlay, net.neoforged.neoforge.client.model.data.ModelData.EMPTY, null);
+            blockDispatcher.renderSingleBlock(camouflageState, poseStack, bufferSource, combinedLight, combinedOverlay, ModelData.EMPTY, null);
 
             poseStack.popPose();
         }
@@ -132,7 +135,7 @@ public class SimulationChamberRenderer implements BlockEntityRenderer<BlockEntit
                 false,
                 RenderType.CompositeState.builder()
                         .setShaderState(RenderStateShard.RENDERTYPE_LINES_SHADER)
-                        .setLineState(new RenderStateShard.LineStateShard(java.util.OptionalDouble.of(6.0D))) // 加粗线条
+                        .setLineState(new RenderStateShard.LineStateShard(OptionalDouble.of(6.0D))) // 加粗线条
                         .setTransparencyState(RenderStateShard.TRANSLUCENT_TRANSPARENCY)
                         .setOutputState(RenderStateShard.ITEM_ENTITY_TARGET)
                         .setWriteMaskState(RenderStateShard.COLOR_WRITE) // [Fix] 不写深度，避免遮挡
@@ -195,6 +198,7 @@ public class SimulationChamberRenderer implements BlockEntityRenderer<BlockEntit
         poseStack.translate(0.5, 0.5, 0.5);
 
         switch (dir) {
+            case NORTH -> {} // No rotation needed
             case SOUTH -> poseStack.mulPose(new Quaternionf().rotateY((float) Math.toRadians(180)));
             case WEST -> poseStack.mulPose(new Quaternionf().rotateY((float) Math.toRadians(90)));
             case EAST -> poseStack.mulPose(new Quaternionf().rotateY((float) Math.toRadians(-90)));

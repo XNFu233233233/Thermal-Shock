@@ -1,7 +1,9 @@
 package com.xnfu.thermalshock.client.gui;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.xnfu.thermalshock.registries.ThermalShockItems;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -13,8 +15,8 @@ import net.minecraft.world.level.material.Fluid;
 import net.neoforged.neoforge.client.extensions.common.IClientFluidTypeExtensions;
 import net.neoforged.neoforge.fluids.FluidStack;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 public class ThermalConverterScreen extends AbstractContainerScreen<ThermalConverterMenu> {
 
@@ -53,7 +55,7 @@ public class ThermalConverterScreen extends AbstractContainerScreen<ThermalConve
     private static final int HEAT_BAR_Y = 72; // 稍微上移一点
     private static final int HEAT_BAR_W = 120;
     private static final int HEAT_BAR_H = 8; // 从 5 改为 8，加宽
-    private static final int VISUAL_MAX_HEAT = 2000;
+    private static final int VISUAL_MAX_HEAT = 1000;
 
     public ThermalConverterScreen(ThermalConverterMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title);
@@ -68,6 +70,23 @@ public class ThermalConverterScreen extends AbstractContainerScreen<ThermalConve
         super.render(gfx, mouseX, mouseY, partialTick);
         this.renderTooltip(gfx, mouseX, mouseY);
         renderFluidTooltips(gfx, mouseX, mouseY);
+        renderHeatTooltips(gfx, mouseX, mouseY);
+    }
+
+    private void renderHeatTooltips(GuiGraphics gfx, int mouseX, int mouseY) {
+        if (isHovering(HEAT_BAR_X, HEAT_BAR_Y, HEAT_BAR_W, HEAT_BAR_H, mouseX, mouseY)) {
+            List<Component> tips = new ArrayList<>();
+            tips.add(Component.translatable("gui.thermalshock.converter.heat_label", menu.getCurrentHeat()).withStyle(net.minecraft.ChatFormatting.GOLD));
+            
+            if (hasShiftDown()) {
+                tips.add(Component.empty());
+                tips.add(Component.translatable("gui.thermalshock.converter.heat_requirement").withStyle(net.minecraft.ChatFormatting.GRAY, net.minecraft.ChatFormatting.ITALIC));
+            } else {
+                tips.add(Component.translatable("gui.thermalshock.tooltip.hold_shift").withStyle(net.minecraft.ChatFormatting.DARK_GRAY));
+            }
+            
+            gfx.renderTooltip(font, tips, java.util.Optional.empty(), mouseX, mouseY);
+        }
     }
 
     @Override
@@ -80,15 +99,22 @@ public class ThermalConverterScreen extends AbstractContainerScreen<ThermalConve
         drawSlot(gfx, SLOT_OUT2_X, SLOT_OUT2_Y);
 
         // 绘制升级槽空心边框 (透明底板)
-        // 坐标需与 Menu 保持一致: x=-20, y=10
         for (int i = 0; i < 4; i++) {
             int sx = leftPos - 20;
             int sy = topPos + 10 + i * 18;
-            // 绘制四条边 (颜色使用现有的 COLOR_SLOT_BORDER)
             gfx.fill(sx, sy, sx + 18, sy + 1, COLOR_SLOT_BORDER);       // Top
             gfx.fill(sx, sy + 17, sx + 18, sy + 18, COLOR_SLOT_BORDER); // Bottom
             gfx.fill(sx, sy, sx + 1, sy + 18, COLOR_SLOT_BORDER);       // Left
             gfx.fill(sx + 17, sy, sx + 18, sy + 18, COLOR_SLOT_BORDER); // Right
+
+            // [新增] 渲染高度透明的背景图标
+            if (menu.getSlot(3 + i).getItem().isEmpty()) {
+                RenderSystem.enableBlend();
+                RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 0.12f);
+                gfx.renderItem(new ItemStack(ThermalShockItems.OVERCLOCK_UPGRADE.get()), sx + 1, sy + 1);
+                RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
+                RenderSystem.disableBlend();
+            }
         }
 
         drawFluidTankBg(gfx, FLUID_L_X, FLUID_L_Y);
@@ -101,6 +127,16 @@ public class ThermalConverterScreen extends AbstractContainerScreen<ThermalConve
         renderProgressBar(gfx);
         renderHeatGauge(gfx);
         drawPlayerInv(gfx);
+
+        // [核心修改] 渲染高度透明的背景图标
+        RenderSystem.enableBlend();
+        // 此处的透明度控制【输入槽】(Material Clump)
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 0.06f); 
+        if (menu.getSlot(0).getItem().isEmpty()) {
+            gfx.renderItem(new ItemStack(ThermalShockItems.MATERIAL_CLUMP.get()), leftPos + SLOT_IN_X + 1, topPos + SLOT_IN_Y + 1);
+        }
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
+        RenderSystem.disableBlend();
     }
 
     // ==========================================
@@ -112,23 +148,37 @@ public class ThermalConverterScreen extends AbstractContainerScreen<ThermalConve
         int sy = topPos + HEAT_BAR_Y;
         int cx = sx + HEAT_BAR_W / 2;
 
-        // 背景轨道
+        // 1. 背景轨道
         gfx.fill(sx, sy, sx + HEAT_BAR_W, sy + HEAT_BAR_H, COLOR_BAR_BG);
 
         int heat = menu.getCurrentHeat();
         float ratio = (float) Math.abs(heat) / VISUAL_MAX_HEAT;
         ratio = Mth.clamp(ratio, 0.0f, 1.0f);
-
         int barLength = (int) (ratio * (HEAT_BAR_W / 2));
 
+        // 2. 热量进度条 (在刻度下方)
         if (heat > 0) {
             gfx.fillGradient(cx, sy + 1, cx + barLength, sy + HEAT_BAR_H - 1, 0xFFFF0000, 0xFFFFAA00);
         } else if (heat < 0) {
             gfx.fillGradient(cx - barLength, sy + 1, cx, sy + HEAT_BAR_H - 1, 0xFF00AAAA, 0xFF0055FF);
         }
 
-        // 中心点
-        gfx.fill(cx - 1, sy - 1, cx + 1, sy + HEAT_BAR_H + 1, 0xFFFFFFFF);
+        // 3. [调整] 刻度线置于顶层 (每 100 热量 = 6 像素)
+        for (int i = 1; i <= 10; i++) {
+            int offset = i * 6;
+            // 仅在顶部和底部各绘制 2px 的线段，不再贯穿全高
+            // 上方刻度
+            gfx.fill(cx + offset, sy, cx + offset + 1, sy + 2, 0xAAFFFFFF);
+            gfx.fill(cx - offset, sy, cx - offset + 1, sy + 2, 0xAAFFFFFF);
+            // 下方刻度
+            gfx.fill(cx + offset, sy + HEAT_BAR_H - 2, cx + offset + 1, sy + HEAT_BAR_H, 0xAAFFFFFF);
+            gfx.fill(cx - offset, sy + HEAT_BAR_H - 2, cx - offset + 1, sy + HEAT_BAR_H, 0xAAFFFFFF);
+        }
+
+        // 4. 中心点 (圆点 0) - 使用加粗的纵向白块表示“原点”
+        gfx.fill(cx - 1, sy - 1, cx + 2, sy + HEAT_BAR_H + 1, 0xFFFFFFFF);
+        // 使用 drawString 并手动居中且禁用阴影
+        gfx.drawString(font, "0", cx - font.width("0") / 2, sy - 10, 0xFFFFFFFF, false);
     }
 
     private void renderProgressBar(GuiGraphics gfx) {

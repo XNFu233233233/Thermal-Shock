@@ -1,8 +1,7 @@
 package com.xnfu.thermalshock.util;
+ 
 
-import com.xnfu.thermalshock.registries.ThermalShockBlocks;
-import com.xnfu.thermalshock.registries.ThermalShockDataMaps;
-import com.xnfu.thermalshock.registries.ThermalShockTags;
+import com.xnfu.thermalshock.registries.*;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
@@ -32,6 +31,17 @@ public class MultiblockValidator {
         Direction backDir = controllerFacing.getOpposite();
         Direction upDir = Direction.UP;
         Direction rightDir = controllerFacing.getCounterClockWise();
+
+        // 0. 快速预检：如果控制器周围一个外壳/组件都没有，直接跳过全量扫描
+        // 这在放置处于空地的控制器时能节省上万次循环
+        boolean hasAnyNeighbor = false;
+        for (Direction dir : Direction.values()) {
+            if (isFrameCandidate(level.getBlockState(controllerPos.relative(dir)))) {
+                hasAnyNeighbor = true;
+                break;
+            }
+        }
+        if (!hasAnyNeighbor) return fail(Component.translatable("message.thermalshock.incomplete"), null);
 
         int bestSize = 0;
         BlockPos bestTopLeft = null;
@@ -123,7 +133,7 @@ public class MultiblockValidator {
         return count;
     }
 
-    private static boolean isFrameCandidate(BlockState state) {
+    public static boolean isFrameCandidate(BlockState state) {
         if (state.isAir()) return false;
         return state.getBlockHolder().getData(ThermalShockDataMaps.CASING_PROPERTY) != null
                 || state.is(ThermalShockBlocks.SIMULATION_CHAMBER_CONTROLLER.get())
@@ -158,8 +168,26 @@ public class MultiblockValidator {
         );
 
         for (int i = 0; i < size; i++) {
+            boolean isEdgeI = (i == 0 || i == size - 1);
             for (int j = 0; j < size; j++) {
-                for (int k = 0; k < size; k++) {
+                boolean isEdgeJ = (j == 0 || j == size - 1);
+                
+                // 重点优化：如果 i 和 j 都不在边界，内部核心部分（k=1..size-2）可以跳过扫描
+                // 此时 edgeCount 永远 >= 1，因为只要在该循环外就一定是 shell
+                int kStart, kEnd, kStep;
+                if (!isEdgeI && !isEdgeJ) {
+                    // 只检查 front face (0) 和 back face (size-1)
+                    kStart = 0;
+                    kEnd = size - 1;
+                    kStep = size - 1; // 跳过中间 11 格
+                } else {
+                    // 在棱上，必须检查整条线
+                    kStart = 0;
+                    kEnd = size - 1;
+                    kStep = 1;
+                }
+
+                for (int k = kStart; k <= kEnd; k += kStep) {
                     cursor.set(topLeft).move(right, i).move(down, j).move(back, k);
 
                     // 忽略控制器自身位置
@@ -170,29 +198,16 @@ public class MultiblockValidator {
                     // ====================================================
                     // 1. 全局唯一性检查 (Global Uniqueness)
                     // ====================================================
-                    // 无论是在外壳还是内部，都不允许出现第二个控制器，避免多方块逻辑冲突
                     if (state.is(ThermalShockBlocks.SIMULATION_CHAMBER_CONTROLLER.get())) {
                         return fail(Component.translatable("message.thermalshock.multiple_controllers"), cursor.immutable());
                     }
 
                     // ====================================================
-                    // 2. 内部检查 (Interior) - 宽松模式
+                    // 2. 外部检查 (Shell) - 严格模式
                     // ====================================================
-                    boolean isX = (i == 0 || i == size - 1);
-                    boolean isY = (j == 0 || j == size - 1);
-                    boolean isZ = (k == 0 || k == size - 1);
-                    int edgeCount = (isX ? 1 : 0) + (isY ? 1 : 0) + (isZ ? 1 : 0);
-
-                    // edgeCount == 0 代表内部空间
-                    if (edgeCount == 0) {
-                        // [核心修改] 只要不是控制器（上面已检查），允许任何方块存在
-                        // 这样配方所需的输入方块（如圆石）或杂物都不会破坏结构完整性
-                        continue;
-                    }
-
-                    // ====================================================
-                    // 3. 外部检查 (Shell) - 严格模式
-                    // ====================================================
+                    boolean isEdgeK = (k == 0 || k == size - 1);
+                    int edgeCount = (isEdgeI ? 1 : 0) + (isEdgeJ ? 1 : 0) + (isEdgeK ? 1 : 0);
+                    
                     BlockCheckResult check = checkBlockType(state);
 
                     // Frame (棱)

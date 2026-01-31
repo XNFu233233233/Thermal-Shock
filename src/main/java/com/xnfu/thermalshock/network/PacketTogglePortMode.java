@@ -1,6 +1,7 @@
 package com.xnfu.thermalshock.network;
 
 import com.xnfu.thermalshock.ThermalShock;
+import com.xnfu.thermalshock.block.entity.SimulationPortBlockEntity;
 import io.netty.buffer.ByteBuf;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.codec.StreamCodec;
@@ -26,7 +27,7 @@ public record PacketTogglePortMode(BlockPos pos) implements CustomPacketPayload 
             if (context.player() instanceof ServerPlayer player) {
                 if (player.distanceToSqr(payload.pos.getCenter()) < 64.0 &&
                         // [修改] 现在检查的是 Port BE
-                        player.level().getBlockEntity(payload.pos) instanceof com.xnfu.thermalshock.block.entity.SimulationPortBlockEntity be) {
+                        player.level().getBlockEntity(payload.pos) instanceof SimulationPortBlockEntity be) {
                     be.cyclePortMode();
                 }
             }

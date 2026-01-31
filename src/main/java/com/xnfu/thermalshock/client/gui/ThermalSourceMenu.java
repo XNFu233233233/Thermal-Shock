@@ -29,7 +29,7 @@ public class ThermalSourceMenu extends AbstractContainerMenu {
         addDataSlots(data);
 
         // 燃料槽 (Slot 0) - 上移至 y=26 以腾出下方空间
-        this.addSlot(new SlotItemHandler(be.getItemHandler(), 0, 80, 26));
+        this.addSlot(new SlotItemHandler(be.getItemHandler(), 0, 81, 27));
 
         // 玩家背包
         addPlayerInventory(new InvWrapper(inv));
@@ -38,11 +38,11 @@ public class ThermalSourceMenu extends AbstractContainerMenu {
     private void addPlayerInventory(net.neoforged.neoforge.items.IItemHandler playerInventory) {
         for (int row = 0; row < 3; ++row) {
             for (int col = 0; col < 9; ++col) {
-                this.addSlot(new SlotItemHandler(playerInventory, col + row * 9 + 9, 8 + col * 18, 84 + row * 18));
+                this.addSlot(new SlotItemHandler(playerInventory, col + row * 9 + 9, 9 + col * 18, 85 + row * 18));
             }
         }
         for (int col = 0; col < 9; ++col) {
-            this.addSlot(new SlotItemHandler(playerInventory, col, 8 + col * 18, 142));
+            this.addSlot(new SlotItemHandler(playerInventory, col, 9 + col * 18, 143));
         }
     }
 

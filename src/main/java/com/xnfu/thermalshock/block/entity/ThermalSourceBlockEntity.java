@@ -1,10 +1,9 @@
 package com.xnfu.thermalshock.block.entity;
 
 import com.xnfu.thermalshock.block.ThermalSourceBlock;
+import com.xnfu.thermalshock.client.gui.ThermalSourceMenu;
 import com.xnfu.thermalshock.recipe.ThermalFuelRecipe;
-import com.xnfu.thermalshock.registries.ThermalShockBlockEntities;
-import com.xnfu.thermalshock.registries.ThermalShockBlocks;
-import com.xnfu.thermalshock.registries.ThermalShockRecipes;
+import com.xnfu.thermalshock.registries.*;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
@@ -13,6 +12,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
+import net.minecraft.tags.FluidTags;
 import net.minecraft.world.MenuProvider;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
@@ -148,6 +148,11 @@ public class ThermalSourceBlockEntity extends BlockEntity implements MenuProvide
         // === 1. 燃料逻辑 ===
         if (be.burnTime > 0) {
             be.burnTime--;
+            // C. 特殊硬编码 (水) - 也可以写进 DataMap，但为了保险保留硬编码
+            if (state.getFluidState().is(FluidTags.WATER)) {
+                // 水大概提供微弱冷却? 这里暂设为 0 或者 -5
+                // 如果 DataMap 没覆盖到，可以在这里补充
+            }
             dirty = true;
         } else {
             if (be.fuelHeatOutput != 0) {
@@ -237,6 +242,14 @@ public class ThermalSourceBlockEntity extends BlockEntity implements MenuProvide
     public int getCurrentHeatOutput() {
         return totalHeatOutput;
     }
+    
+    public int getBurnTime() {
+        return burnTime;
+    }
+    
+    public int getElectricHeatOutput() {
+        return electricHeatOutput;
+    }
 
     private boolean isHeater() {
         return this.getBlockState().is(ThermalShockBlocks.THERMAL_HEATER.get());
@@ -260,7 +273,7 @@ public class ThermalSourceBlockEntity extends BlockEntity implements MenuProvide
     @Nullable
     @Override
     public AbstractContainerMenu createMenu(int id, Inventory inventory, Player player) {
-        return new com.xnfu.thermalshock.client.gui.ThermalSourceMenu(id, inventory, this, this.data);
+        return new ThermalSourceMenu(id, inventory, this, this.data);
     }
 
     @Override

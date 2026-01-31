@@ -43,7 +43,7 @@ public class InfoPanelWidget extends AbstractWidget {
         int y = getY();
 
         // === Line 1: 热力数值 (IO / Delta) ===
-        if (mode == com.xnfu.thermalshock.block.entity.MachineMode.OVERHEATING.ordinal()) {
+        if (mode == MachineMode.OVERHEATING.ordinal()) {
             int rate = menu.getHeatIoRate();
             String sign = rate > 0 ? "+" : "";
             int color = rate >= 0 ? 0xFF550000 : 0xFF0000AA;
@@ -74,7 +74,7 @@ public class InfoPanelWidget extends AbstractWidget {
         gfx.drawString(font, String.format("Prog: %d%%", progress), x, y + REL_Y_4, 0xFF555555, false);
 
         // === Line 5: 警告信息 (Warning) ===
-        gfx.drawString(font, net.minecraft.network.chat.Component.translatable("gui.thermalshock.warning.short"), x, y + REL_Y_5, 0xFFFF5555, false);
+        gfx.drawString(font, Component.translatable("gui.thermalshock.warning.short"), x, y + REL_Y_5, 0xFFFF5555, false);
     }
 
     // [新增] 提取的计算方法
@@ -118,6 +118,9 @@ public class InfoPanelWidget extends AbstractWidget {
         // Line 4
         else if (relY >= REL_Y_4 && relY < REL_Y_4 + LINE_HEIGHT) {
             tooltip.add(Component.translatable("gui.thermalshock.tooltip.progress.title").withStyle(ChatFormatting.GRAY));
+            if (isShiftDown) {
+                tooltip.add(Component.translatable("gui.thermalshock.tooltip.progress.desc").withStyle(ChatFormatting.DARK_GRAY));
+            }
         }
         // [新增] Line 5: 警告详情
         else if (relY >= REL_Y_5 && relY < REL_Y_5 + LINE_HEIGHT) {

@@ -5,13 +5,11 @@ import com.xnfu.thermalshock.data.ColdSourceData;
 import com.xnfu.thermalshock.data.HeatSourceData;
 import com.xnfu.thermalshock.recipe.ConverterRecipeInput;
 import com.xnfu.thermalshock.recipe.ThermalConverterRecipe;
-import com.xnfu.thermalshock.registries.ThermalShockBlockEntities;
-import com.xnfu.thermalshock.registries.ThermalShockDataMaps;
-import com.xnfu.thermalshock.registries.ThermalShockItems;
-import com.xnfu.thermalshock.registries.ThermalShockRecipes;
+import com.xnfu.thermalshock.registries.*;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
+import net.minecraft.core.NonNullList;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.Connection;
 import net.minecraft.network.chat.Component;
@@ -68,8 +66,8 @@ public class ThermalConverterBlockEntity extends BlockEntity implements MenuProv
             super.deserializeNBT(provider, nbt);
             // [Fix] 存档迁移：如果读取旧存档导致 slot 变少，强制扩容到 7
             if (this.stacks.size() < 7) {
-                net.minecraft.core.NonNullList<ItemStack> oldStacks = this.stacks;
-                this.stacks = net.minecraft.core.NonNullList.withSize(7, ItemStack.EMPTY);
+                NonNullList<ItemStack> oldStacks = this.stacks;
+                this.stacks = NonNullList.withSize(7, ItemStack.EMPTY);
                 for (int i = 0; i < oldStacks.size(); i++) {
                     this.stacks.set(i, oldStacks.get(i));
                 }
@@ -81,10 +79,10 @@ public class ThermalConverterBlockEntity extends BlockEntity implements MenuProv
 
     // === Fluid ===
     // 0: Input Tank, 1: Output Tank
-    private final FluidTank inputTank = new FluidTank(4000) { // 稍微加大一点缓存
+    private final FluidTank inputTank = new FluidTank(64000) { // 稍微加大一点缓存
         @Override protected void onContentsChanged() { setChanged(); markRecipeDirty(); }
     };
-    private final FluidTank outputTank = new FluidTank(4000) {
+    private final FluidTank outputTank = new FluidTank(64000) {
         @Override protected void onContentsChanged() { 
             setChanged(); 
             // 输出变化时也需要唤醒，以检查是否腾出了空间
@@ -96,7 +94,7 @@ public class ThermalConverterBlockEntity extends BlockEntity implements MenuProv
     private final IFluidHandler fluidHandlerWrapper = new IFluidHandler() {
         @Override public int getTanks() { return 2; }
         @Override public @NotNull FluidStack getFluidInTank(int tank) { return tank == 0 ? inputTank.getFluid() : outputTank.getFluid(); }
-        @Override public int getTankCapacity(int tank) { return 4000; }
+        @Override public int getTankCapacity(int tank) { return 64000; }
         @Override public boolean isFluidValid(int tank, @NotNull FluidStack stack) { return tank == 0 && inputTank.isFluidValid(stack); }
         @Override public int fill(FluidStack resource, FluidAction action) { return inputTank.fill(resource, action); }
         @Override public @NotNull FluidStack drain(FluidStack resource, FluidAction action) { return outputTank.drain(resource, action); }
@@ -353,6 +351,10 @@ public class ThermalConverterBlockEntity extends BlockEntity implements MenuProv
     public IFluidHandler getFluidHandler() { return fluidHandlerWrapper; }
     public FluidTank getInputTank() { return inputTank; }
     public FluidTank getOutputTank() { return outputTank; }
+    
+    public int getCachedHeatInput() {
+        return cachedHeatInput;
+    }
 
     @Override
     public Component getDisplayName() {
