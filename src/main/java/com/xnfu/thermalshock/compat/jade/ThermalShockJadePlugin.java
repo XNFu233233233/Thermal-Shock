@@ -50,66 +50,51 @@ public class ThermalShockJadePlugin implements IWailaPlugin {
             if (accessor.getServerData() != null) {
                 var data = accessor.getServerData();
                 
-                // 1. 状态与模式合并 (Status & Mode)
-                if (data.contains("IsFormed") && data.contains("MachineMode")) {
+                // 1. 结构状态 (Status)
+                if (data.contains("IsFormed")) {
                     boolean formed = data.getBoolean("IsFormed");
                     Component statusComp = formed ? Component.translatable("gui.thermalshock.status.valid").withStyle(ChatFormatting.GREEN)
                                                 : Component.translatable("gui.thermalshock.status.invalid").withStyle(ChatFormatting.RED);
-                    
+                    tooltip.add(Component.translatable("jade.thermalshock.status", statusComp));
+                }
+
+                // 2. 机器模式 (Machine Mode)
+                if (data.contains("MachineMode")) {
                     Component modeComp = Component.literal(data.getString("MachineMode")).withStyle(ChatFormatting.AQUA);
-                    
-                    tooltip.add(Component.translatable("jade.thermalshock.status", statusComp)
-                            .append(Component.literal(" | ")).withStyle(ChatFormatting.GRAY)
-                            .append(Component.translatable("jade.thermalshock.mode", modeComp)));
-                } else {
-                    // Fallback separate
-                     if (data.contains("IsFormed")) {
-                        boolean formed = data.getBoolean("IsFormed");
-                        tooltip.add(Component.translatable("jade.thermalshock.status",
-                                formed ? Component.translatable("gui.thermalshock.status.valid").withStyle(ChatFormatting.GREEN)
-                                       : Component.translatable("gui.thermalshock.status.invalid").withStyle(ChatFormatting.RED)));
-                    }
-                    if (data.contains("MachineMode")) {
-                        tooltip.add(Component.translatable("jade.thermalshock.mode", 
-                                Component.literal(data.getString("MachineMode")).withStyle(ChatFormatting.AQUA)));
-                    }
+                    tooltip.add(Component.translatable("jade.thermalshock.mode", modeComp));
                 }
 
-                // 2. 热量与温差合并 (Heat & Delta)
-                if (data.contains("Heat") && data.contains("Delta")) {
-                    Component heatComp = Component.translatable("jade.thermalshock.heat", data.getInt("Heat")).withStyle(ChatFormatting.GOLD);
-                    Component deltaComp = Component.translatable("jade.thermalshock.delta", data.getInt("Delta")).withStyle(ChatFormatting.LIGHT_PURPLE);
-                    
-                    // Simple concatenation: "Heat: 100 H   Delta: 50 H"
-                    tooltip.add(heatComp.copy().append("   ").append(deltaComp));
-                } else {
-                    if (data.contains("Heat")) {
-                        tooltip.add(Component.translatable("jade.thermalshock.heat", data.getInt("Heat")).withStyle(ChatFormatting.GOLD));
-                    }
-                    if (data.contains("Delta")) {
-                        tooltip.add(Component.translatable("jade.thermalshock.delta", data.getInt("Delta")).withStyle(ChatFormatting.LIGHT_PURPLE));
-                    }
-                }
-
-                // 3. 输入率 (Net Input) - Keep separate or combine with MaxBatch? Keep separate for clarity.
-                if (data.contains("NetInput")) {
-                    tooltip.add(Component.translatable("jade.thermalshock.net_input", data.getInt("NetInput")).withStyle(ChatFormatting.YELLOW));
-                }
-
-                // 4. 批处理与锁定 (Batch & Exact)
+                // 3. 最大批处理 (Max Batch)
                 if (data.contains("MaxBatch")) {
-                     Component batchComp = Component.translatable("jade.thermalshock.max_batch", data.getInt("MaxBatch")).withStyle(ChatFormatting.WHITE);
-                     
-                     if (data.contains("Locked")) {
-                         boolean locked = data.getBoolean("Locked");
-                         Component lockComp = Component.translatable("jade.thermalshock.recipe_locked",
-                                locked ? Component.translatable("tooltip.thermalshock.locked").withStyle(ChatFormatting.RED)
-                                       : Component.translatable("tooltip.thermalshock.unlocked").withStyle(ChatFormatting.GRAY));
-                         
-                         tooltip.add(batchComp.copy().append("   ").append(lockComp));
-                     } else {
-                         tooltip.add(batchComp);
-                     }
+                    tooltip.add(Component.translatable("jade.thermalshock.max_batch", data.getInt("MaxBatch")).withStyle(ChatFormatting.WHITE));
+                }
+
+                // 4. 配方锁定 (Recipe Locked)
+                if (data.contains("Locked")) {
+                    boolean locked = data.getBoolean("Locked");
+                    Component lockComp = locked ? Component.translatable("tooltip.thermalshock.locked").withStyle(ChatFormatting.RED)
+                                               : Component.translatable("tooltip.thermalshock.unlocked").withStyle(ChatFormatting.GRAY);
+                    tooltip.add(Component.translatable("jade.thermalshock.recipe_locked", lockComp));
+                }
+
+                // 5. 模式特定信息
+                if (data.contains("RawMode")) {
+                    int mode = data.getInt("RawMode");
+                    if (mode == 0) { // OVERHEATING
+                        // 热量缓存
+                        if (data.contains("Heat")) {
+                            tooltip.add(Component.translatable("jade.thermalshock.heat", data.getInt("Heat")).withStyle(ChatFormatting.GOLD));
+                        }
+                        // 净输入率
+                        if (data.contains("NetInput")) {
+                            tooltip.add(Component.translatable("jade.thermalshock.net_input", data.getInt("NetInput")).withStyle(ChatFormatting.YELLOW));
+                        }
+                    } else if (mode == 1) { // THERMAL_SHOCK
+                        // 热应力
+                        if (data.contains("Delta")) {
+                            tooltip.add(Component.translatable("jade.thermalshock.delta", data.getInt("Delta")).withStyle(ChatFormatting.LIGHT_PURPLE));
+                        }
+                    }
                 }
             }
         }
@@ -124,6 +109,7 @@ public class ThermalShockJadePlugin implements IWailaPlugin {
                 data.putInt("NetInput", be.getNetInputRate());
                 data.putInt("MaxBatch", be.getMaxBatchSize());
                 data.putBoolean("Locked", be.isRecipeLocked());
+                data.putInt("RawMode", be.getMode().ordinal());
             }
         }
 
