@@ -69,10 +69,9 @@ public class CommonModEvents {
     @SubscribeEvent
     public static void onBlockPlace(BlockEvent.EntityPlaceEvent event) {
         if (!event.getLevel().isClientSide() && event.getLevel() instanceof ServerLevel sl) {
-            // 只有放置了机器零件才检查，放置普通方块视为内部填充
-            if (isRelevantBlock(event.getState())) {
-                StructureManager.checkActivity(sl, event.getPos(), false);
-            }
+            // [修复] 任何方块放置都触发检查 - StructureManager 会判断是否在结构内部
+            // 这样内部放置的普通方块（如泥土、冰块）也能唤醒机器
+            StructureManager.checkActivity(sl, event.getPos(), false);
         }
     }
 

@@ -55,25 +55,25 @@ public class ThermalShockRecipes {
     // =========================================
     // 类型 C: 燃料配方
     // =========================================
-    public static final net.neoforged.neoforge.registries.DeferredHolder<RecipeType<?>, RecipeType<ThermalFuelRecipe>> THERMAL_FUEL_TYPE =
+    public static final DeferredHolder<RecipeType<?>, RecipeType<ThermalFuelRecipe>> THERMAL_FUEL_TYPE =
             RECIPE_TYPES.register("thermal_fuel", () -> new RecipeType<ThermalFuelRecipe>() {
                 @Override public String toString() { return "thermalshock:thermal_fuel"; }
             });
 
-    public static final net.neoforged.neoforge.registries.DeferredHolder<RecipeSerializer<?>, ThermalFuelRecipe.Serializer> THERMAL_FUEL_SERIALIZER =
+    public static final DeferredHolder<RecipeSerializer<?>, ThermalFuelRecipe.Serializer> THERMAL_FUEL_SERIALIZER =
             SERIALIZERS.register("thermal_fuel", ThermalFuelRecipe.Serializer::new);
 
 
     // =========================================
     // 类型 D: 热力转换器 (Universal)
     // =========================================
-    public static final net.neoforged.neoforge.registries.DeferredHolder<RecipeType<?>, RecipeType<com.xnfu.thermalshock.recipe.ThermalConverterRecipe>> CONVERTER_TYPE =
+    public static final DeferredHolder<RecipeType<?>, RecipeType<ThermalConverterRecipe>> CONVERTER_TYPE =
             RECIPE_TYPES.register("thermal_converter", () -> new RecipeType<>() {
                 @Override public String toString() { return "thermalshock:thermal_converter"; }
             });
 
-    public static final net.neoforged.neoforge.registries.DeferredHolder<RecipeSerializer<?>, com.xnfu.thermalshock.recipe.ThermalConverterRecipe.Serializer> CONVERTER_SERIALIZER =
-            SERIALIZERS.register("thermal_converter", com.xnfu.thermalshock.recipe.ThermalConverterRecipe.Serializer::new);
+    public static final DeferredHolder<RecipeSerializer<?>, ThermalConverterRecipe.Serializer> CONVERTER_SERIALIZER =
+            SERIALIZERS.register("thermal_converter", ThermalConverterRecipe.Serializer::new);
 
     public static void register(IEventBus eventBus) {
         SERIALIZERS.register(eventBus);

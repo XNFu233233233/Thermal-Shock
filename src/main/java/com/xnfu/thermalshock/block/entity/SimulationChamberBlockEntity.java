@@ -1,7 +1,10 @@
 package com.xnfu.thermalshock.block.entity;
 
+import com.mojang.logging.LogUtils;
 import com.xnfu.thermalshock.block.SimulationChamberBlock;
+import org.slf4j.Logger;
 import com.xnfu.thermalshock.client.gui.SimulationChamberMenu;
+import com.xnfu.thermalshock.recipe.AbstractSimulationRecipe;
 import com.xnfu.thermalshock.item.SimulationUpgradeItem;
 import com.xnfu.thermalshock.registries.ThermalShockBlockEntities;
 import com.xnfu.thermalshock.registries.ThermalShockBlocks;
@@ -37,6 +40,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class SimulationChamberBlockEntity extends BlockEntity implements MenuProvider {
+    private static final Logger LOGGER = LogUtils.getLogger();
 
     // === 核心组件 ===
     private final ChamberStructure structure = new ChamberStructure();
@@ -89,12 +93,12 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
     private ResourceLocation selectedRecipeId = null;
     private boolean recipeLocked = false;
 
-    // [重构] 休眠与唤醒标记
-    // 默认为 false (休眠)，只有事件能将其置为 true (唤醒)
-    private boolean pendingProcess = false;
+    // [重构] 已移除 pendingProcess，使用 scheduleTick 事件驱动
 
     // [关键修复] 验证逻辑懒加载
     private boolean validationPending = false;
+    private boolean forceRevalidate = false; // [新增]
+    private AbstractSimulationRecipe selectedRecipe = null; // [新增]
 
     // === 缓存与脏标记 (Granular Dirty Flags) ===
     private BlockPos errorPos = null;
@@ -183,10 +187,10 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
     // =========================================================
 
     public void wakeUp() {
-        // 只有当当前处于休眠状态时，才触发唤醒
-        if (!this.pendingProcess) {
-            this.pendingProcess = true; // 标记需要执行一次处理
-            setChanged(); // 确保状态变化被保存
+        // [重构] 事件驱动：使用 scheduleTick 唤醒而非标记
+        if (level != null && !level.isClientSide) {
+            // 使用 scheduleTick 在下一刻调度执行
+            level.scheduleTick(worldPosition, getBlockState().getBlock(), 1);
         }
     }
 
@@ -228,102 +232,87 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
         }
     }
 
-    public static void tick(Level level, BlockPos pos, BlockState state, SimulationChamberBlockEntity be) {
-        if (level.isClientSide) return;
+    /**
+     * [重构] 事件驱动核心方法
+     * 由 Block.tick() (scheduleTick 回调) 调用
+     * 不再使用每刻 Ticker，完全按需执行
+     */
+    public void onScheduledTick() {
+        if (level == null || level.isClientSide) return;
 
-        if (be.validationPending) {
-            be.performValidation(null);
-            be.validationPending = false;
-            // [优化] 如果验证失败，直接中断后续逻辑
-            if (!be.structure.isFormed()) return;
+        // === 优先级 1: 结构验证 ===
+        if (validationPending) {
+            performValidation(null);
+            validationPending = false;
+            if (!structure.isFormed()) return;
         }
 
-        // 2. 红石状态更新 (检测脉冲)
-        boolean currentSignal = level.hasNeighborSignal(pos);
-        if (currentSignal != be.lastPowered) {
-            // 上升沿 (0 -> 1) 视为脉冲帧
-            be.isPulseFrame = currentSignal && !be.lastPowered;
-            be.isPowered = currentSignal;
-            be.updatePoweredState(currentSignal);
-
-            // 红石变动是重要的唤醒事件 (特别是 0->1)
-            if (be.isPulseFrame || be.isPowered) be.wakeUp();
+        // === 优先级 2: 红石状态检测 ===
+        boolean currentSignal = level.hasNeighborSignal(worldPosition);
+        // [修复] 始终更新 isPowered 以反映当前信号状态
+        isPowered = currentSignal;
+        if (currentSignal != lastPowered) {
+            isPulseFrame = currentSignal && !lastPowered;
+            updatePoweredState(currentSignal);
         } else {
-            be.isPulseFrame = false;
+            isPulseFrame = false;
         }
 
-        // === 优先级 2: 热量实时更新 ===
-        // 只要结构存在且环境变了，立即重算，保证数据实时性
-        if (be.structure.isFormed() && be.heatDirty) {
-            be.thermo.recalculate(level, be.structure);
-            be.heatDirty = false;
-            // 热量变化可能满足配方条件，尝试唤醒
-            be.wakeUp();
+        // === 优先级 3: 热量计算 ===
+        if (structure.isFormed() && heatDirty) {
+            thermo.recalculate(level, structure);
+            heatDirty = false;
         }
 
-        // === 过热模式特殊逻辑: 热量累积 ===
-        // 如果是过热模式且有持续信号，每一刻都需要累积热量
-        if (be.structure.isFormed() && be.mode == MachineMode.OVERHEATING && be.isPowered) {
-            int netInput = be.thermo.getLastInputRate();
+        // === 优先级 4: 过热模式热量累积 ===
+        // 持续信号时每刻累积热量，需要链式 scheduleTick
+        if (structure.isFormed() && mode == MachineMode.OVERHEATING && isPowered) {
+            int netInput = thermo.getLastInputRate();
             if (netInput != 0) {
-                be.thermo.addHeat(netInput);
-                // 热量变了，可能满足配方，唤醒
-                be.wakeUp();
+                thermo.addHeat(netInput);
             }
         }
 
-        // === 优先级 3: 配方处理 (事件驱动核心) ===
-        // 如果没有待办事项(pendingProcess)，且不是脉冲帧，且视觉效果已结束，直接跳过
-        if (!be.pendingProcess && !be.isPulseFrame && be.litTimer <= 0) {
-            return;
-        }
+        // === 优先级 5: 配方处理 ===
+        boolean hasPermission = isPulseFrame || isPowered;
 
-        // 权限检查：要么是脉冲触发，要么是持续供电
-        boolean hasPermission = be.isPulseFrame || be.isPowered;
+        if (structure.isFormed() && hasPermission) {
+            // 预处理缓存
+            if (catalystDirty) processCatalyst();
+            if (portsDirty) refreshPortCache();
+            if (blockCacheDirty || entityCacheDirty) rebuildInternalCache();
 
-        if (be.structure.isFormed() && hasPermission) {
-            // 4.1 预处理：催化剂与端口缓存
-            if (be.catalystDirty) be.processCatalyst();
-            if (be.portsDirty) be.refreshPortCache();
+            // 执行配方
+            boolean success = process.tick(level);
 
-            // 4.2 预处理：重建内部快照
-            if (be.blockCacheDirty || be.entityCacheDirty) {
-                be.rebuildInternalCache();
-            }
-
-            // 4.3 执行配方逻辑
-            // [核心] Process 现在返回 boolean (是否成功运行)
-            boolean success = be.process.tick(level);
-            
             if (success) {
-                // 自我维持：如果成功运行且有持续信号，保持唤醒进入下一 Tick
-                if (be.isPowered) {
-                    be.pendingProcess = true;
-                } else {
-                    // 脉冲触发的单次运行结束
-                    be.pendingProcess = false;
+                // 成功运行 - 如果持续供电，继续链式唤醒
+                if (isPowered) {
+                    level.scheduleTick(worldPosition, getBlockState().getBlock(), 1);
                 }
+            } else if (isPowered && recipeLocked && selectedRecipeId != null) {
+                // [修复] 失败但仍在供电且配方锁定 - 继续链式唤醒以检测新输入
+                // 这确保热冲击模式在等待输入时不会休眠
+                level.scheduleTick(worldPosition, getBlockState().getBlock(), 10); // 较低频率检查
+            }
+            // 否则休眠，等待下次事件唤醒
+        }
+
+        // === 优先级 6: 视觉状态处理 ===
+        if (litTimer > 0) {
+            litTimer--;
+            if (litTimer == 0) {
+                updateLitBlockState(false);
             } else {
-                // 运行失败 (缺货/缺热)，强制休眠，等待下次事件唤醒
-                be.pendingProcess = false;
-            }
-        } else {
-            // 结构无效或无权限 -> 休眠
-            be.pendingProcess = false;
-        }
-
-        // 3.4 视觉状态收尾
-        if (be.litTimer > 0) {
-            be.litTimer--;
-            if (be.litTimer == 0) {
-                be.updateLitBlockState(false);
+                // 视觉计时器未结束，继续调度
+                level.scheduleTick(worldPosition, getBlockState().getBlock(), 1);
             }
         }
 
-        // 重置单次处理标记
-        be.pendingProcess = false;
-        be.lastPowered = be.isPowered;
+        lastPowered = isPowered;
     }
+
+
 
 
     // =========================================================
@@ -446,6 +435,17 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
         }
     }
 
+    /**
+     * [新增] 惰性验证 - 用于打开 GUI 前的快速检查
+     * 如果结构未成型或有挂起的验证，则标记验证并唤醒
+     */
+    public void performLazyValidation() {
+        if (!this.structure.isFormed() || this.validationPending) {
+            this.validationPending = true;
+            wakeUp();
+        }
+    }
+
     public void performValidation(@Nullable Player player) {
         if (level == null || level.isClientSide) return;
         BlockState state = getBlockState();
@@ -475,11 +475,31 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
         } else {
             updatePerformance(); // 重置为0效率
             errorPos = result.errorPos();
+
+
+            // [修复] 验证失败时必须同步 errorPos 到客户端，否则无法渲染红框
+            setChanged();
+            if (level != null) level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
+
             if (player != null)
                 player.displayClientMessage(Component.translatable("message.thermalshock.invalid").append(result.errorMessage()), true);
         }
         setChanged();
         syncData();
+    }
+
+    // [新增] 检查是否有效且有变更 (Dirty Flag Check)
+    // 用于 ChamberProcess 决定是否需要重新扫描配方
+    public boolean isValidAndChanged() {
+        return this.structure.isFormed() && (this.blockCacheDirty || this.entityCacheDirty || this.forceRevalidate);
+    }
+    
+    public AbstractSimulationRecipe getRuntimeRecipe() {
+        return this.selectedRecipe;
+    }
+    
+    public void setRuntimeRecipe(AbstractSimulationRecipe recipe) {
+        this.selectedRecipe = recipe;
     }
 
     private void refreshPortCache() {
@@ -586,9 +606,14 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
             this.setChanged();
             if (level != null) level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
         }
-        // 成功运行后，清除缓存脏标记 (Process 会处理，但此处兜底)
-        this.blockCacheDirty = false;
-        this.entityCacheDirty = false;
+        // [修复] 成功运行后，材料已被消耗，需要标记缓存脏以强制下次重新扫描
+        this.blockCacheDirty = true;
+        this.entityCacheDirty = true;
+        
+        // [修复] 如果配方锁定，唤醒机器以便检查新材料
+        if (this.recipeLocked) {
+            wakeUp();
+        }
     }
 
     public void setLitState(boolean lit) {

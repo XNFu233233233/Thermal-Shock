@@ -16,7 +16,7 @@ import net.minecraft.world.level.block.state.BlockState;
 public class ChamberThermodynamics {
 
     // 运行时状态
-    private double heatStored = 0;   // 改为 double 以支持精确计算，存取时转 int
+    private int heatStored = 0;   // [User Request] 改为 int 类型
     private int maxHeatCapacity = 10000;
 
     // 缓存值
@@ -123,7 +123,7 @@ public class ChamberThermodynamics {
     public void save(CompoundTag tag) {
         // 保存前无需 updateLazy，因为 lastGameTime 只有运行时有意义，
         // 存盘时只需要存当前瞬间的 heatStored。
-        tag.putInt("HeatStored", (int) heatStored);
+        tag.putInt("HeatStored", heatStored);
     }
 
     public void load(CompoundTag tag) {
@@ -134,13 +134,13 @@ public class ChamberThermodynamics {
     // 为了 GUI 显示准确，获取时尝试结算一下 (仅限服务端)
     // 客户端 heatStored 通过 ContainerData 同步，不需要计算
     public int getHeatStored(Level level) {
-        return (int) heatStored;
+        return heatStored;
     }
 
     /**
      * 手动增加热量 (用于控制器 Tick 中的累积)
      */
-    public void addHeat(double amount) {
+    public void addHeat(int amount) {
         this.heatStored += amount;
         if (this.heatStored > maxHeatCapacity) this.heatStored = maxHeatCapacity;
         if (this.heatStored < 0) this.heatStored = 0;

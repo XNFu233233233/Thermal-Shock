@@ -4,6 +4,8 @@ import com.mojang.serialization.MapCodec;
 import com.xnfu.thermalshock.block.entity.SimulationChamberBlockEntity;
 import com.xnfu.thermalshock.registries.ThermalShockBlockEntities;
 import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.Containers;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.SimpleContainer;
@@ -16,8 +18,6 @@ import net.minecraft.world.level.block.BaseEntityBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.RenderShape;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraft.world.level.block.entity.BlockEntityTicker;
-import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
@@ -66,26 +66,35 @@ public class SimulationChamberBlock extends BaseEntityBlock {
         if (!level.isClientSide) {
             BlockEntity be = level.getBlockEntity(pos);
             if (be instanceof SimulationChamberBlockEntity chamber) {
+                // 放置时立即进行一次验证
                 chamber.performValidation(placer instanceof Player player ? player : null);
-                // 放置时立即更新红石状态
                 chamber.updatePoweredState(level.hasNeighborSignal(pos));
             }
         }
     }
 
-    // [新增] 邻居方块改变时触发，用于红石信号检测 (事件驱动)
+    // [Event-Driven Core] 邻居方块改变时触发
     @Override
     public void neighborChanged(BlockState state, Level level, BlockPos pos, Block neighborBlock, BlockPos neighborPos, boolean movedByPiston) {
         super.neighborChanged(state, level, pos, neighborBlock, neighborPos, movedByPiston);
         if (!level.isClientSide) {
             BlockEntity be = level.getBlockEntity(pos);
             if (be instanceof SimulationChamberBlockEntity chamber) {
-                // 1. 更新红石状态
+                // 1. 更新红石状态 (可能触发 process)
                 chamber.updatePoweredState(level.hasNeighborSignal(pos));
 
                 // 2. 响应环境变化 (热源数值波动/方块更替)
                 chamber.onEnvironmentUpdate(neighborPos, false);
             }
+        }
+    }
+
+    // [Event-Driven Scheduling] 接收 scheduleTick 的回调
+    @Override
+    public void tick(BlockState state, ServerLevel level, BlockPos pos, RandomSource random) {
+        BlockEntity be = level.getBlockEntity(pos);
+        if (be instanceof SimulationChamberBlockEntity chamber) {
+            chamber.onScheduledTick();
         }
     }
 
@@ -100,6 +109,10 @@ public class SimulationChamberBlock extends BaseEntityBlock {
                     tempContainer.setItem(i, itemHandler.getStackInSlot(i));
                 }
                 Containers.dropContents(level, pos, tempContainer);
+                
+                // 确保结构逻辑被拆除
+                chamber.notifyStructureBroken();
+                
                 level.updateNeighbourForOutputSignal(pos, this);
             }
             super.onRemove(state, level, pos, newState, isMoving);
@@ -107,25 +120,20 @@ public class SimulationChamberBlock extends BaseEntityBlock {
     }
 
     @Override
-    protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hitResult) {
+    public InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hitResult) {
         if (!level.isClientSide) {
             BlockEntity be = level.getBlockEntity(pos);
             if (be instanceof SimulationChamberBlockEntity chamber) {
                 if (player.isShiftKeyDown()) {
+                    // 强制手动验证 (玩家在 Shift+右键时最希望看到最新的结构状态)
                     chamber.performValidation(player);
                 } else {
+                    chamber.performLazyValidation(); // 打开 GUI 前进行一次惰性检查
                     player.openMenu(chamber, pos);
                 }
             }
         }
         return InteractionResult.SUCCESS;
-    }
-
-    @Nullable
-    @Override
-    public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState state, BlockEntityType<T> type) {
-        if (level.isClientSide) return null;
-        return createTickerHelper(type, ThermalShockBlockEntities.CHAMBER_CONTROLLER_BE.get(), SimulationChamberBlockEntity::tick);
     }
 
     @Nullable

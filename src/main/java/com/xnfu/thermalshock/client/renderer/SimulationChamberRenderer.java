@@ -96,8 +96,12 @@ public class SimulationChamberRenderer implements BlockEntityRenderer<BlockEntit
     }
 
     // --- 错误框渲染 ---
+    // --- 错误框渲染 ---
+    // --- 错误框渲染 ---
+    // 改用 LevelRenderer.renderLineBox 以确保兼容性，并修复 RenderType
     private void renderErrorBox(SimulationChamberBlockEntity be, BlockPos errorPos, PoseStack poseStack, MultiBufferSource bufferSource) {
         if (errorPos == null) return;
+        
         if (be.isFormed()) return;
 
         poseStack.pushPose();
@@ -111,11 +115,10 @@ public class SimulationChamberRenderer implements BlockEntityRenderer<BlockEntit
 
         // 使用自定义的"穿透"渲染类型
         VertexConsumer builder = bufferSource.getBuffer(getAlwaysOnTopRenderType());
-
-        // 绘制红色线框
-        LevelRenderer.renderLineBox(poseStack, builder,
-                new net.minecraft.world.phys.AABB(0, 0, 0, 1, 1, 1),
-                1.0f, 0.0f, 0.0f, 1.0f); // 纯红
+        
+        // 使用 LevelRenderer 的标准工具方法绘制红框 (1.0f, 0.0f, 0.0f, 1.0f)
+        // 盒体范围缩小一点点以避免 Z-Fighting
+        LevelRenderer.renderLineBox(poseStack, builder, new AABB(0.01, 0.01, 0.01, 0.99, 0.99, 0.99), 1.0f, 0.0f, 0.0f, 1.0f);
 
         poseStack.popPose();
     }
@@ -129,12 +132,12 @@ public class SimulationChamberRenderer implements BlockEntityRenderer<BlockEntit
                 false,
                 RenderType.CompositeState.builder()
                         .setShaderState(RenderStateShard.RENDERTYPE_LINES_SHADER)
-                        .setLineState(new RenderStateShard.LineStateShard(java.util.OptionalDouble.of(5.0D)))
+                        .setLineState(new RenderStateShard.LineStateShard(java.util.OptionalDouble.of(6.0D))) // 加粗线条
                         .setTransparencyState(RenderStateShard.TRANSLUCENT_TRANSPARENCY)
                         .setOutputState(RenderStateShard.ITEM_ENTITY_TARGET)
-                        .setWriteMaskState(RenderStateShard.COLOR_DEPTH_WRITE)
+                        .setWriteMaskState(RenderStateShard.COLOR_WRITE) // [Fix] 不写深度，避免遮挡
                         .setCullState(RenderStateShard.NO_CULL)
-                        .setDepthTestState(RenderStateShard.NO_DEPTH_TEST) // 关闭深度测试
+                        .setDepthTestState(RenderStateShard.NO_DEPTH_TEST) // 关键：关闭深度测试以透视
                         .createCompositeState(false));
     }
 

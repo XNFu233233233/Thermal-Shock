@@ -68,7 +68,10 @@ public class ChamberProcess {
         boolean isGenericClumpMode = GENERIC_CLUMP_ID.equals(selectedId);
 
         if (!isGenericClumpMode && targetRecipe == null) {
-            be.setSelectedRecipe(null);
+            // [修复] 只有未锁定时才清除配方，锁定时保留配方等待条件满足
+            if (!be.isLocked()) {
+                be.setSelectedRecipe(null);
+            }
             return false;
         }
 
@@ -153,26 +156,34 @@ public class ChamberProcess {
         boolean isGenericClumpMode = GENERIC_CLUMP_ID.equals(selectedId);
 
         if (!isGenericClumpMode && targetRecipe == null) {
-            be.setSelectedRecipe(null);
+            // [修复] 只有未锁定时才清除配方，锁定时保留配方等待条件满足
+            if (!be.isLocked()) {
+                be.setSelectedRecipe(null);
+            }
             return false;
         }
 
         this.primaryOutputPos = null;
 
-        // [核心修改] 不再主动扫描，而是获取 BE 缓存的“工作副本”
-        // 我们必须复制一份，因为 tryMatchIngredient 会修改 remainingCount
-        // 如果直接用缓存，会导致一次失败的匹配影响该 Tick 后续的匹配逻辑
+        // [核心修改] 性能优化：引入脏标记检查
+        // 只有当 BE内部缓存发生变化（isDirty）或者 上一次运行未能成功配对（需要重试）时，才重新复制
+        // 如果机器处于空闲稳定状态且内容无变化，直接跳过扫描
+        // [核心修改] 性能优化：引入脏标记检查 -> 由于会导致逻辑卡顿，暂时移除，每一刻都执行检查
+        // boolean isDirty = be.isValidAndChanged();
+        AbstractSimulationRecipe runRecipe = be.getRuntimeRecipe();
+
+
         List<FoundMaterial> blockPool = copyMaterialList(be.getInternalBlockCache());
         List<FoundMaterial> itemPool = copyMaterialList(be.getInternalEntityCache());
 
         AbstractSimulationRecipe recipeToRun = targetRecipe;
         if (isGenericClumpMode) {
-            recipeToRun = findGenericClumpRecipeFromPool(level, itemPool);
-            if (recipeToRun == null) return false;
+             recipeToRun = findGenericClumpRecipeFromPool(level, itemPool);
+             if (recipeToRun == null) return false;
         } else {
-            if (!canMatchRecipe(recipeToRun, blockPool, itemPool)) {
-                return false;
-            }
+             if (!canMatchRecipe(recipeToRun, blockPool, itemPool)) {
+                 return false;
+             }
         }
 
         if (!checkThermalConditions(recipeToRun)) {
@@ -249,6 +260,7 @@ public class ChamberProcess {
             // 注意：FoundMaterial 内部有 remainingCount 和 consumedCount 是可变的
             FoundMaterial newMat = new FoundMaterial(m.source, m.stack);
             newMat.remainingCount = m.remainingCount; // 继承当前状态
+            newMat.consumedCount = m.consumedCount;   // [修复] 也复制 consumedCount
             copy.add(newMat);
         }
         return copy;
@@ -260,13 +272,8 @@ public class ChamberProcess {
 
     private int calculateExecutionBatch(int limitByStructureAndItems, AbstractSimulationRecipe recipe) {
         // 1. 热冲击模式逻辑：无热量消耗，直接拉满
+        // [优化] 热量条件已在 checkThermalConditions 中统一检查，此处只做批处理计算
         if (be.getMachineMode() == MachineMode.THERMAL_SHOCK) {
-
-            if (recipe instanceof ThermalShockRecipe ts) {
-                if (be.getThermo().getCurrentHighTemp() < ts.getMinHotTemp()) return 0;
-                if (be.getThermo().getCurrentLowTemp() > ts.getMaxColdTemp()) return 0;
-                if (be.getThermo().getCurrentDelta() < ts.getRequiredDelta()) return 0;
-            }
             return limitByStructureAndItems;
         }
 
@@ -695,7 +702,8 @@ public class ChamberProcess {
         // 1. 过热模式判定
         if (be.getMachineMode() == MachineMode.OVERHEATING) {
             if (!(recipe instanceof OverheatingRecipe ov)) return false;
-            return true;
+            // [修复] 添加 minHeatRate 检查 - 热输入速率必须满足配方要求
+            return be.getThermo().getLastInputRate() >= ov.getMinHeatRate();
         }
         // 2. 热冲击模式判定
         else {

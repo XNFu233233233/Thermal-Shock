@@ -39,6 +39,12 @@ public class MultiblockValidator {
 
         // 1. 直接尝试扫描 (Direct Scan)
         // 倒序遍历尺寸 (13 -> 3)，优先匹配大结构
+        
+        
+        float maxConfidence = 0.0f;
+        // bestTopLeft and bestSize already declared above
+        Direction bestRight = null, bestDown = null;
+
         for (int size = 13; size >= 3; size--) {
             // 控制器可能在任意一条棱上
             for (int u = 0; u < size; u++) {
@@ -56,8 +62,23 @@ public class MultiblockValidator {
                     if (result.isValid()) {
                         return result;
                     }
+                    
+                    // 计算置信度，寻找"最像"的那个
+                    float confidence = calculateFrameConfidence(level, topLeft, size, rightDir, Direction.DOWN, backDir);
+                    if (confidence > maxConfidence) {
+                        maxConfidence = confidence;
+                        bestTopLeft = topLeft;
+                        bestSize = size;
+                        bestRight = rightDir;
+                        bestDown = Direction.DOWN;
+                    }
                 }
             }
+        }
+        
+        // 如果没有找到有效结构，但找到了置信度较高的候选（>40%），则返回该候选的详细错误
+        if (maxConfidence > 0.4f && bestTopLeft != null) {
+             return performStrictScan(level, bestTopLeft, bestSize, bestRight, bestDown, backDir, controllerPos);
         }
 
         return fail(Component.translatable("message.thermalshock.incomplete"), null);
