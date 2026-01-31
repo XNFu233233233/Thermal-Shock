@@ -165,9 +165,6 @@ public class ModCnLangProvider extends LanguageProvider {
         add("jei.thermalshock.label.high", "高温: >%d");
         add("jei.thermalshock.label.low", "低温: <%d");
 
-        add("gui.thermalshock.indicator.overheating", "过热处理中");
-        add("gui.thermalshock.indicator.shock", "热冲击处理中");
-
         add("recipe.thermalshock.future_req", "提取需求: >%d H/t");
         add("recipe.thermalshock.future_cost", "提取消耗: %d H");
 
@@ -187,6 +184,5 @@ public class ModCnLangProvider extends LanguageProvider {
         add("jade.thermalshock.ports", "接口数量: %d");
         add("jade.thermalshock.energy", "能量: %s / %s FE");
         add("jade.thermalshock.remaining", "剩余时间: %s秒");
-        add("jade.thermalshock.shift_for_categories", "按住 Shift 查看分类");
     }
 }

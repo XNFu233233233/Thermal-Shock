@@ -14,7 +14,7 @@ public class ModEnLangProvider extends LanguageProvider {
 
     @Override
     protected void addTranslations() {
-        // === 1. Blocks & Items ===
+        // === 1. 方块与物品 ===
         add(ThermalShockBlocks.SIMULATION_CHAMBER_CONTROLLER.get(), "Simulation Chamber Controller");
         add(ThermalShockBlocks.SIMULATION_CHAMBER_PORT.get(), "Simulation Chamber Interface");
         add(ThermalShockBlocks.THERMAL_HEATER.get(), "Thermal Heater");
@@ -25,16 +25,16 @@ public class ModEnLangProvider extends LanguageProvider {
         add(ThermalShockItems.SIMULATION_UPGRADE.get(), "Simulation Upgrade");
         add(ThermalShockItems.OVERCLOCK_UPGRADE.get(), "Overclock Upgrade");
 
-        // === 2. Creative Tab ===
+        // === 2. 创造模式页签 ===
         add("itemGroup.thermalshock", "Thermal Shock");
 
-        // === 3. Item Descriptions ===
+        // === 3. 物品描述 ===
         add("item.thermalshock.simulation_upgrade.desc", "Controller Component");
         add("item.thermalshock.simulation_upgrade.effect", "Bypasses the 1024-item output limit.");
         add("item.thermalshock.material_clump.empty", "Material Clump (Empty)");
         add("item.thermalshock.material_clump.filled", "Material Clump (%s)");
 
-        // === 4. Item Tooltips (Detailed) ===
+        // === 4. 物品工具提示 (详细) ===
         add("tooltip.thermalshock.hold_shift", "Hold [Shift] for details");
         add("tooltip.thermalshock.header", "=== Thermal Shock Component ===");
         add("tooltip.thermalshock.header.mechanic_change", "=== Mode Change: Virtualization ===");
@@ -58,7 +58,7 @@ public class ModEnLangProvider extends LanguageProvider {
         add("tooltip.thermalshock.locked", "Recipe Locked");
         add("tooltip.thermalshock.unlocked", "Recipe Unlocked");
 
-        // === 5. GUI Labels (Static) ===
+        // === 5. GUI 标签 (静态文本) ===
         add("gui.thermalshock.label.efficiency", "Efficiency: %s%%");
         add("gui.thermalshock.label.bonus_yield", "Bonus: +%s%%");
         add("gui.thermalshock.label.heat_io", "Rate: %s%s H/t");
@@ -68,7 +68,7 @@ public class ModEnLangProvider extends LanguageProvider {
         add("gui.thermalshock.mode.thermalshock", "Thermal Shock");
         add("gui.thermalshock.label.delta", "Thermal Stress: %s");
 
-        // === 6. GUI Tooltips (Dynamic) ===
+        // === 6. GUI 工具提示 (动态信息) ===
         add("gui.thermalshock.tooltip.hold_shift", "[Shift] for details");
         add("gui.thermalshock.tooltip.switching", "Switching in %ss...");
         add("gui.thermalshock.tooltip.switch_mode_title", "Switch Mode");
@@ -97,7 +97,7 @@ public class ModEnLangProvider extends LanguageProvider {
         add("gui.thermalshock.tooltip.input.low", "Low Input: %s H");
         add("gui.thermalshock.tooltip.input.net", "Net Input: %s H");
 
-        // === 7. GUI Buttons & Status ===
+        // === 7. GUI 按钮与状态 ===
         add("gui.thermalshock.btn.generic_clump.title", "Generic Clump Process");
         add("gui.thermalshock.btn.generic_clump.desc1", "Auto-detects clump type.");
         add("gui.thermalshock.btn.generic_clump.desc2", "Check temp requirements.");
@@ -114,7 +114,7 @@ public class ModEnLangProvider extends LanguageProvider {
         add("gui.thermalshock.warning.detail", "Safety halt if output > 1024.");
         add("gui.thermalshock.warning.solution", "Install [Simulation Upgrade].");
 
-        // === 8. System Messages ===
+        // === 8. 系统提示信息 ===
         add("message.thermalshock.complete", "§aStructure Complete");
         add("message.thermalshock.invalid", "§cStructure error: ");
         add("message.thermalshock.incomplete", "Structure incomplete (Frame required)");
@@ -127,7 +127,7 @@ public class ModEnLangProvider extends LanguageProvider {
         add("message.thermalshock.too_many_access", "Too many sealed doors (max 4)");
         add("message.thermalshock.port_mode", "Port mode: %s");
 
-        // === 9. Generator GUI ===
+        // === 9. 发生器 GUI ===
         add("gui.thermalshock.source.output", "Output: %s H");
         add("gui.thermalshock.source.target", "Target Heat");
         add("gui.thermalshock.source.set", "Set");
@@ -138,7 +138,7 @@ public class ModEnLangProvider extends LanguageProvider {
         add("gui.thermalshock.converter.heat_label", "Current Heat: %d H");
         add("gui.thermalshock.converter.heat_requirement", "Recipe requires specific heat levels.");
 
-        // === 10. JEI Integration ===
+        // === 10. JEI 集成 ===
         add("gui.thermalshock.jei.chance.consume", "Consume Chance: %s%%");
         add("gui.thermalshock.jei.chance.output", "Output Chance: %s%%");
         add("gui.thermalshock.jei.label.min_heat_rate", "min > %d H/t");
@@ -150,7 +150,7 @@ public class ModEnLangProvider extends LanguageProvider {
         add("gui.thermalshock.jei.map.heat_source", "Heat Source");
         add("gui.thermalshock.jei.map.cold_source", "Cold Source");
 
-        // === Simulation Chamber JEI ===
+        // === 模拟室 JEI ===
         add("gui.thermalshock.jei.category.overheating", "Simulation: Overheating");
         add("gui.thermalshock.jei.category.shock", "Simulation: Thermal Shock");
         add("gui.thermalshock.jei.category.clump_filling_shock", "Simulation: Clump Filling (Shock)");
@@ -170,7 +170,7 @@ public class ModEnLangProvider extends LanguageProvider {
         add("gui.thermalshock.tooltip.show_recipes", "Show Recipes (JEI)");
         add("gui.thermalshock.tooltip.show_recipes.desc", "Click to view all supported recipe categories (Hold Shift for preview)");
 
-        // === 11. Jade Integration ===
+        // === 11. Jade 集成 ===
         add("jade.thermalshock.status", "Status: %s");
         add("jade.thermalshock.mode", "Mode: %s");
         add("jade.thermalshock.heat", "Heat: %d H");
@@ -179,7 +179,6 @@ public class ModEnLangProvider extends LanguageProvider {
         add("jade.thermalshock.net_input", "Net Input: %d H/t");
         add("jade.thermalshock.max_batch", "Max Batch: %d");
         add("jade.thermalshock.recipe_locked", "Recipe Locked: %s");
-        add("jade.thermalshock.selected_recipe", "Selected Recipe: ");
         add("jade.thermalshock.volume", "Volume: %d blocks");
         add("jade.thermalshock.ports", "Ports: %d");
         add("jade.thermalshock.energy", "Energy: %s / %s FE");
