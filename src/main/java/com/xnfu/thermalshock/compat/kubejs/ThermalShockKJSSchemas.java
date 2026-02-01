@@ -161,7 +161,7 @@ public interface ThermalShockKJSSchemas {
 
     RecipeSchema FUEL = new RecipeSchema(
             IngredientComponent.INGREDIENT.instance().inputKey("ingredient"),
-            NumberComponent.INT.inputKey("heat_value"),
+            NumberComponent.INT.inputKey("heat_rate"),
             NumberComponent.INT.inputKey("burn_time")
     );
 

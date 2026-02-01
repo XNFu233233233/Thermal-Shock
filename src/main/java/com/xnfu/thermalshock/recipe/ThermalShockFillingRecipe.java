@@ -52,6 +52,13 @@ public class ThermalShockFillingRecipe extends ThermalShockRecipe {
     public int getClumpHeatCost() { return clumpHeatCost; }
 
     @Override
+    public boolean matches(SimulationRecipeInput input, net.minecraft.world.level.Level level) {
+        // [核心强制] 团块填充必须包含一个物质团块作为主原料
+        if (!input.primary().is(ThermalShockItems.MATERIAL_CLUMP.get())) return false;
+        return super.matches(input, level);
+    }
+
+    @Override
     public RecipeSerializer<?> getSerializer() {
         return ThermalShockRecipes.THERMAL_SHOCK_FILLING_SERIALIZER.get();
     }

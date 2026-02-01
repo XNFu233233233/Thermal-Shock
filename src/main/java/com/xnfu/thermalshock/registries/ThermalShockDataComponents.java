@@ -4,8 +4,10 @@ import com.xnfu.thermalshock.ThermalShock;
 import com.xnfu.thermalshock.data.ClumpInfo;
 import com.xnfu.thermalshock.block.entity.MachineMode;
 import com.xnfu.thermalshock.block.entity.PortMode;
+import com.mojang.serialization.Codec;
 import net.minecraft.core.component.DataComponentType;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredHolder;
@@ -32,8 +34,8 @@ public class ThermalShockDataComponents {
     // 当前热量
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<Integer>> HEAT_LEVEL =
             DATA_COMPONENTS.register("heat_level", () -> DataComponentType.<Integer>builder()
-                    .persistent(com.mojang.serialization.Codec.INT)
-                    .networkSynchronized(net.minecraft.network.codec.ByteBufCodecs.VAR_INT)
+                    .persistent(Codec.INT)
+                    .networkSynchronized(ByteBufCodecs.VAR_INT)
                     .build());
 
     // 选中的配方 ID
@@ -46,8 +48,8 @@ public class ThermalShockDataComponents {
     // 锁定状态
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<Boolean>> IS_LOCKED =
             DATA_COMPONENTS.register("is_locked", () -> DataComponentType.<Boolean>builder()
-                    .persistent(com.mojang.serialization.Codec.BOOL)
-                    .networkSynchronized(net.minecraft.network.codec.ByteBufCodecs.BOOL)
+                    .persistent(Codec.BOOL)
+                    .networkSynchronized(ByteBufCodecs.BOOL)
                     .build());
 
     // 端口模式
