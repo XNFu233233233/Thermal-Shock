@@ -24,6 +24,9 @@ public class ModCnLangProvider extends LanguageProvider {
         add(ThermalShockItems.MATERIAL_CLUMP.get(), "物质团块");
         add(ThermalShockItems.SIMULATION_UPGRADE.get(), "模拟升级");
         add(ThermalShockItems.OVERCLOCK_UPGRADE.get(), "超频升级");
+        add("item.thermalshock.overclock_upgrade.desc", "热力转换器专用升级");
+        add("item.thermalshock.overclock_upgrade.speed", "- 每个升级缩短 50% 运行时间 (乘法叠加)");
+        add("item.thermalshock.overclock_upgrade.batch", "- 集齐4个时：解锁 4x 并行处理能力");
 
         // === 2. 创造模式页签 ===
         add("itemGroup.thermalshock", "热冲击 (Thermal Shock)");
@@ -64,6 +67,7 @@ public class ModCnLangProvider extends LanguageProvider {
         add("gui.thermalshock.label.heat_io", "速率: %s%s H/t");
         add("gui.thermalshock.label.max_rate", "输入限制: +%s / -%s");
         add("gui.thermalshock.mode.overheating", "过热模式");
+        add("gui.thermalshock.mode.thermal_shock", "热冲击模式");
         add("gui.thermalshock.mode.shock", "热冲击模式");
         add("gui.thermalshock.mode.thermalshock", "热冲击模式");
         add("gui.thermalshock.label.delta", "热应力 (ΔT): %s H");
@@ -169,17 +173,20 @@ public class ModCnLangProvider extends LanguageProvider {
         add("recipe.thermalshock.future_cost", "提取消耗: %d H");
 
         add("gui.thermalshock.tooltip.show_recipes", "查看配方 (JEI)");
-        add("gui.thermalshock.tooltip.show_recipes.desc", "点击查看该机器所有支持的分类 (按住 Shift 展开预览)");
+        add("gui.thermalshock.tooltip.show_recipes.desc", "支持的配方类型：");
 
         // === 11. Jade 适配 ===
-        add("jade.thermalshock.status", "状态: %s");
-        add("jade.thermalshock.mode", "模式: %s");
-        add("jade.thermalshock.heat", "当前热量: %d H");
-        add("jade.thermalshock.delta", "当前热应力: %d H");
-        add("jade.thermalshock.output", "实时输出: %d H/t");
+        add("jade.thermalshock.status", "状态: ");
+        add("jade.thermalshock.mode", "模式: ");
+        add("jade.thermalshock.heat", "热量: %d H");
+        add("jade.thermalshock.delta", "热应力: %d H");
+        add("jade.thermalshock.input_header", "热量输入:");
+        add("jade.thermalshock.high_input_label", "           +%d H");
+        add("jade.thermalshock.low_input_label", "           %d H");
+        add("jade.thermalshock.output", "输出: %d H/t");
         add("jade.thermalshock.net_input", "净输入率: %d H/t");
-        add("jade.thermalshock.max_batch", "最大批处理: %d");
-        add("jade.thermalshock.recipe_locked", "配方锁定: %s");
+        add("jade.thermalshock.max_batch", "最大批次: %d");
+        add("jade.thermalshock.recipe_locked", "配方锁定: ");
         add("jade.thermalshock.volume", "内部容积: %d 格");
         add("jade.thermalshock.ports", "接口数量: %d");
         add("jade.thermalshock.energy", "能量: %s / %s FE");

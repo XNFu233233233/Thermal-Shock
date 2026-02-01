@@ -16,6 +16,8 @@ import snownee.jade.api.config.IPluginConfig;
 
 @WailaPlugin
 public class ThermalShockJadePlugin implements IWailaPlugin {
+    
+    @Override
     public void register(IWailaCommonRegistration registration) {
         // --- 1. Simulation Chamber ---
         registration.registerBlockDataProvider(SimulationChamberHandler.INSTANCE, SimulationChamberBlockEntity.class);
@@ -55,18 +57,18 @@ public class ThermalShockJadePlugin implements IWailaPlugin {
                     boolean formed = data.getBoolean("IsFormed");
                     Component statusComp = formed ? Component.translatable("gui.thermalshock.status.valid").withStyle(ChatFormatting.GREEN)
                                                 : Component.translatable("gui.thermalshock.status.invalid").withStyle(ChatFormatting.RED);
-                    tooltip.add(Component.translatable("jade.thermalshock.status", statusComp));
+                    tooltip.add(Component.translatable("jade.thermalshock.status").append(statusComp));
                 }
 
                 // 2. 机器模式 (Machine Mode)
                 if (data.contains("MachineMode")) {
                     Component modeComp = Component.literal(data.getString("MachineMode")).withStyle(ChatFormatting.AQUA);
-                    tooltip.add(Component.translatable("jade.thermalshock.mode", modeComp));
+                    tooltip.add(Component.translatable("jade.thermalshock.mode").append(modeComp));
                 }
 
                 // 3. 最大批处理 (Max Batch)
                 if (data.contains("MaxBatch")) {
-                    tooltip.add(Component.translatable("jade.thermalshock.max_batch", data.getInt("MaxBatch")).withStyle(ChatFormatting.WHITE));
+                    tooltip.add(Component.translatable("jade.thermalshock.max_batch", data.getInt("MaxBatch")));
                 }
 
                 // 4. 配方锁定 (Recipe Locked)
@@ -74,23 +76,20 @@ public class ThermalShockJadePlugin implements IWailaPlugin {
                     boolean locked = data.getBoolean("Locked");
                     Component lockComp = locked ? Component.translatable("tooltip.thermalshock.locked").withStyle(ChatFormatting.RED)
                                                : Component.translatable("tooltip.thermalshock.unlocked").withStyle(ChatFormatting.GRAY);
-                    tooltip.add(Component.translatable("jade.thermalshock.recipe_locked", lockComp));
+                    tooltip.add(Component.translatable("jade.thermalshock.recipe_locked").append(lockComp));
                 }
 
                 // 5. 模式特定信息
                 if (data.contains("RawMode")) {
                     int mode = data.getInt("RawMode");
                     if (mode == 0) { // OVERHEATING
-                        // 热量缓存
                         if (data.contains("Heat")) {
                             tooltip.add(Component.translatable("jade.thermalshock.heat", data.getInt("Heat")).withStyle(ChatFormatting.GOLD));
                         }
-                        // 净输入率
                         if (data.contains("NetInput")) {
                             tooltip.add(Component.translatable("jade.thermalshock.net_input", data.getInt("NetInput")).withStyle(ChatFormatting.YELLOW));
                         }
                     } else if (mode == 1) { // THERMAL_SHOCK
-                        // 热应力
                         if (data.contains("Delta")) {
                             tooltip.add(Component.translatable("jade.thermalshock.delta", data.getInt("Delta")).withStyle(ChatFormatting.LIGHT_PURPLE));
                         }
@@ -107,6 +106,8 @@ public class ThermalShockJadePlugin implements IWailaPlugin {
                 data.putInt("Heat", be.getHeat());
                 data.putInt("Delta", be.getDelta());
                 data.putInt("NetInput", be.getNetInputRate());
+                data.putInt("HighTemp", be.getThermo().getCurrentHighTemp());
+                data.putInt("LowTemp", be.getThermo().getCurrentLowTemp());
                 data.putInt("MaxBatch", be.getMaxBatchSize());
                 data.putBoolean("Locked", be.isRecipeLocked());
                 data.putInt("RawMode", be.getMode().ordinal());

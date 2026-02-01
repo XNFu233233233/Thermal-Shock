@@ -1,0 +1,8 @@
+{
+  "type": "thermalshock:thermal_fuel",
+  "burn_time": 4800,
+  "heat_rate": -350,
+  "ingredient": {
+    "item": "minecraft:packed_ice"
+  }
+}

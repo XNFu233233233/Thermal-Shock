@@ -1,6 +1,7 @@
 // [模式 A：全量重写]
 package com.xnfu.thermalshock.events;
 
+import com.xnfu.thermalshock.api.IThermalHandler;
 import com.xnfu.thermalshock.registries.ThermalShockBlockEntities;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.capabilities.Capabilities;
@@ -10,6 +11,13 @@ public class ModBusEvents {
 
     @SubscribeEvent
     public static void registerCapabilities(RegisterCapabilitiesEvent event) {
+        // 0. 热力能力 (Thermal Capability)
+        event.registerBlockEntity(
+                IThermalHandler.INTERFACE,
+                ThermalShockBlockEntities.THERMAL_SOURCE_BE.get(),
+                (be, context) -> be
+        );
+
         // 1. 控制器 (只暴露 itemHandler, Slot 0/1)
         event.registerBlockEntity(
                 Capabilities.ItemHandler.BLOCK,

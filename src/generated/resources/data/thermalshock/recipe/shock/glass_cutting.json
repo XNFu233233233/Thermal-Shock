@@ -1,0 +1,18 @@
+{
+  "type": "thermalshock:thermal_shock",
+  "delta": 200,
+  "ingredients": [
+    {
+      "type": "item",
+      "value": {
+        "item": "minecraft:glass"
+      }
+    }
+  ],
+  "max_cold": 20,
+  "min_hot": 150,
+  "result": {
+    "count": 4,
+    "id": "minecraft:glass_pane"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "type": "thermalshock:thermal_shock",
+  "delta": 100,
+  "ingredients": [
+    {
+      "type": "block",
+      "value": {
+        "item": "minecraft:water_bucket"
+      }
+    }
+  ],
+  "max_cold": -50,
+  "min_hot": 50,
+  "result": {
+    "count": 1,
+    "id": "minecraft:ice"
+  }
+}

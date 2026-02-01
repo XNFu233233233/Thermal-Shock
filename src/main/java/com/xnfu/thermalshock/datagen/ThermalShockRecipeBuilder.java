@@ -80,14 +80,8 @@ public class ThermalShockRecipeBuilder implements RecipeBuilder {
 
     @Override
     public void save(RecipeOutput output, ResourceLocation id) {
-        // 校验 BLOCK 类型是否合法
-        for (SimulationIngredient sim : ingredients) {
-            if (sim.type() == RecipeSourceType.BLOCK) {
-                boolean isBlockItem = Arrays.stream(sim.ingredient().getItems())
-                        .allMatch(stack -> stack.getItem() instanceof BlockItem);
-                if (!isBlockItem) throw new IllegalStateException("Recipe " + id + " has a BLOCK input that is not a BlockItem!");
-            }
-        }
+        // [修改] 移除对 BLOCK 类型必须是 BlockItem 的强校验
+        // 因为我们现在允许流体桶作为 BLOCK 类型的输入 (代表世界中的流体方块)
 
         // [核心修改] 根据模式生成不同的配方对象 (对应的 Serializer 会负责写出干净的 JSON)
         if (mode == MachineMode.OVERHEATING) {

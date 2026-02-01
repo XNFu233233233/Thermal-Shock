@@ -6,6 +6,7 @@ import com.xnfu.thermalshock.recipe.*;
 import com.xnfu.thermalshock.registries.ThermalShockDataComponents;
 import com.xnfu.thermalshock.registries.ThermalShockItems;
 import com.xnfu.thermalshock.registries.ThermalShockRecipes;
+import com.xnfu.thermalshock.util.RecipeCache;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.resources.ResourceLocation;
@@ -84,18 +85,7 @@ public class ChamberProcess {
             }
         }
         
-        // 实时更新匹配成功的配方，供 Jade 等显示
-        AbstractSimulationRecipe matchedRecipeRef = recipeToRun;
-        ResourceLocation matchedId = selectedId;
-        if (isGenericClumpMode && level != null) {
-            var overType = ThermalShockRecipes.OVERHEATING_TYPE.get();
-            var shockType = ThermalShockRecipes.THERMAL_SHOCK_TYPE.get();
-            matchedId = level.getRecipeManager().getAllRecipesFor(overType).stream()
-                        .filter(h -> h.value() == matchedRecipeRef).findFirst().map(net.minecraft.world.item.crafting.RecipeHolder::id)
-                        .orElseGet(() -> level.getRecipeManager().getAllRecipesFor(shockType).stream()
-                                .filter(h -> h.value() == matchedRecipeRef).findFirst().map(net.minecraft.world.item.crafting.RecipeHolder::id).orElse(null));
-        }
-        be.setMatchedRecipe(matchedId, recipeToRun);
+        updateMatchedRecipe(recipeToRun, selectedId);
 
         // 计算
         int maxBatchByItems = calculateMaxBatchFromPorts(level, recipeToRun, inputPosList);
@@ -188,24 +178,27 @@ public class ChamberProcess {
         boolean isGenericClumpMode = GENERIC_CLUMP_ID.equals(selectedId);
 
         if (!isGenericClumpMode && targetRecipe == null) {
-            // [修复] 只有未锁定时才清除配方，锁定时保留配方等待条件满足
             if (!be.isLocked()) {
                 be.setSelectedRecipe(null);
             }
             return false;
         }
 
+        // 1. 优先执行廉价的热力检查
+        if (!isGenericClumpMode && !checkThermalConditions(targetRecipe)) {
+            return false;
+        }
+
+        // 2. 获取并重置缓存 (不再进行深拷贝)
+        List<FoundMaterial> blockPool = be.getInternalBlockCache();
+        List<FoundMaterial> itemPool = be.getInternalEntityCache();
+        if (blockPool.isEmpty() && itemPool.isEmpty()) {
+            return false;
+        }
+        blockPool.forEach(FoundMaterial::reset);
+        itemPool.forEach(FoundMaterial::reset);
+
         this.primaryOutputPos = null;
-
-        // [核心修改] 性能优化：引入脏标记检查
-        // 只有当 BE内部缓存发生变化（isDirty）或者 上一次运行未能成功配对（需要重试）时，才重新复制
-        // 如果机器处于空闲稳定状态且内容无变化，直接跳过扫描
-        // [核心修改] 性能优化：引入脏标记检查 -> 由于会导致逻辑卡顿，暂时移除，每一刻都执行检查
-        // boolean isDirty = be.isValidAndChanged();
-        // AbstractSimulationRecipe runRecipe = be.getRuntimeRecipe();
-
-        List<FoundMaterial> blockPool = copyMaterialList(be.getInternalBlockCache());
-        List<FoundMaterial> itemPool = copyMaterialList(be.getInternalEntityCache());
 
         AbstractSimulationRecipe recipeToRun = targetRecipe;
         if (isGenericClumpMode) {
@@ -214,30 +207,19 @@ public class ChamberProcess {
                  be.setMatchedRecipe(null, null);
                  return false;
              }
+             if (!checkThermalConditions(recipeToRun)) {
+                 return false;
+             }
         } else {
              if (!canMatchRecipe(recipeToRun, blockPool, itemPool)) {
-                 be.setMatchedRecipe(selectedId, recipeToRun); // 虽然无法运行但 ID 已选
+                 be.setMatchedRecipe(selectedId, recipeToRun); 
                  return false;
              }
         }
 
-        // 实时更新匹配成功的配方
-        AbstractSimulationRecipe matchedRecipeRef = recipeToRun;
-        ResourceLocation matchedId = selectedId;
-        if (isGenericClumpMode && level != null) {
-            var overType = ThermalShockRecipes.OVERHEATING_TYPE.get();
-            var shockType = ThermalShockRecipes.THERMAL_SHOCK_TYPE.get();
-            matchedId = level.getRecipeManager().getAllRecipesFor(overType).stream()
-                        .filter(h -> h.value() == matchedRecipeRef).findFirst().map(net.minecraft.world.item.crafting.RecipeHolder::id)
-                        .orElseGet(() -> level.getRecipeManager().getAllRecipesFor(shockType).stream()
-                                .filter(h -> h.value() == matchedRecipeRef).findFirst().map(net.minecraft.world.item.crafting.RecipeHolder::id).orElse(null));
-        }
-        be.setMatchedRecipe(matchedId, recipeToRun);
+        updateMatchedRecipe(recipeToRun, selectedId);
 
-        if (!checkThermalConditions(recipeToRun)) {
-            return false;
-        }
-
+        // 模拟计算最大批次 (会修改 pool 状态)
         int materialMax = calculateMaxMaterialBatch(recipeToRun, blockPool, itemPool);
         int structureMax = be.performance.getBatchSize();
         int physicalLimit = Math.min(structureMax, Math.min(64, materialMax));
@@ -245,27 +227,28 @@ public class ChamberProcess {
 
         if (actualBatch <= 0) return false;
 
+        // 检查渲染限制
         if (!be.performance.isVirtual()) {
             ItemStack resultStack = recipeToRun.getResultItem(level.registryAccess());
             long projectedTotal = (long) (actualBatch * resultStack.getCount() * be.performance.getYieldMultiplier());
             if (projectedTotal > 1024) return false;
         }
 
+        // 准备执行：再次重置池状态 (模拟计算可能已经消耗了一部分)
+        blockPool.forEach(FoundMaterial::reset);
+        itemPool.forEach(FoundMaterial::reset);
+
         int successCount = 0;
         int heatToConsume = 0;
         List<ItemStack> rawOutputs = new ArrayList<>();
 
-        // 由于上面计算 batch 时没有实际扣减，这里执行实际扣减
-        // 注意：我们需要在一个循环中重新匹配并扣减，确保逻辑严密
-        // 因为 blockPool 和 itemPool 是副本，可以随意修改
-
-        // 重置副本状态用于实际消耗
-        blockPool = copyMaterialList(be.getInternalBlockCache());
-        itemPool = copyMaterialList(be.getInternalEntityCache());
+        // 预创建快照列表以减少循环内分配 (只有当配方确实需要时才填充)
+        List<ItemStack> physPoolIn = new ArrayList<>(blockPool.size() + itemPool.size());
+        List<RecipeSourceType> physPoolTy = new ArrayList<>(blockPool.size() + itemPool.size());
 
         for (int i = 0; i < actualBatch; i++) {
             MatchResult match = tryMatchIngredient(recipeToRun, blockPool, itemPool);
-            if (match == null) break; // 理论上不应发生，因为前面 calculateMax 算过了
+            if (match == null) break;
 
             if (be.getMachineMode() == MachineMode.OVERHEATING && recipeToRun instanceof OverheatingRecipe ov) {
                 heatToConsume += ov.getHeatCost();
@@ -274,16 +257,15 @@ public class ChamberProcess {
             successCount++;
             ItemStack mainInput = match.consumedInputs.get(0);
             
-            // 构建当前物理池快照
-            List<ItemStack> physPoolIn = new ArrayList<>();
-            List<RecipeSourceType> physPoolTy = new ArrayList<>();
+            // 构建快照 (只有在真正需要时才重建，或者可以考虑进一步优化 assemble 接口)
+            physPoolIn.clear();
+            physPoolTy.clear();
             for (FoundMaterial m : blockPool) { physPoolIn.add(m.stack); physPoolTy.add(RecipeSourceType.BLOCK); }
             for (FoundMaterial m : itemPool) { physPoolIn.add(m.stack); physPoolTy.add(RecipeSourceType.ITEM); }
 
-            rawOutputs.add(recipeToRun.assemble(new SimulationRecipeInput(mainInput, physPoolIn, physPoolTy), level.registryAccess()));
+            rawOutputs.add(recipeToRun.assemble(new SimulationRecipeInput(mainInput, new ArrayList<>(physPoolIn), new ArrayList<>(physPoolTy)), level.registryAccess()));
 
             if (primaryOutputPos == null) capturePrimaryPos(match.foundMaterials);
-            // [修复] 移除空方法调用
         }
 
         if (successCount > 0) {
@@ -291,35 +273,20 @@ public class ChamberProcess {
             if (heatToConsume > 0) be.getThermo().consumeHeat(level, heatToConsume);
             be.consumeCatalystBuffer(successCount, be.performance.getEfficiency());
 
-            // 视觉与物理移除：这里会触发 BlockBreak/EntityRemove 事件
-            // 这些事件会回调 StructureManager -> BE.markDirty -> 下一 Tick 重建缓存
+            // 物理移除：触发事件并标记缓存脏
             consumeMaterialsVisuals(level, blockPool);
             consumeMaterialsVisuals(level, itemPool);
 
             spawnMergedResults(level, rawOutputs);
 
             be.onRecipeSuccess();
-
-            // [优化] 同上，由锁定状态决定是否继续循环
             return be.isLocked();
         } else {
             return false;
         }
     }
 
-    // 深拷贝材质列表，用于模拟计算
-    private List<FoundMaterial> copyMaterialList(List<FoundMaterial> original) {
-        List<FoundMaterial> copy = new ArrayList<>(original.size());
-        for (FoundMaterial m : original) {
-            // 创建新对象，但 source 和 stack 引用可以共享（stack 不会被修改，只会读取）
-            // 注意：FoundMaterial 内部有 remainingCount 和 consumedCount 是可变的
-            FoundMaterial newMat = new FoundMaterial(m.source, m.stack);
-            newMat.remainingCount = m.remainingCount; // 继承当前状态
-            newMat.consumedCount = m.consumedCount;   // [修复] 也复制 consumedCount
-            copy.add(newMat);
-        }
-        return copy;
-    }
+    // [优化] 已移除 copyMaterialList, 改为直接重置缓存对象
 
     // =========================================================
     // 3. 核心算法 (Unified Batch Calculation) - 严格恢复 v17 逻辑
@@ -416,13 +383,26 @@ public class ChamberProcess {
         return null;
     }
 
+    // 实时更新匹配成功的配方，供 Jade 等显示
+    private void updateMatchedRecipe(AbstractSimulationRecipe matchedRecipeRef, ResourceLocation selectedId) {
+        ResourceLocation matchedId = selectedId;
+        if (GENERIC_CLUMP_ID.equals(selectedId)) {
+            matchedId = RecipeCache.getRecipes(MachineMode.OVERHEATING).stream()
+                    .filter(h -> h.value() == matchedRecipeRef)
+                    .findFirst()
+                    .map(RecipeHolder::id)
+                    .orElse(selectedId);
+        }
+        be.setMatchedRecipe(matchedId, matchedRecipeRef);
+    }
+
     private AbstractSimulationRecipe findMatchingClumpRecipe(Level level, ItemStack stack) {
         if (!stack.is(ThermalShockItems.MATERIAL_CLUMP.get())) return null;
         ClumpInfo info = stack.get(ThermalShockDataComponents.TARGET_OUTPUT);
         if (info == null || info.result().isEmpty()) return null;
 
-        var all = level.getRecipeManager().getAllRecipesFor(ThermalShockRecipes.OVERHEATING_TYPE.get());
-        for (RecipeHolder<?> h : all) {
+        var all = RecipeCache.getRecipes(MachineMode.OVERHEATING);
+        for (RecipeHolder<? extends AbstractSimulationRecipe> h : all) {
             if (h.value() instanceof ClumpProcessingRecipe cr) {
                 if (ItemStack.isSameItemSameComponents(cr.getTargetContent(), info.result())) {
                     return cr;
@@ -463,9 +443,25 @@ public class ChamberProcess {
             boolean isStrictClumpCheck = (recipe instanceof ClumpProcessingRecipe);
             ItemStack strictTarget = isStrictClumpCheck ? ((ClumpProcessingRecipe) recipe).getTargetContent() : ItemStack.EMPTY;
 
+            // [流体支持] 检查是否为流体需求 (Type=BLOCK 且 Ingredient 是桶)
+            net.minecraft.world.level.material.Fluid requiredFluid = getFluidFromIngredient(simIng);
+            
             for (BlockPos pos : ports) {
                 BlockEntity portBe = level.getBlockEntity(pos);
                 if (portBe instanceof SimulationPortBlockEntity port) {
+                    
+                    // 1. 尝试流体匹配 (仅当 Virtual Mode 且 Type=BLOCK 且 Ingredient 是桶)
+                    if (requiredFluid != null && simIng.type() == RecipeSourceType.BLOCK) {
+                        var fluidHandler = port.getCapabilityFluidHandler(); // 使用内部 Handler 或 Cap
+                        for (int i = 0; i < fluidHandler.getTanks(); i++) {
+                            var fluidInTank = fluidHandler.getFluidInTank(i);
+                            if (fluidInTank.getFluid() == requiredFluid) {
+                                totalFound += fluidInTank.getAmount() / 1000; // 1000mB = 1 Block
+                            }
+                        }
+                    }
+                    
+                    // 2. 尝试物品匹配 (原有逻辑)
                     IItemHandler handler = port.getItemHandler();
                     for (int i = 0; i < handler.getSlots(); i++) {
                         ItemStack stack = handler.getStackInSlot(i);
@@ -484,6 +480,16 @@ public class ChamberProcess {
             if (minBatch == 0) return 0;
         }
         return minBatch == Integer.MAX_VALUE ? 0 : minBatch;
+    }
+
+    private net.minecraft.world.level.material.Fluid getFluidFromIngredient(SimulationIngredient simIng) {
+        for (ItemStack stack : simIng.ingredient().getItems()) {
+            var fluid = net.neoforged.neoforge.fluids.FluidUtil.getFluidContained(stack)
+                    .map(net.neoforged.neoforge.fluids.FluidStack::getFluid)
+                    .orElse(null);
+            if (fluid != null) return fluid;
+        }
+        return null;
     }
 
     private int calculateAvailableOutputSpace(Level level, ItemStack outputTemplate, List<BlockPos> ports) {
@@ -513,11 +519,31 @@ public class ChamberProcess {
             int remainingToConsume = batchToConsume;
             boolean isStrictClumpCheck = (recipe instanceof ClumpProcessingRecipe);
             ItemStack strictTarget = isStrictClumpCheck ? ((ClumpProcessingRecipe) recipe).getTargetContent() : ItemStack.EMPTY;
+            
+            // [流体支持]
+            net.minecraft.world.level.material.Fluid requiredFluid = getFluidFromIngredient(simIng);
 
             for (BlockPos pos : ports) {
                 if (remainingToConsume <= 0) break;
                 BlockEntity portBe = level.getBlockEntity(pos);
                 if (portBe instanceof SimulationPortBlockEntity port) {
+                    
+                    // 1. 尝试流体消耗
+                    if (requiredFluid != null && simIng.type() == RecipeSourceType.BLOCK) {
+                        var fluidHandler = port.getCapabilityFluidHandler();
+                        // 每个批次消耗 1000mB
+                        int neededAmount = remainingToConsume * 1000;
+                        var drained = fluidHandler.drain(new net.neoforged.neoforge.fluids.FluidStack(requiredFluid, neededAmount), net.neoforged.neoforge.fluids.capability.IFluidHandler.FluidAction.EXECUTE);
+                        
+                        if (!drained.isEmpty()) {
+                            int fulfilledBatches = drained.getAmount() / 1000;
+                            remainingToConsume -= fulfilledBatches;
+                        }
+                    }
+                    
+                    if (remainingToConsume <= 0) continue;
+
+                    // 2. 尝试物品消耗
                     IItemHandler handler = port.getItemHandler();
                     for (int i = 0; i < handler.getSlots(); i++) {
                         if (remainingToConsume <= 0) break;
@@ -799,6 +825,11 @@ public class ChamberProcess {
             stack = st;
             remainingCount = st.getCount();
             consumedCount = 0;
+        }
+
+        public void reset() {
+            this.remainingCount = stack.getCount();
+            this.consumedCount = 0;
         }
     }
 }

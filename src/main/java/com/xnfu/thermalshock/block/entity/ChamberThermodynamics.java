@@ -1,5 +1,6 @@
 package com.xnfu.thermalshock.block.entity;
 
+import com.xnfu.thermalshock.api.IThermalHandler;
 import com.xnfu.thermalshock.block.ThermalSourceBlock;
 import com.xnfu.thermalshock.data.ColdSourceData;
 import com.xnfu.thermalshock.data.HeatSourceData;
@@ -16,7 +17,7 @@ import net.minecraft.world.level.block.state.BlockState;
 public class ChamberThermodynamics {
 
     // 运行时状态
-    private int heatStored = 0;   // [User Request] 改为 int 类型
+    private int heatStored = 0;
     private int maxHeatCapacity = 10000;
 
     // 缓存值
@@ -43,24 +44,18 @@ public class ChamberThermodynamics {
                 BlockPos targetPos = portPos.relative(dir);
                 if (structure.contains(targetPos)) continue;
 
-                // [Fix] 防止访问未加载区块
                 if (!level.isLoaded(targetPos)) continue;
 
-                BlockState targetState = level.getBlockState(targetPos);
-
-                // A. 动态热源 (BE)
-                if (targetState.getBlock() instanceof ThermalSourceBlock) {
-                    if (targetState.getValue(ThermalSourceBlock.LIT)) {
-                        BlockEntity be = level.getBlockEntity(targetPos);
-                        if (be instanceof ThermalSourceBlockEntity sourceBe) {
-                            int heat = sourceBe.getCurrentHeatOutput();
-                            if (heat > 0) sumHigh += heat;
-                            else sumLow += heat;
-                        }
-                    }
+                // A. 优先尝试 Capability
+                IThermalHandler thermal = level.getCapability(IThermalHandler.INTERFACE, targetPos, dir.getOpposite());
+                if (thermal != null) {
+                    int rate = thermal.getThermalRate();
+                    if (rate > 0) sumHigh += rate;
+                    else sumLow += rate;
                     continue;
                 }
 
+                BlockState targetState = level.getBlockState(targetPos);
                 var holder = BuiltInRegistries.BLOCK.wrapAsHolder(targetState.getBlock());
 
                 // B. DataMap 热源
@@ -76,23 +71,11 @@ public class ChamberThermodynamics {
                     sumLow -= Math.abs(coldData.coolingPerTick());
                     continue;
                 }
-
-                // D. 水 (简单处理)
-                if (targetState.getFluidState().is(FluidTags.WATER) && targetState.getFluidState().isSource()) {
-                    // 如果需要水提供被动冷却，可以在这里处理
-                }
             }
         }
 
-        // [核心修改] 应用外壳的速率限制
-        // 正热：取 (总和, 上限) 的较小值
         this.cachedHighTemp = Math.min(sumHigh, structure.getMaxHeatRate());
-
-        // 负热：sumLow 是负数，maxColdRate 是正数。
-        // 我们要限制 sumLow 不能比 -maxColdRate 更"冷" (即不能更小)
-        // 例: sumLow = -500, limit = 200. target = -200. -> Math.max(-500, -200) = -200
         this.cachedLowTemp = Math.max(sumLow, -structure.getMaxColdRate());
-
         this.cachedNetInput = this.cachedHighTemp + this.cachedLowTemp;
         this.cachedDelta = this.cachedHighTemp - this.cachedLowTemp;
     }
@@ -104,29 +87,22 @@ public class ChamberThermodynamics {
         this.cachedNetInput = 0;
     }
 
-    // [删除] public void tick(...) - 不再需要每刻调用
-
     public void consumeHeat(Level level, int amount) {
         this.heatStored = Math.max(0, this.heatStored - amount);
     }
 
     public void setMaxHeatCapacity(int capacity) {
         this.maxHeatCapacity = capacity;
-        // [新增] 当上限降低时，截断多余热量
         if (this.heatStored > this.maxHeatCapacity) {
             this.heatStored = this.maxHeatCapacity;
         }
     }
 
-    // 清空热量 (切换模式时调用)
     public void clearHeat() {
         this.heatStored = 0;
     }
 
-    // --- NBT ---
     public void save(CompoundTag tag) {
-        // 保存前无需 updateLazy，因为 lastGameTime 只有运行时有意义，
-        // 存盘时只需要存当前瞬间的 heatStored。
         tag.putInt("HeatStored", heatStored);
     }
 
@@ -134,25 +110,18 @@ public class ChamberThermodynamics {
         this.heatStored = tag.getInt("HeatStored");
     }
 
-    // --- Getters (Auto Lazy Update) ---
-    // 为了 GUI 显示准确，获取时尝试结算一下 (仅限服务端)
-    // 客户端 heatStored 通过 ContainerData 同步，不需要计算
     public int getHeatStored(Level level) {
         return heatStored;
     }
 
-    /**
-     * 手动增加热量 (用于控制器 Tick 中的累积)
-     */
     public void addHeat(int amount) {
         this.heatStored += amount;
         if (this.heatStored > maxHeatCapacity) this.heatStored = maxHeatCapacity;
         if (this.heatStored < 0) this.heatStored = 0;
     }
 
-    // 纯 Getter，不触发结算 (用于客户端或内部逻辑)
     public int getCurrentHeat() {
-        return (int) heatStored;
+        return heatStored;
     }
 
     public int getMaxHeatCapacity() { return maxHeatCapacity; }
@@ -160,4 +129,8 @@ public class ChamberThermodynamics {
     public int getCurrentLowTemp() { return cachedLowTemp; }
     public int getDeltaT() { return cachedDelta; }
     public int getLastInputRate() { return cachedNetInput; }
+    
+    // --- 兼容性方法 (防止残留调用报错) ---
+    public int getHeatStoredRaw() { return getCurrentHeat(); }
+    public int getCurrentDelta() { return getDeltaT(); }
 }

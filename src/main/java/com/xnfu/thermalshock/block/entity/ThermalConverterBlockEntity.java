@@ -1,5 +1,6 @@
 package com.xnfu.thermalshock.block.entity;
 
+import com.xnfu.thermalshock.api.IThermalHandler;
 import com.xnfu.thermalshock.client.gui.ThermalConverterMenu;
 import com.xnfu.thermalshock.data.ColdSourceData;
 import com.xnfu.thermalshock.data.HeatSourceData;
@@ -36,7 +37,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.Optional;
 
-public class ThermalConverterBlockEntity extends BlockEntity implements MenuProvider {
+public class ThermalConverterBlockEntity extends BlockEntity implements MenuProvider, IThermalHandler {
 
     // === Inventory ===
     // 0: Input, 1: Output Main, 2: Output Scrap
@@ -134,6 +135,11 @@ public class ThermalConverterBlockEntity extends BlockEntity implements MenuProv
         super(ThermalShockBlockEntities.THERMAL_CONVERTER_BE.get(), pos, blockState);
     }
 
+    @Override
+    public int getThermalRate() {
+        return 0; // 转换器目前不直接作为热源提供热量
+    }
+
     // =========================================================
     // 1. 核心循环 (Tick Logic)
     // =========================================================
@@ -165,31 +171,41 @@ public class ThermalConverterBlockEntity extends BlockEntity implements MenuProv
 
         // 4. 运行检查
         ThermalConverterRecipe recipe = be.cachedRecipe.value();
+        
+        int upgradeCount = be.getUpgradeCount();
+        int speedMultiplier = 1 << upgradeCount; // 2^N (1, 2, 4, 8, 16)
+        int maxBatch = (upgradeCount == 4) ? 4 : 1;
 
         // 4.1 检查热量条件
         if (!be.checkHeatCondition(recipe)) {
-            // 热量不足 -> 进度回退并休眠 (等待 neighborChanged 唤醒)
-            if (be.processTime > 0) be.processTime = Math.max(0, be.processTime - 2);
+            // 热量不足 -> 进度回退并休眠
+            if (be.processTime > 0) be.processTime = Math.max(0, be.processTime - 2 * speedMultiplier);
             be.isSleeping = true;
             return;
         }
 
-        // 4.2 检查输出空间 (模拟)
-        if (!be.checkOutputSpace(recipe)) {
-            // 空间不足 -> 休眠 (等待库存变动唤醒)
+        // 4.2 检查输出空间 (至少能放下一份)
+        // 实际执行时我们会尝试放入 maxBatch 份，这里先做最基本的检查防止空转
+        if (!be.checkOutputSpace(recipe, 1)) {
             be.isSleeping = true;
             return;
         }
 
         // 5. 执行加工
-        be.isSleeping = false; // 正在工作，标记为醒着
+        be.isSleeping = false;
         be.totalProcessTime = recipe.getProcessTime();
-        be.processTime++;
+        be.processTime += speedMultiplier;
 
         if (be.processTime >= be.totalProcessTime) {
-            be.finishProcess(recipe);
+            // 计算实际可执行的批次 (受限于原料和空间)
+            int actualBatch = be.calculateMaxBatch(recipe, maxBatch);
+            
+            if (actualBatch > 0) {
+                be.finishProcess(recipe, actualBatch);
+            }
+            
             be.processTime = 0;
-            // 完成一次后，需要重新检查输入是否足够 (可能刚才把最后一份原料用完了)
+            // 完成后重新检查
             be.markRecipeDirty();
         }
     }
@@ -198,19 +214,54 @@ public class ThermalConverterBlockEntity extends BlockEntity implements MenuProv
     // 2. 辅助逻辑
     // =========================================================
 
+    private int getUpgradeCount() {
+        int count = 0;
+        for (int i = 3; i <= 6; i++) {
+            if (itemHandler.getStackInSlot(i).is(ThermalShockItems.OVERCLOCK_UPGRADE.get())) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private int calculateMaxBatch(ThermalConverterRecipe recipe, int limit) {
+        int maxPossible = limit;
+
+        // 1. 检查原料限制
+        if (!recipe.getItemInputs().isEmpty()) {
+            var req = recipe.getItemInputs().get(0);
+            ItemStack inStack = itemHandler.getStackInSlot(0);
+            if (inStack.isEmpty() || !req.ingredient().test(inStack)) return 0;
+            int itemLimit = inStack.getCount() / req.count();
+            maxPossible = Math.min(maxPossible, itemLimit);
+        }
+        if (!recipe.getFluidInputs().isEmpty()) {
+            var req = recipe.getFluidInputs().get(0);
+            int fluidLimit = inputTank.getFluidAmount() / req.fluid().getAmount();
+            maxPossible = Math.min(maxPossible, fluidLimit);
+        }
+
+        // 2. 检查输出空间限制 (模拟)
+        // 简单起见，逐步递减检查，找到最大的可行值
+        for (int i = maxPossible; i > 0; i--) {
+            if (checkOutputSpace(recipe, i)) {
+                return i;
+            }
+        }
+        return 0;
+    }
+
     private void recalculateHeat() {
         int heat = 0;
         for (Direction dir : Direction.values()) {
             BlockPos target = worldPosition.relative(dir);
             BlockState s = level.getBlockState(target);
 
-            // A. 主动热源/冷源 (机器)
-            // 优先检查 BE，因为机器可能有开关状态
-            BlockEntity neighborBe = level.getBlockEntity(target);
-            if (neighborBe instanceof ThermalSourceBlockEntity source) {
-                // 只有开启状态才有热量 (getCurrentHeatOutput 内部已经处理了逻辑)
-                heat += source.getCurrentHeatOutput();
-                continue; // 既然是机器，就不查 DataMap 了，避免重复
+            // A. 优先通过 Capability 获取热量 (解耦)
+            IThermalHandler thermal = level.getCapability(IThermalHandler.INTERFACE, target, dir.getOpposite());
+            if (thermal != null) {
+                heat += thermal.getThermalRate();
+                continue;
             }
 
             // B. 被动热源 (DataMap)
@@ -225,12 +276,6 @@ public class ThermalConverterBlockEntity extends BlockEntity implements MenuProv
             if (cData != null) {
                 heat -= cData.coolingPerTick(); // 冷源减热 (coolingPerTick 是正数)
                 continue;
-            }
-
-            // C. 特殊硬编码 (水) - 也可以写进 DataMap，但为了保险保留硬编码
-            if (s.getFluidState().is(net.minecraft.tags.FluidTags.WATER)) {
-                // 水大概提供微弱冷却? 这里暂设为 0 或者 -5
-                // 如果 DataMap 没覆盖到，可以在这里补充
             }
         }
         this.cachedHeatInput = heat;
@@ -271,56 +316,64 @@ public class ThermalConverterBlockEntity extends BlockEntity implements MenuProv
         return true;
     }
 
-    private boolean checkOutputSpace(ThermalConverterRecipe recipe) {
+    private boolean checkOutputSpace(ThermalConverterRecipe recipe, int multiplier) {
         // 模拟插入物品
         if (!recipe.getItemOutputs().isEmpty()) {
-            ItemStack out1 = recipe.getItemOutputs().get(0).stack();
+            ItemStack out1 = recipe.getItemOutputs().get(0).stack().copy();
+            out1.setCount(out1.getCount() * multiplier);
             if (!itemHandler.insertItem(1, out1, true).isEmpty()) return false;
         }
         if (recipe.getItemOutputs().size() > 1) {
-            ItemStack out2 = recipe.getItemOutputs().get(1).stack();
+            ItemStack out2 = recipe.getItemOutputs().get(1).stack().copy();
+            out2.setCount(out2.getCount() * multiplier);
             if (!itemHandler.insertItem(2, out2, true).isEmpty()) return false;
         }
         // 模拟注入流体
         if (!recipe.getFluidOutputs().isEmpty()) {
-            FluidStack outF = recipe.getFluidOutputs().get(0).fluid();
+            FluidStack outF = recipe.getFluidOutputs().get(0).fluid().copy();
+            outF.setAmount(outF.getAmount() * multiplier);
             if (outputTank.fill(outF, IFluidHandler.FluidAction.SIMULATE) < outF.getAmount()) return false;
         }
         return true;
     }
 
-    private void finishProcess(ThermalConverterRecipe recipe) {
-        // 1. 消耗输入
-        if (!recipe.getItemInputs().isEmpty()) {
-            var inRule = recipe.getItemInputs().get(0);
-            if (level.random.nextFloat() < inRule.consumeChance()) {
-                itemHandler.extractItem(0, inRule.count(), false);
+    private void finishProcess(ThermalConverterRecipe recipe, int multiplier) {
+        // 1. 消耗输入 (multiplier 次)
+        // 注意：概率判定通常对每次操作独立。为了性能和批处理的“爽感”，这里我们假设批处理时必定成功消耗
+        // 或者，我们可以做一个循环来精确模拟概率
+        
+        for (int i = 0; i < multiplier; i++) {
+            if (!recipe.getItemInputs().isEmpty()) {
+                var inRule = recipe.getItemInputs().get(0);
+                if (level.random.nextFloat() < inRule.consumeChance()) {
+                    itemHandler.extractItem(0, inRule.count(), false);
+                }
             }
-        }
-        if (!recipe.getFluidInputs().isEmpty()) {
-            var inRule = recipe.getFluidInputs().get(0);
-            if (level.random.nextFloat() < inRule.consumeChance()) {
-                inputTank.drain(inRule.fluid().getAmount(), IFluidHandler.FluidAction.EXECUTE);
+            if (!recipe.getFluidInputs().isEmpty()) {
+                var inRule = recipe.getFluidInputs().get(0);
+                if (level.random.nextFloat() < inRule.consumeChance()) {
+                    inputTank.drain(inRule.fluid().getAmount(), IFluidHandler.FluidAction.EXECUTE);
+                }
             }
-        }
 
-        // 2. 产生输出
-        if (!recipe.getItemOutputs().isEmpty()) {
-            var outRule = recipe.getItemOutputs().get(0);
-            if (level.random.nextFloat() < outRule.chance()) {
-                itemHandler.insertItem(1, outRule.stack().copy(), false);
+            // 2. 产生输出
+            if (!recipe.getItemOutputs().isEmpty()) {
+                var outRule = recipe.getItemOutputs().get(0);
+                if (level.random.nextFloat() < outRule.chance()) {
+                    itemHandler.insertItem(1, outRule.stack().copy(), false);
+                }
             }
-        }
-        if (recipe.getItemOutputs().size() > 1) {
-            var outRule = recipe.getItemOutputs().get(1);
-            if (level.random.nextFloat() < outRule.chance()) {
-                itemHandler.insertItem(2, outRule.stack().copy(), false);
+            if (recipe.getItemOutputs().size() > 1) {
+                var outRule = recipe.getItemOutputs().get(1);
+                if (level.random.nextFloat() < outRule.chance()) {
+                    itemHandler.insertItem(2, outRule.stack().copy(), false);
+                }
             }
-        }
-        if (!recipe.getFluidOutputs().isEmpty()) {
-            var outRule = recipe.getFluidOutputs().get(0);
-            if (level.random.nextFloat() < outRule.chance()) {
-                outputTank.fill(outRule.fluid().copy(), IFluidHandler.FluidAction.EXECUTE);
+            if (!recipe.getFluidOutputs().isEmpty()) {
+                var outRule = recipe.getFluidOutputs().get(0);
+                if (level.random.nextFloat() < outRule.chance()) {
+                    outputTank.fill(outRule.fluid().copy(), IFluidHandler.FluidAction.EXECUTE);
+                }
             }
         }
     }

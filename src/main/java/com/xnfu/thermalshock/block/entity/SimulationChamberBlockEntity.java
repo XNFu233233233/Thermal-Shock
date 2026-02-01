@@ -206,8 +206,18 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
                     .forEach(p -> {
                         BlockState s = level.getBlockState(p);
                         if (!s.isAir()) {
-                            // 存入快照
-                            this.internalBlockCache.add(new ChamberProcess.FoundMaterial(p.immutable(), new ItemStack(s.getBlock())));
+                            ItemStack stack;
+                            // [流体支持] 如果是液体方块，转换为对应的桶物品存入缓存，以便配方匹配
+                            if (!s.getFluidState().isEmpty() && s.getFluidState().isSource()) {
+                                stack = new ItemStack(s.getFluidState().getType().getBucket());
+                            } else {
+                                stack = new ItemStack(s.getBlock());
+                            }
+                            
+                            if (!stack.isEmpty()) {
+                                // 存入快照
+                                this.internalBlockCache.add(new ChamberProcess.FoundMaterial(p.immutable(), stack));
+                            }
                         }
                     });
             this.blockCacheDirty = false;

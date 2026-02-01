@@ -2,6 +2,7 @@ package com.xnfu.thermalshock.registries;
 
 import com.xnfu.thermalshock.ThermalShock;
 import com.xnfu.thermalshock.item.MaterialClumpItem;
+import com.xnfu.thermalshock.item.OverclockUpgradeItem;
 import com.xnfu.thermalshock.item.SimulationUpgradeItem;
 import net.minecraft.world.item.Item;
 import net.neoforged.bus.api.IEventBus;
@@ -17,8 +18,8 @@ public class ThermalShockItems {
     public static final DeferredItem<SimulationUpgradeItem> SIMULATION_UPGRADE = ITEMS.register("simulation_upgrade",
             () -> new SimulationUpgradeItem(new Item.Properties()));
 
-    public static final DeferredItem<Item> OVERCLOCK_UPGRADE = ITEMS.register("overclock_upgrade",
-            () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final DeferredItem<OverclockUpgradeItem> OVERCLOCK_UPGRADE = ITEMS.register("overclock_upgrade",
+            () -> new OverclockUpgradeItem(new Item.Properties().stacksTo(64)));
 
     public static void register(IEventBus eventBus) {
         ITEMS.register(eventBus);

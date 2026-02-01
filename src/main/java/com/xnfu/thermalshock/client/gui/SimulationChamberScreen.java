@@ -2,6 +2,7 @@ package com.xnfu.thermalshock.client.gui;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.xnfu.thermalshock.ThermalShock;
+import com.xnfu.thermalshock.util.RecipeCache;
 import com.xnfu.thermalshock.block.entity.MachineMode;
 import com.xnfu.thermalshock.client.gui.component.CatalystBarWidget;
 import com.xnfu.thermalshock.client.gui.component.HeatBarWidget;
@@ -89,11 +90,10 @@ public class SimulationChamberScreen extends AbstractContainerScreen<SimulationC
     protected void init() {
         super.init();
 
-        // [优化] 使用带参数的构造函数或 addAll 优化
-        var manager = this.minecraft.level.getRecipeManager();
+        // 使用缓存获取所有模拟配方
         this.allRecipes = new ArrayList<>();
-        this.allRecipes.addAll(manager.getAllRecipesFor(ThermalShockRecipes.OVERHEATING_TYPE.get()));
-        this.allRecipes.addAll(manager.getAllRecipesFor(ThermalShockRecipes.THERMAL_SHOCK_TYPE.get()));
+        this.allRecipes.addAll(RecipeCache.getRecipes(MachineMode.OVERHEATING));
+        this.allRecipes.addAll(RecipeCache.getRecipes(MachineMode.THERMAL_SHOCK));
 
         // --- 1. 锁定按钮 ---
         this.btnLock = addRenderableWidget(Button.builder(Component.literal("?"), btn -> {
@@ -111,11 +111,10 @@ public class SimulationChamberScreen extends AbstractContainerScreen<SimulationC
         }).bounds(leftPos + 153, topPos + 5, 16, 16).build());
 
         // --- 3. 配方按钮 (JEI 交互) ---
-        addRenderableWidget(Button.builder(Component.literal("R"), btn -> {
+        addRenderableWidget(Button.builder(net.minecraft.network.chat.Component.literal("R"), btn -> {
             // 这里留空，由于我们在 JEI Plugin 注册了该区域，JEI 会拦截点击
         })
         .bounds(leftPos + BTN_RECIPE_X, topPos + BTN_RECIPE_Y, BTN_RECIPE_W, BTN_RECIPE_H)
-        .tooltip(Tooltip.create(Component.translatable("gui.thermalshock.tooltip.show_recipes.desc").withStyle(ChatFormatting.GRAY)))
         .build());
 
         // --- 4. 热量条 ---
@@ -199,7 +198,6 @@ public class SimulationChamberScreen extends AbstractContainerScreen<SimulationC
         super.render(gfx, mouseX, mouseY, partialTick);
         renderRecipeList(gfx, mouseX, mouseY);
         renderUnifiedTooltips(gfx, mouseX, mouseY);
-        renderRecipeButtonPreview(gfx, mouseX, mouseY);
     }
 
     @Override
@@ -348,75 +346,8 @@ public class SimulationChamberScreen extends AbstractContainerScreen<SimulationC
         else this.renderTooltip(gfx, mouseX, mouseY);
     }
 
-    private void renderRecipeButtonPreview(GuiGraphics gfx, int mouseX, int mouseY) {
-        if (!isHovering(BTN_RECIPE_X, BTN_RECIPE_Y, BTN_RECIPE_W, BTN_RECIPE_H, mouseX - leftPos, mouseY - topPos)) return;
-        if (!Screen.hasShiftDown()) return;
-
-        // 获取当前选中的配方
-        var selectedId = menu.getBlockEntity().getMatchedRecipeId();
-        AbstractSimulationRecipe recipeToShow = null;
-        if (selectedId != null && !GENERIC_CLUMP_ID.equals(selectedId)) {
-            var opt = minecraft.level.getRecipeManager().byKey(selectedId);
-            if (opt.isPresent() && opt.get().value() instanceof AbstractSimulationRecipe r) {
-                recipeToShow = r;
-            }
-        }
-
-        if (recipeToShow != null) {
-            // 显示特定配方预览
-            int x = mouseX + 10;
-            int y = mouseY - 20;
-            if (x + RecipePreviewRenderer.WIDTH > this.width) x = mouseX - RecipePreviewRenderer.WIDTH - 10;
-            
-            gfx.pose().pushPose();
-            gfx.pose().translate(0, 0, 500);
-            RecipePreviewRenderer.render(gfx, recipeToShow, x, y);
-            gfx.pose().popPose();
-            return;
-        }
-
-        // 回退：显示支持的分类列表 (Fallback)
-        int x = mouseX + 10;
-        int y = mouseY - 20;
-        int w = 140;
-
-        record PreviewCat(Component name, ItemStack icon, int color) {}
-        List<PreviewCat> cats = List.of(
-            new PreviewCat(Component.translatable("gui.thermalshock.jei.category.overheating"), new ItemStack(Items.BLAZE_POWDER), 0xffaa0000),
-            new PreviewCat(Component.translatable("gui.thermalshock.jei.category.shock"), new ItemStack(Blocks.BLUE_ICE), 0xff55ffff),
-            new PreviewCat(Component.translatable("gui.thermalshock.jei.category.clump_filling_shock"), new ItemStack(ThermalShockItems.MATERIAL_CLUMP.get()), 0xffaaaaaa),
-            new PreviewCat(Component.translatable("gui.thermalshock.jei.category.clump_filling_crafting"), new ItemStack(Blocks.CRAFTING_TABLE), 0xffaaaaaa),
-            new PreviewCat(Component.translatable("gui.thermalshock.jei.category.clump_extraction"), new ItemStack(Blocks.BLAST_FURNACE), 0xffaa0000)
-        );
-
-        int h = cats.size() * 18 + 22;
-        if (x + w > this.width) x = mouseX - w - 10;
-
-        gfx.pose().pushPose();
-        gfx.pose().translate(0, 0, 500); 
-
-        gfx.fill(x, y, x + w, y + h, 0xf0202020);
-        gfx.renderOutline(x, y, w, h, 0xff444444);
-
-        gfx.drawString(this.font, Component.translatable("gui.thermalshock.jei.preview.title").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD), x + 5, y + 5, 0xffffffff, false);
-        gfx.fill(x + 5, y + 16, x + w - 5, y + 17, 0x44ffffff);
-
-        for (int i = 0; i < cats.size(); i++) {
-            PreviewCat cat = cats.get(i);
-            int iy = y + 20 + i * 18;
-            gfx.renderItem(cat.icon, x + 5, iy);
-            
-            gfx.pose().pushPose();
-            gfx.pose().translate(x + 24, iy + 4, 0);
-            gfx.drawString(this.font, cat.name, 0, 0, cat.color, false);
-            gfx.pose().popPose();
-        }
-
-        gfx.pose().popPose();
-    }
-
     // ==========================================
-    // 6. 交互
+    // 5. 工具提示
     // ==========================================
 
     @Override

@@ -1,5 +1,6 @@
 package com.xnfu.thermalshock.block.entity;
 
+import com.xnfu.thermalshock.api.IThermalHandler;
 import com.xnfu.thermalshock.block.ThermalSourceBlock;
 import com.xnfu.thermalshock.client.gui.ThermalSourceMenu;
 import com.xnfu.thermalshock.recipe.ThermalFuelRecipe;
@@ -32,7 +33,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.Optional;
 
-public class ThermalSourceBlockEntity extends BlockEntity implements MenuProvider {
+public class ThermalSourceBlockEntity extends BlockEntity implements MenuProvider, IThermalHandler {
 
     // 燃烧相关
     private int burnTime;
@@ -240,6 +241,11 @@ public class ThermalSourceBlockEntity extends BlockEntity implements MenuProvide
     }
 
     public int getCurrentHeatOutput() {
+        return totalHeatOutput;
+    }
+
+    @Override
+    public int getThermalRate() {
         return totalHeatOutput;
     }
     

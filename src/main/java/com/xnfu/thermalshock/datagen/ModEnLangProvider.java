@@ -24,6 +24,9 @@ public class ModEnLangProvider extends LanguageProvider {
         add(ThermalShockItems.MATERIAL_CLUMP.get(), "Material Clump");
         add(ThermalShockItems.SIMULATION_UPGRADE.get(), "Simulation Upgrade");
         add(ThermalShockItems.OVERCLOCK_UPGRADE.get(), "Overclock Upgrade");
+        add("item.thermalshock.overclock_upgrade.desc", "Upgrade for Thermal Converter");
+        add("item.thermalshock.overclock_upgrade.speed", "- Reduces process time by 50% per stack (Multiplicative)");
+        add("item.thermalshock.overclock_upgrade.batch", "- At 4 upgrades: Unlocks 4x parallel processing");
 
         // === 2. 创造模式页签 ===
         add("itemGroup.thermalshock", "Thermal Shock");
@@ -64,6 +67,7 @@ public class ModEnLangProvider extends LanguageProvider {
         add("gui.thermalshock.label.heat_io", "Rate: %s%s H/t");
         add("gui.thermalshock.label.max_rate", "Limit: +%s / -%s");
         add("gui.thermalshock.mode.overheating", "Overheating Mode");
+        add("gui.thermalshock.mode.thermal_shock", "Thermal Shock Mode");
         add("gui.thermalshock.mode.shock", "Shock Mode");
         add("gui.thermalshock.mode.thermalshock", "Thermal Shock");
         add("gui.thermalshock.label.delta", "Thermal Stress: %s");
@@ -168,17 +172,20 @@ public class ModEnLangProvider extends LanguageProvider {
         add("jei.thermalshock.label.low", "Low: <%d");
 
         add("gui.thermalshock.tooltip.show_recipes", "Show Recipes (JEI)");
-        add("gui.thermalshock.tooltip.show_recipes.desc", "Click to view all supported recipe categories (Hold Shift for preview)");
+        add("gui.thermalshock.tooltip.show_recipes.desc", "Supported recipe categories:");
 
         // === 11. Jade 集成 ===
-        add("jade.thermalshock.status", "Status: %s");
-        add("jade.thermalshock.mode", "Mode: %s");
-        add("jade.thermalshock.heat", "Heat: %d H");
-        add("jade.thermalshock.delta", "Delta: %d H");
-        add("jade.thermalshock.output", "Output: %d H/t");
-        add("jade.thermalshock.net_input", "Net Input: %d H/t");
-        add("jade.thermalshock.max_batch", "Max Batch: %d");
-        add("jade.thermalshock.recipe_locked", "Recipe Locked: %s");
+                add("jade.thermalshock.status", "Status: ");
+                add("jade.thermalshock.mode", "Mode: ");
+                add("jade.thermalshock.heat", "Heat: %d H");
+                add("jade.thermalshock.delta", "Delta: %d H");
+                add("jade.thermalshock.input_header", "Heat Input:");
+                add("jade.thermalshock.high_input_label", "            +%d H");
+                add("jade.thermalshock.low_input_label", "            %d H");
+                add("jade.thermalshock.output", "Output: %d H/t");
+                add("jade.thermalshock.net_input", "Net Input: %d H/t");
+                add("jade.thermalshock.max_batch", "Max Batch: %d");
+                add("jade.thermalshock.recipe_locked", "Recipe Locked: ");
         add("jade.thermalshock.volume", "Volume: %d blocks");
         add("jade.thermalshock.ports", "Ports: %d");
         add("jade.thermalshock.energy", "Energy: %s / %s FE");
