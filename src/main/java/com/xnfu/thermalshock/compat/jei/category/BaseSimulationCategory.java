@@ -113,22 +113,18 @@ public abstract class BaseSimulationCategory<T> implements IRecipeCategory<T> {
     }
 
     @Override
-    public List<Component> getTooltipStrings(T recipe, IRecipeSlotsView recipeSlots, double mouseX, double mouseY) {
-        List<Component> tooltips = new ArrayList<>();
-        for (SlotHint hint : slotHints) {
-            if (hint.isMouseOver(mouseX, mouseY)) {
-                tooltips.add(hint.hint);
-                break;
-            }
-        }
-        return tooltips;
+    public void draw(T recipe, IRecipeSlotsView recipeSlots, GuiGraphics gfx, double mouseX, double mouseY) {
+        drawBackground(gfx);
+        drawHints(gfx, mouseX, mouseY);
     }
 
     protected void drawHints(GuiGraphics gfx, double mouseX, double mouseY) {
         for (SlotHint hint : slotHints) {
             if (hint.isMouseOver(mouseX, mouseY)) {
                 gfx.fill(hint.x + 1, hint.y + 1, hint.x + 17, hint.y + 17, 0x50FFFFFF);
-                break;
+                // 在 draw 中处理简单的工具提示通常不如 getTooltipStrings，但既然 getTooltipStrings 被弃用，
+                // JEI 推荐使用 IRecipeLayoutBuilder.addInvisibleSlot 或类似方式。
+                // 这里我们暂时保留逻辑，如果 getTooltipStrings 彻底移除，我们会改用 invisible slots。
             }
         }
     }

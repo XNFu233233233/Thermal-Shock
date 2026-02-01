@@ -36,6 +36,7 @@ public class ThermalShock {
         // =========================================
         // 2. 模组生命周期事件 (Mod Event Bus)
         // =========================================
+        modEventBus.register(Config.class);
 
         // 功能能力 (Capabilities) - 使用方法引用注册
         modEventBus.addListener(ModBusEvents::registerCapabilities);
