@@ -1,8 +1,0 @@
-{
-  "type": "thermalshock:thermal_fuel",
-  "burn_time": 19200,
-  "heat_rate": -500,
-  "ingredient": {
-    "item": "minecraft:blue_ice"
-  }
-}

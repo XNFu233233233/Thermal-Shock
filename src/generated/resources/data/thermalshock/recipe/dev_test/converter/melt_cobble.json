@@ -1,0 +1,25 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:false"
+    }
+  ],
+  "type": "thermalshock:thermal_converter",
+  "fluid_outputs": [
+    {
+      "fluid": {
+        "amount": 250,
+        "id": "minecraft:lava"
+      }
+    }
+  ],
+  "item_inputs": [
+    {
+      "ingredient": {
+        "item": "minecraft:cobblestone"
+      }
+    }
+  ],
+  "min_heat": 500,
+  "process_time": 200
+}

@@ -191,5 +191,9 @@ public class ModCnLangProvider extends LanguageProvider {
         add("jade.thermalshock.ports", "接口数量: %d");
         add("jade.thermalshock.energy", "能量: %s / %s FE");
         add("jade.thermalshock.remaining", "剩余时间: %s秒");
+
+        add("config.jade.plugin_thermalshock.thermal_converter", "热力转换器信息");
+        add("config.jade.plugin_thermalshock.thermal_source", "热源/冷源信息");
+        add("config.jade.plugin_thermalshock.simulation_chamber", "模拟室信息");
     }
 }

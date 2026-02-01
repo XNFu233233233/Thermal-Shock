@@ -1,0 +1,13 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:false"
+    }
+  ],
+  "type": "thermalshock:thermal_fuel",
+  "burn_time": 1600,
+  "heat_rate": 200,
+  "ingredient": {
+    "item": "minecraft:coal"
+  }
+}

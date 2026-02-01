@@ -45,8 +45,7 @@ public class SimulationShockCategory extends BaseSimulationCategory<ThermalShock
         // Register 3 block slots
         for (int i = 0; i < 3; i++) {
             if (i < blocks.size()) {
-                addSlotWithTooltip(builder, RecipeIngredientRole.INPUT, 5 + i * 19, 5, blockHint)
-                    .addIngredients(blocks.get(i).ingredient());
+                addSimulationSlot(builder, RecipeIngredientRole.INPUT, 5 + i * 19, 5, blocks.get(i), blockHint);
             } else {
                 addEmptySlotWithTooltip(builder, RecipeIngredientRole.INPUT, 5 + i * 19, 5, blockHint);
             }
@@ -55,8 +54,7 @@ public class SimulationShockCategory extends BaseSimulationCategory<ThermalShock
         // Register 3 item slots
         for (int i = 0; i < 3; i++) {
             if (i < items.size()) {
-                addSlotWithTooltip(builder, RecipeIngredientRole.INPUT, 5 + i * 19, 26, itemHint)
-                    .addIngredients(items.get(i).ingredient());
+                addSimulationSlot(builder, RecipeIngredientRole.INPUT, 5 + i * 19, 26, items.get(i), itemHint);
             } else {
                 addEmptySlotWithTooltip(builder, RecipeIngredientRole.INPUT, 5 + i * 19, 26, itemHint);
             }

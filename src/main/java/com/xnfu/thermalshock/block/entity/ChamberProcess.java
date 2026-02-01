@@ -452,7 +452,7 @@ public class ChamberProcess {
                     
                     // 1. 尝试流体匹配 (仅当 Virtual Mode 且 Type=BLOCK 且 Ingredient 是桶)
                     if (requiredFluid != null && simIng.type() == RecipeSourceType.BLOCK) {
-                        var fluidHandler = port.getCapabilityFluidHandler(); // 使用内部 Handler 或 Cap
+                        var fluidHandler = port.getFluidHandler(); // [Fix] 使用内部 Handler，绕过 Capability 的 INPUT 模式限制
                         for (int i = 0; i < fluidHandler.getTanks(); i++) {
                             var fluidInTank = fluidHandler.getFluidInTank(i);
                             if (fluidInTank.getFluid() == requiredFluid) {
@@ -530,7 +530,7 @@ public class ChamberProcess {
                     
                     // 1. 尝试流体消耗
                     if (requiredFluid != null && simIng.type() == RecipeSourceType.BLOCK) {
-                        var fluidHandler = port.getCapabilityFluidHandler();
+                        var fluidHandler = port.getFluidHandler(); // [Fix] 使用内部 Handler
                         // 每个批次消耗 1000mB
                         int neededAmount = remainingToConsume * 1000;
                         var drained = fluidHandler.drain(new net.neoforged.neoforge.fluids.FluidStack(requiredFluid, neededAmount), net.neoforged.neoforge.fluids.capability.IFluidHandler.FluidAction.EXECUTE);
@@ -662,7 +662,8 @@ public class ChamberProcess {
             Vec3 fxPos = null;
             if (mat.source instanceof BlockPos p) {
                 fxPos = Vec3.atCenterOf(p);
-                level.removeBlock(p, false);
+                // [Fix] 显式设置为空气，确保流体方块被移除 (Flag 3 = Update & Notify)
+                level.setBlock(p, net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(), 3);
             } else if (mat.source instanceof ItemEntity ie) {
                 fxPos = ie.position();
                 ItemStack s = ie.getItem();

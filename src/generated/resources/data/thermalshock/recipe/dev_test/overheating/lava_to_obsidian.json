@@ -1,0 +1,22 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:false"
+    }
+  ],
+  "type": "thermalshock:overheating",
+  "heat_cost": 5000,
+  "ingredients": [
+    {
+      "type": "block",
+      "value": {
+        "item": "minecraft:lava_bucket"
+      }
+    }
+  ],
+  "min_temp": 1000,
+  "result": {
+    "count": 1,
+    "id": "minecraft:obsidian"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:false"
+    }
+  ],
+  "type": "thermalshock:thermal_fuel",
+  "burn_time": 1200,
+  "heat_rate": 300,
+  "ingredient": {
+    "item": "minecraft:magma_cream"
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:false"
+    }
+  ],
+  "type": "thermalshock:thermal_shock_filling",
+  "clump_heat_cost": 500,
+  "clump_min_temp": 100,
+  "delta": 150,
+  "ingredients": [
+    {
+      "type": "item",
+      "value": {
+        "item": "minecraft:iron_bars"
+      }
+    },
+    {
+      "type": "item",
+      "value": {
+        "item": "thermalshock:material_clump"
+      }
+    }
+  ],
+  "max_cold": 10,
+  "min_hot": 100,
+  "target_result": {
+    "count": 1,
+    "id": "minecraft:iron_nugget"
+  }
+}

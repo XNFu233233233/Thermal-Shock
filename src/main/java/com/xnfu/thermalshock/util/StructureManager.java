@@ -107,7 +107,8 @@ public class StructureManager {
         boolean isMachine = isMachineRelated(state) || type == UpdateType.ITEM;
 
         // 仅检查当前区块内可能受影响的控制器 (O(1) ~ O(M))
-        for (BlockPos controllerPos : candidates) {
+        // [修复] 使用副本遍历，防止 notifyController 触发结构更新导致 candidates 集合并发修改
+        for (BlockPos controllerPos : new HashSet<>(candidates)) {
             // 1. 检查已成型结构
             var formedMap = STRUCTURE_REGISTRY.get(dim);
             if (formedMap != null) {

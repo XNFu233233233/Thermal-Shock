@@ -190,5 +190,9 @@ public class ModEnLangProvider extends LanguageProvider {
         add("jade.thermalshock.ports", "Ports: %d");
         add("jade.thermalshock.energy", "Energy: %s / %s FE");
         add("jade.thermalshock.remaining", "Remaining: %ss");
+
+        add("config.jade.plugin_thermalshock.thermal_converter", "Thermal Converter Info");
+        add("config.jade.plugin_thermalshock.thermal_source", "Heat/Cold Source Info");
+        add("config.jade.plugin_thermalshock.simulation_chamber", "Simulation Chamber Info");
     }
 }

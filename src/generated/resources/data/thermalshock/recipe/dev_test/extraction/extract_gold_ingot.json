@@ -1,0 +1,22 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:false"
+    }
+  ],
+  "type": "thermalshock:clump_processing",
+  "heat_cost": 2000,
+  "ingredients": [
+    {
+      "type": "item",
+      "value": {
+        "item": "thermalshock:material_clump"
+      }
+    }
+  ],
+  "min_temp": 500,
+  "target_content": {
+    "count": 1,
+    "id": "minecraft:gold_ingot"
+  }
+}

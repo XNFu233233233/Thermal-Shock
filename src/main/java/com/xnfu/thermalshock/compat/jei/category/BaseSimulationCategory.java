@@ -1,23 +1,30 @@
 package com.xnfu.thermalshock.compat.jei.category;
 
+import com.xnfu.thermalshock.recipe.RecipeSourceType;
+import com.xnfu.thermalshock.recipe.SimulationIngredient;
 import mezz.jei.api.constants.VanillaTypes;
 import mezz.jei.api.gui.builder.IRecipeLayoutBuilder;
 import mezz.jei.api.gui.builder.IRecipeSlotBuilder;
 import mezz.jei.api.gui.drawable.IDrawable;
 import mezz.jei.api.gui.ingredient.IRecipeSlotsView;
 import mezz.jei.api.helpers.IGuiHelper;
+import mezz.jei.api.neoforge.NeoForgeTypes;
 import mezz.jei.api.recipe.RecipeIngredientRole;
 import mezz.jei.api.recipe.category.IRecipeCategory;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
-import org.jetbrains.annotations.NotNull;
+import net.minecraft.world.level.material.Fluid;
+import net.neoforged.neoforge.fluids.FluidStack;
+import net.neoforged.neoforge.fluids.FluidUtil;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 public abstract class BaseSimulationCategory<T> implements IRecipeCategory<T> {
+    
     protected final IDrawable background;
     protected IDrawable icon;
     protected final Component title;
@@ -27,7 +34,7 @@ public abstract class BaseSimulationCategory<T> implements IRecipeCategory<T> {
     protected static final int COLOR_ITEM = 0xFF008080;
     protected static final int COLOR_OUTPUT = 0xFF373737;
     protected static final int COLOR_SLOT_BG = 0xFF8B8B8B;
-    protected static final int COLOR_SPECIAL = 0xFFD4AF37; // 金色/特殊的槽位
+    protected static final int COLOR_SPECIAL = 0xFFD4AF37;
     
     protected final int width;
     protected final int height;
@@ -47,30 +54,54 @@ public abstract class BaseSimulationCategory<T> implements IRecipeCategory<T> {
         this.background = helper.createBlankDrawable(width, height);
     }
 
-    @Override public @NotNull Component getTitle() { return title; }
-    @Override public @NotNull IDrawable getIcon() { return icon; }
+    @Override public Component getTitle() { return title; }
+    @Override public IDrawable getIcon() { return icon; }
     @Override public int getWidth() { return width; }
     @Override public int getHeight() { return height; }
 
     protected void drawSlot(GuiGraphics gfx, int x, int y, int color) {
-        // 描边 18x18
         gfx.fill(x, y, x + 18, y + 18, color);
-        // 背景 16x16
         gfx.fill(x + 1, y + 1, x + 17, y + 17, COLOR_SLOT_BG);
     }
 
     protected void drawBackground(GuiGraphics gfx) {
-        // 绘制灰色背景
         gfx.fill(0, 0, width, height, 0xFFC6C6C6);
-        // 绘制阴影外框
         gfx.fill(0, 0, width, 1, 0xFFFFFFFF);
         gfx.fill(0, 0, 1, height, 0xFFFFFFFF);
         gfx.fill(width - 1, 0, width, height, 0xFF555555);
         gfx.fill(0, height - 1, width, height, 0xFF555555);
     }
 
+    // [新增] 智能添加槽位：如果是 BLOCK 类型且为 Bucket，则渲染流体
+    protected void addSimulationSlot(IRecipeLayoutBuilder builder, RecipeIngredientRole role, int x, int y, SimulationIngredient input, Component hint) {
+        if (input.type() == RecipeSourceType.BLOCK) {
+            // 检查是否为 Bucket
+            Fluid fluid = getFluidFromIngredient(input);
+            if (fluid != null) {
+                // 渲染流体 (1000mB)
+                builder.addSlot(role, x + 1, y + 1)
+                        .addIngredient(NeoForgeTypes.FLUID_STACK, new FluidStack(fluid, 1000))
+                        .setFluidRenderer(1000, false, 16, 16) // 填满 16x16 槽位
+                        .addRichTooltipCallback((slotView, tooltip) -> tooltip.add(hint));
+                return;
+            }
+        }
+        
+        // 默认渲染物品
+        builder.addSlot(role, x + 1, y + 1)
+                .addIngredients(input.ingredient())
+                .addRichTooltipCallback((slotView, tooltip) -> tooltip.add(hint));
+    }
+
+    private Fluid getFluidFromIngredient(SimulationIngredient simIng) {
+        for (ItemStack stack : simIng.ingredient().getItems()) {
+            Optional<FluidStack> fs = FluidUtil.getFluidContained(stack);
+            if (fs.isPresent()) return fs.get().getFluid();
+        }
+        return null;
+    }
+
     protected IRecipeSlotBuilder addSlotWithTooltip(IRecipeLayoutBuilder builder, RecipeIngredientRole role, int x, int y, Component hint) {
-        // 有物品的槽位：注册到 JEI，并使用回调。JEI 此时会阻断 getTooltipStrings 的调用。
         return builder.addSlot(role, x + 1, y + 1)
             .addRichTooltipCallback((slotView, tooltip) -> {
                 tooltip.add(hint);
@@ -78,12 +109,11 @@ public abstract class BaseSimulationCategory<T> implements IRecipeCategory<T> {
     }
 
     protected void addEmptySlotWithTooltip(IRecipeLayoutBuilder builder, RecipeIngredientRole role, int x, int y, Component hint) {
-        // 空槽位：不注册到 JEI，由 BaseSimulationCategory 统一处理坐标判定（解决 16x16 中心不触发问题）。
         slotHints.add(new SlotHint(x, y, hint));
     }
 
     @Override
-    public @NotNull List<Component> getTooltipStrings(T recipe, IRecipeSlotsView recipeSlots, double mouseX, double mouseY) {
+    public List<Component> getTooltipStrings(T recipe, IRecipeSlotsView recipeSlots, double mouseX, double mouseY) {
         List<Component> tooltips = new ArrayList<>();
         for (SlotHint hint : slotHints) {
             if (hint.isMouseOver(mouseX, mouseY)) {
@@ -97,7 +127,6 @@ public abstract class BaseSimulationCategory<T> implements IRecipeCategory<T> {
     protected void drawHints(GuiGraphics gfx, double mouseX, double mouseY) {
         for (SlotHint hint : slotHints) {
             if (hint.isMouseOver(mouseX, mouseY)) {
-                // JEI 风格高亮：白色半透明叠层
                 gfx.fill(hint.x + 1, hint.y + 1, hint.x + 17, hint.y + 17, 0x50FFFFFF);
                 break;
             }
@@ -110,19 +139,18 @@ public abstract class BaseSimulationCategory<T> implements IRecipeCategory<T> {
     }
 
     protected void drawArrow(GuiGraphics gfx, int x, int y) {
-        // 使用简单的多边形模拟原版箭头，更清爽
         gfx.fill(x, y + 4, x + 12, y + 10, 0xFF7E7E7E);
         gfx.fill(x + 12, y, x + 14, y + 14, 0xFF7E7E7E);
         gfx.fill(x + 14, y + 2, x + 16, y + 12, 0xFF7E7E7E);
         gfx.fill(x + 16, y + 4, x + 18, y + 10, 0xFF7E7E7E);
     }
 
-    protected void setIconWithOverlay(mezz.jei.api.helpers.IGuiHelper helper, ItemStack base, ItemStack overlay) {
+    protected void setIconWithOverlay(IGuiHelper helper, ItemStack base, ItemStack overlay) {
         this.icon = new IDrawable() {
             @Override public int getWidth() { return 16; }
             @Override public int getHeight() { return 16; }
             @Override
-            public void draw(@NotNull GuiGraphics gfx, int x, int y) {
+            public void draw(GuiGraphics gfx, int x, int y) {
                 gfx.renderFakeItem(base, x, y);
                 gfx.pose().pushPose();
                 gfx.pose().translate(x + 8, y + 8, 200);

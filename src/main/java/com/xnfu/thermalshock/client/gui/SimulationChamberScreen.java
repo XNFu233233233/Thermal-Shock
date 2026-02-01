@@ -404,6 +404,9 @@ public class SimulationChamberScreen extends AbstractContainerScreen<SimulationC
         }
 
         for (RecipeHolder<? extends AbstractSimulationRecipe> holder : allRecipes) {
+            // [修复] 增加判空保护，防止 RecipeCache 返回 null (虽然概率极低)
+            if (holder == null || holder.value() == null) continue;
+            
             AbstractSimulationRecipe recipe = holder.value();
 
             if (recipe.getMachineMode() != currentMode) continue;
@@ -448,27 +451,30 @@ public class SimulationChamberScreen extends AbstractContainerScreen<SimulationC
         Minecraft.getInstance().getSoundManager().play(net.minecraft.client.resources.sounds.SimpleSoundInstance.forUI(net.minecraft.sounds.SoundEvents.UI_BUTTON_CLICK, pitch));
     }
 
-    // [修复] 内部类适配新配方结构
     class RecipeButton {
         final int x, y;
         final int w = 18, h = 18;
         final RecipeHolder<? extends AbstractSimulationRecipe> holder;
         final ItemStack icon;
         final Runnable onPress;
-        // [删除] final List<Component> tooltipLines; // 不再缓存
 
         public RecipeButton(int x, int y, RecipeHolder<? extends AbstractSimulationRecipe> holder, Runnable onPress) {
             this.x = x;
             this.y = y;
             this.holder = holder;
             this.onPress = onPress;
-            // 确保这里获取的 icon 是带有 NBT 数据的（由配方类的 getResultItem 生成）
-            this.icon = holder.value().getResultItem(Minecraft.getInstance().level.registryAccess());
+            // [修复] 判空保护：GenericClumpButton 会传入 null
+            if (holder != null) {
+                this.icon = holder.value().getResultItem(Minecraft.getInstance().level.registryAccess());
+            } else {
+                this.icon = ItemStack.EMPTY;
+            }
         }
 
         public void renderInList(GuiGraphics gfx, int mouseX, int mouseY) {
             boolean hovered = isMouseOver(mouseX, mouseY);
-            boolean selected = holder.id().equals(menu.getBlockEntity().getSelectedRecipeId());
+            // [修复] 判空保护
+            boolean selected = holder != null && holder.id().equals(menu.getBlockEntity().getSelectedRecipeId());
             int color = selected ? 0xFFDDAA00 : (hovered ? 0xFF888888 : 0xFF444444);
 
             gfx.fill(x, y, x + w, y + h, 0xFF000000);
@@ -476,7 +482,6 @@ public class SimulationChamberScreen extends AbstractContainerScreen<SimulationC
 
             // 渲染物品图标
             gfx.renderItem(icon, x + 1, y + 1);
-            // 渲染物品装饰 (例如耐久条、数量等，虽然 Clump 可能不需要，但保留是个好习惯)
             gfx.renderItemDecorations(font, icon, x + 1, y + 1);
         }
 
@@ -484,19 +489,10 @@ public class SimulationChamberScreen extends AbstractContainerScreen<SimulationC
             return mX >= x && mX < x + w && mY >= y && mY < y + h;
         }
 
-        // [核心修复] 动态生成 Tooltip，不再使用缓存
         public List<Component> getTooltipComponents() {
+            if (icon.isEmpty()) return new ArrayList<>();
             Minecraft mc = Minecraft.getInstance();
-
-            // [优化] 1. 直接通过构造函数初始化，避免 addAll 的开销
-            // Screen.getTooltipFromItem 返回 List<Component>
-            List<Component> tooltip = new ArrayList<>(Screen.getTooltipFromItem(mc, icon));
-
-            // 2. 追加机器配方特定的硬性条件 (Req/Cost/Delta)
-            // 2. 追加机器配方特定的硬性条件 (Req/Cost/Delta)
-            // [Modified] Removed text tooltips as per user request to implement graphical preview instead.
-            
-            return tooltip;
+            return new ArrayList<>(Screen.getTooltipFromItem(mc, icon));
         }
     }
 
@@ -504,10 +500,8 @@ public class SimulationChamberScreen extends AbstractContainerScreen<SimulationC
         private final ItemStack customIcon;
 
         public GenericClumpButton(int x, int y, ItemStack icon, Runnable onPress) {
-            // 父类构造传 null，我们自己处理渲染和tooltip
-            // *注意*：如果 RecipeButton 构造函数不允许 null holder，请临时修改父类构造函数加个判空，或者传一个假的 dummy holder
-            // 这里假设你已经处理了父类的空指针问题
-            super(x, y, allRecipes.isEmpty() ? null : allRecipes.get(0), onPress);
+            // [修复] 直接传 null，RecipeButton 现在已支持 null holder
+            super(x, y, null, onPress);
             this.customIcon = icon;
         }
 

@@ -1,0 +1,22 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:false"
+    }
+  ],
+  "type": "thermalshock:overheating",
+  "heat_cost": 500,
+  "ingredients": [
+    {
+      "type": "block",
+      "value": {
+        "item": "minecraft:wet_sponge"
+      }
+    }
+  ],
+  "min_temp": 100,
+  "result": {
+    "count": 1,
+    "id": "minecraft:sponge"
+  }
+}

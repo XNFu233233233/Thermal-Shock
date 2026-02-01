@@ -1,0 +1,26 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:false"
+    }
+  ],
+  "type": "thermalshock:thermal_converter",
+  "fluid_inputs": [
+    {
+      "fluid": {
+        "amount": 1000,
+        "id": "minecraft:water"
+      }
+    }
+  ],
+  "item_outputs": [
+    {
+      "item": {
+        "count": 1,
+        "id": "minecraft:ice"
+      }
+    }
+  ],
+  "max_heat": 0,
+  "process_time": 100
+}
