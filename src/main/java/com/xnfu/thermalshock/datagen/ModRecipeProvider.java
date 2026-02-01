@@ -224,7 +224,7 @@ public class ModRecipeProvider extends RecipeProvider {
                .save(output, loc("shock/" + name));
     }
 
-    private void buildFillingCrafting(RecipeOutput output, String name, Ingredient input, ItemStack clumpResult, int clumpMin, int clumpCost) {
+    private void buildFillingCrafting(RecipeOutput output, String name, Ingredient input, ItemStack clumpResult, int clumpMinHeat, int clumpHeatCost) {
         ClumpFillingRecipe recipe = new ClumpFillingRecipe(
                 "clump_filling",
                 CraftingBookCategory.MISC,
@@ -232,14 +232,14 @@ public class ModRecipeProvider extends RecipeProvider {
                         Map.of('I', input, 'C', Ingredient.of(ThermalShockItems.MATERIAL_CLUMP.get())),
                         List.of("I", "C")
                 ),
-                clumpResult, clumpMin, clumpCost
+                clumpResult, clumpMinHeat, clumpHeatCost
         );
         output.accept(loc("filling/" + name), recipe, null);
     }
 
-    private void buildFillingShock(RecipeOutput output, String name, Ingredient input, ItemStack clumpResult, int minHot, int maxCold, int delta, int clumpMin, int clumpCost) {
+    private void buildFillingShock(RecipeOutput output, String name, Ingredient input, ItemStack clumpResult, int minHot, int maxCold, int delta, int clumpMinHeat, int clumpHeatCost) {
         new ThermalShockFillingRecipeBuilder(input, clumpResult, minHot, maxCold, delta)
-                .clumpParams(clumpMin, clumpCost)
+                .clumpParams(clumpMinHeat, clumpHeatCost)
                 .save(output, loc("filling/" + name));
     }
 

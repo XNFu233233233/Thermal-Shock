@@ -50,7 +50,6 @@ public class MultiblockValidator {
         // 1. 直接尝试扫描 (Direct Scan)
         // 倒序遍历尺寸 (13 -> 3)，优先匹配大结构
         
-        
         float maxConfidence = 0.0f;
         // bestTopLeft and bestSize already declared above
         Direction bestRight = null, bestDown = null;
@@ -245,9 +244,9 @@ public class MultiblockValidator {
 
         if (validCasingBlock == null) return fail(Component.translatable("message.thermalshock.incomplete"), controllerPos);
         if (ventCount < 1) return fail(Component.translatable("message.thermalshock.missing_vent"), controllerPos);
-        if (ventCount > 9) return fail(Component.translatable("message.thermalshock.too_many_vents"), controllerPos);
-        if (access > 4) return fail(Component.translatable("message.thermalshock.too_many_access"), controllerPos);
-        if (ports.size() > 16) return fail(Component.translatable("message.thermalshock.too_many_port"), controllerPos);
+        if (ventCount > com.xnfu.thermalshock.Config.maxChamberVents) return fail(Component.translatable("message.thermalshock.too_many_vents"), controllerPos);
+        if (access > com.xnfu.thermalshock.Config.maxChamberAccess) return fail(Component.translatable("message.thermalshock.too_many_access"), controllerPos);
+        if (ports.size() > com.xnfu.thermalshock.Config.maxChamberPorts) return fail(Component.translatable("message.thermalshock.too_many_port"), controllerPos);
 
         return new ValidationResult(true, minResult, maxResult, validCasingBlock, ventCount, Component.translatable("message.thermalshock.complete"), null, ports, vents);
     }

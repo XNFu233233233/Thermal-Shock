@@ -108,7 +108,7 @@ public class ThermalShockJEIPlugin implements IModPlugin {
         // 4. FE To Heat 静态配方 (从配置读取)
         int fePerHeat = 1000;
         try {
-            fePerHeat = Config.FE_PER_HEAT.get();
+            fePerHeat = Config.fePerHeat;
         } catch (Exception e) {
             // 忽略配置尚未加载的情况
         }

@@ -63,6 +63,16 @@ public class ThermalSourceBlock extends BaseEntityBlock {
         return new ThermalSourceBlockEntity(pos, state);
     }
 
+    @Override
+    public net.minecraft.world.item.ItemStack getCloneItemStack(net.minecraft.world.level.LevelReader level, BlockPos pos, BlockState state) {
+        net.minecraft.world.item.ItemStack stack = super.getCloneItemStack(level, pos, state);
+        BlockEntity be = level.getBlockEntity(pos);
+        if (be instanceof ThermalSourceBlockEntity source) {
+            stack.applyComponents(source.collectComponents());
+        }
+        return stack;
+    }
+
     @Nullable
     @Override
     public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState state, BlockEntityType<T> type) {

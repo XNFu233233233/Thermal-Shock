@@ -31,6 +31,16 @@ public class SimulationChamberPortBlock extends Block implements EntityBlock {
     }
 
     @Override
+    public net.minecraft.world.item.ItemStack getCloneItemStack(net.minecraft.world.level.LevelReader level, BlockPos pos, BlockState state) {
+        net.minecraft.world.item.ItemStack stack = super.getCloneItemStack(level, pos, state);
+        BlockEntity be = level.getBlockEntity(pos);
+        if (be instanceof SimulationPortBlockEntity port) {
+            stack.applyComponents(port.collectComponents());
+        }
+        return stack;
+    }
+
+    @Override
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hitResult) {
         if (!level.isClientSide) {
             BlockEntity be = level.getBlockEntity(pos);

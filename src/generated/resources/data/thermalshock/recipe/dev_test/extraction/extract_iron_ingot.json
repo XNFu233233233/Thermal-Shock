@@ -1,4 +1,9 @@
 {
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:false"
+    }
+  ],
   "type": "thermalshock:clump_processing",
   "heat_cost": 1000,
   "ingredients": [
@@ -9,7 +14,7 @@
       }
     }
   ],
-  "min_temp": 200,
+  "min_heat": 200,
   "target_content": {
     "count": 1,
     "id": "minecraft:iron_ingot"

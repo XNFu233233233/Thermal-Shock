@@ -46,7 +46,7 @@ public class OverheatingRecipe extends AbstractSimulationRecipe {
         public static final MapCodec<OverheatingRecipe> CODEC = RecordCodecBuilder.mapCodec(inst -> inst.group(
                 SimulationIngredient.CODEC.listOf().fieldOf("ingredients").forGetter(OverheatingRecipe::getSimulationIngredients),
                 ItemStack.CODEC.fieldOf("result").forGetter(OverheatingRecipe::getResultStack),
-                Codec.INT.fieldOf("min_temp").forGetter(OverheatingRecipe::getMinHeatRate),
+                Codec.INT.fieldOf("min_heat").forGetter(OverheatingRecipe::getMinHeatRate),
                 Codec.INT.fieldOf("heat_cost").forGetter(OverheatingRecipe::getHeatCost)
         ).apply(inst, OverheatingRecipe::new));
 

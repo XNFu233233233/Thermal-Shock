@@ -61,7 +61,7 @@ public class ClumpProcessingRecipe extends OverheatingRecipe {
         public static final MapCodec<ClumpProcessingRecipe> CODEC = RecordCodecBuilder.mapCodec(inst -> inst.group(
                 SimulationIngredient.CODEC.listOf().fieldOf("ingredients").forGetter(r -> r.simulationIngredients),
                 ItemStack.CODEC.fieldOf("target_content").forGetter(ClumpProcessingRecipe::getTargetContent),
-                Codec.INT.fieldOf("min_temp").forGetter(r -> r.getMinHeatRate()),
+                Codec.INT.fieldOf("min_heat").forGetter(r -> r.getMinHeatRate()),
                 Codec.INT.fieldOf("heat_cost").forGetter(r -> r.getHeatCost())
         ).apply(inst, ClumpProcessingRecipe::new));
 

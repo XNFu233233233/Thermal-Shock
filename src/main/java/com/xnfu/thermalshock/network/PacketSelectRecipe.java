@@ -28,11 +28,16 @@ public record PacketSelectRecipe(BlockPos pos, ResourceLocation recipeId) implem
     public static void handle(PacketSelectRecipe payload, IPayloadContext context) {
         context.enqueueWork(() -> {
             if (context.player() instanceof ServerPlayer player) {
-                if (player.distanceToSqr(payload.pos.getCenter()) < 64.0 &&
-                    player.level().getBlockEntity(payload.pos) instanceof SimulationChamberBlockEntity be) {
-                    be.setSelectedRecipe(payload.recipeId);
-                }
+                handleServer(payload, player);
             }
         });
+    }
+
+    private static void handleServer(PacketSelectRecipe payload, ServerPlayer player) {
+        if (player.level().isLoaded(payload.pos) && 
+            player.distanceToSqr(payload.pos.getCenter()) < 64.0 &&
+            player.level().getBlockEntity(payload.pos) instanceof SimulationChamberBlockEntity be) {
+            be.setSelectedRecipe(payload.recipeId);
+        }
     }
 }

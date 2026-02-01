@@ -1,4 +1,9 @@
 {
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:false"
+    }
+  ],
   "type": "thermalshock:overheating",
   "heat_cost": 200,
   "ingredients": [
@@ -9,7 +14,7 @@
       }
     }
   ],
-  "min_temp": 100,
+  "min_heat": 100,
   "result": {
     "count": 2,
     "id": "minecraft:charcoal"

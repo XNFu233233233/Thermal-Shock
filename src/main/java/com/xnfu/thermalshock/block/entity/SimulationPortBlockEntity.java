@@ -48,8 +48,8 @@ public class SimulationPortBlockEntity extends BlockEntity implements MenuProvid
         }
     };
 
-    // 内部流体：3 个独立的 64B (64000mB) 储罐
-    private final MultiFluidTank fluidHandler = new MultiFluidTank(3, 64000);
+    // 内部流体：3 个独立的储罐
+    private final MultiFluidTank fluidHandler = new MultiFluidTank(3, com.xnfu.thermalshock.Config.tankCapacity);
 
     // [Fix] Capability Cache
     private final IItemHandler itemHandlerCap;
@@ -301,6 +301,22 @@ public class SimulationPortBlockEntity extends BlockEntity implements MenuProvid
     @Override
     public AbstractContainerMenu createMenu(int i, Inventory inventory, Player player) {
         return new SimulationPortMenu(i, inventory, this, this.data);
+    }
+
+    // =========================================================
+    // 数据组件集成
+    // =========================================================
+
+    @Override
+    protected void collectImplicitComponents(net.minecraft.core.component.DataComponentMap.Builder builder) {
+        super.collectImplicitComponents(builder);
+        builder.set(com.xnfu.thermalshock.registries.ThermalShockDataComponents.PORT_MODE.get(), this.portMode);
+    }
+
+    @Override
+    protected void applyImplicitComponents(BlockEntity.DataComponentInput input) {
+        super.applyImplicitComponents(input);
+        this.portMode = input.getOrDefault(com.xnfu.thermalshock.registries.ThermalShockDataComponents.PORT_MODE.get(), PortMode.NONE);
     }
 
     // =========================================================

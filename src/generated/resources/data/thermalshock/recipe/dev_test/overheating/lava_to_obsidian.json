@@ -1,4 +1,9 @@
 {
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:false"
+    }
+  ],
   "type": "thermalshock:overheating",
   "heat_cost": 5000,
   "ingredients": [
@@ -9,7 +14,7 @@
       }
     }
   ],
-  "min_temp": 1000,
+  "min_heat": 1000,
   "result": {
     "count": 1,
     "id": "minecraft:obsidian"

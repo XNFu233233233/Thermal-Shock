@@ -180,12 +180,15 @@ public class ThermalSourceBlockEntity extends BlockEntity implements MenuProvide
 
         // === 2. 能量逻辑 ===
         be.electricHeatOutput = 0;
-        if (be.targetElectricHeat > 0 && be.energyStored >= 10) {
-            long maxAffordableHeat = be.energyStored / 10;
+        int fePerHeat = com.xnfu.thermalshock.Config.fePerHeat;
+        int minEnergy = com.xnfu.thermalshock.Config.sourceMinEnergy;
+        
+        if (be.targetElectricHeat > 0 && be.energyStored >= minEnergy) {
+            long maxAffordableHeat = be.energyStored / fePerHeat;
             int actualOutput = (int) Math.min(be.targetElectricHeat, maxAffordableHeat);
 
             if (actualOutput > 0) {
-                long cost = actualOutput * 10L;
+                long cost = actualOutput * (long) fePerHeat;
                 be.energyStored -= cost;
                 be.electricHeatOutput = isHeater ? actualOutput : -actualOutput;
                 dirty = true;
@@ -280,6 +283,25 @@ public class ThermalSourceBlockEntity extends BlockEntity implements MenuProvide
     @Override
     public AbstractContainerMenu createMenu(int id, Inventory inventory, Player player) {
         return new ThermalSourceMenu(id, inventory, this, this.data);
+    }
+
+    // =========================================================
+    // 数据组件集成
+    // =========================================================
+
+    @Override
+    protected void collectImplicitComponents(net.minecraft.core.component.DataComponentMap.Builder builder) {
+        super.collectImplicitComponents(builder);
+        builder.set(com.xnfu.thermalshock.registries.ThermalShockDataComponents.HEAT_LEVEL.get(), this.targetElectricHeat);
+    }
+
+    @Override
+    protected void applyImplicitComponents(BlockEntity.DataComponentInput input) {
+        super.applyImplicitComponents(input);
+        Integer heat = input.get(com.xnfu.thermalshock.registries.ThermalShockDataComponents.HEAT_LEVEL.get());
+        if (heat != null) {
+            this.targetElectricHeat = heat;
+        }
     }
 
     @Override

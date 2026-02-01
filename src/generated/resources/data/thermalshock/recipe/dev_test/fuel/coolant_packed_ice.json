@@ -1,4 +1,9 @@
 {
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:false"
+    }
+  ],
   "type": "thermalshock:thermal_fuel",
   "burn_time": 4800,
   "heat_rate": -350,

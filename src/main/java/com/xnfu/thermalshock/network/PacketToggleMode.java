@@ -25,12 +25,16 @@ public record PacketToggleMode(BlockPos pos) implements CustomPacketPayload {
     public static void handle(PacketToggleMode payload, IPayloadContext context) {
         context.enqueueWork(() -> {
             if (context.player() instanceof ServerPlayer player) {
-                // 验证距离防止作弊
-                if (player.distanceToSqr(payload.pos.getCenter()) < 64.0 &&
-                        player.level().getBlockEntity(payload.pos) instanceof SimulationChamberBlockEntity be) {
-                    be.requestModeChange();
-                }
+                handleServer(payload, player);
             }
         });
+    }
+
+    private static void handleServer(PacketToggleMode payload, ServerPlayer player) {
+        if (player.level().isLoaded(payload.pos) && 
+            player.distanceToSqr(payload.pos.getCenter()) < 64.0 &&
+            player.level().getBlockEntity(payload.pos) instanceof SimulationChamberBlockEntity be) {
+            be.requestModeChange();
+        }
     }
 }

@@ -80,10 +80,10 @@ public class ThermalConverterBlockEntity extends BlockEntity implements MenuProv
 
     // === Fluid ===
     // 0: Input Tank, 1: Output Tank
-    private final FluidTank inputTank = new FluidTank(64000) { // 稍微加大一点缓存
+    private final FluidTank inputTank = new FluidTank(com.xnfu.thermalshock.Config.tankCapacity) { // 稍微加大一点缓存
         @Override protected void onContentsChanged() { setChanged(); markRecipeDirty(); }
     };
-    private final FluidTank outputTank = new FluidTank(64000) {
+    private final FluidTank outputTank = new FluidTank(com.xnfu.thermalshock.Config.tankCapacity) {
         @Override protected void onContentsChanged() { 
             setChanged(); 
             // 输出变化时也需要唤醒，以检查是否腾出了空间
@@ -95,7 +95,7 @@ public class ThermalConverterBlockEntity extends BlockEntity implements MenuProv
     private final IFluidHandler fluidHandlerWrapper = new IFluidHandler() {
         @Override public int getTanks() { return 2; }
         @Override public @NotNull FluidStack getFluidInTank(int tank) { return tank == 0 ? inputTank.getFluid() : outputTank.getFluid(); }
-        @Override public int getTankCapacity(int tank) { return 64000; }
+        @Override public int getTankCapacity(int tank) { return com.xnfu.thermalshock.Config.tankCapacity; }
         @Override public boolean isFluidValid(int tank, @NotNull FluidStack stack) { return tank == 0 && inputTank.isFluidValid(stack); }
         @Override public int fill(FluidStack resource, FluidAction action) { return inputTank.fill(resource, action); }
         @Override public @NotNull FluidStack drain(FluidStack resource, FluidAction action) { return outputTank.drain(resource, action); }

@@ -1,4 +1,9 @@
 {
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:false"
+    }
+  ],
   "type": "thermalshock:overheating",
   "heat_cost": 50,
   "ingredients": [
@@ -21,7 +26,7 @@
       }
     }
   ],
-  "min_temp": 200,
+  "min_heat": 200,
   "result": {
     "count": 1,
     "id": "minecraft:iron_nugget"

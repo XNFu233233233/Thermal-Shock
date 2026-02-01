@@ -228,10 +228,10 @@ public class ChamberProcess {
         if (actualBatch <= 0) return false;
 
         // 检查渲染限制
-        if (!be.performance.isVirtual()) {
+        if (!be.performance.isVirtual() && com.xnfu.thermalshock.Config.enableOutputLimit) {
             ItemStack resultStack = recipeToRun.getResultItem(level.registryAccess());
             long projectedTotal = (long) (actualBatch * resultStack.getCount() * be.performance.getYieldMultiplier());
-            if (projectedTotal > 1024) return false;
+            if (projectedTotal > com.xnfu.thermalshock.Config.physicalOutputLimit) return false;
         }
 
         // 准备执行：再次重置池状态 (模拟计算可能已经消耗了一部分)

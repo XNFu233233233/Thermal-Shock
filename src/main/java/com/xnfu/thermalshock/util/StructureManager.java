@@ -180,7 +180,7 @@ public class StructureManager {
      */
     public static void tick(ServerLevel level) {
         int processed = 0;
-        int maxPerTick = 5;
+        int maxPerTick = com.xnfu.thermalshock.Config.validationLimitPerTick;
 
         while (processed < maxPerTick && !VALIDATION_QUEUE.isEmpty()) {
             BlockPos pos = VALIDATION_QUEUE.poll();

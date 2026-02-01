@@ -11,12 +11,12 @@
 
 **语法：**
 ```javascript
-event.recipes.thermalshock.overheating(ingredients, result, min_temp, heat_cost)
+event.recipes.thermalshock.overheating(ingredients, result, min_heat, heat_cost)
 ```
 
 *   `ingredients`: `SimulationIngredient` 数组（详见第 2 节）。
 *   `result`: 输出物品 (Item ID 或 ItemStack)。
-*   `min_temp`: 所需的最小热输入速率 (H/t)。
+*   `min_heat`: 所需的最小热输入速率 (H/t)。
 *   `heat_cost`: 每次操作消耗的热量 (H)。
 
 ---
@@ -40,10 +40,10 @@ event.recipes.thermalshock.thermal_shock(ingredients, result, min_hot, max_cold,
 
 **语法：**
 ```javascript
-event.recipes.thermalshock.thermal_shock_filling(ingredients, target_result, min_hot, max_cold, delta, clump_min_temp, clump_heat_cost)
+event.recipes.thermalshock.thermal_shock_filling(ingredients, target_result, min_hot, max_cold, delta, clump_min_heat, clump_heat_cost)
 ```
 
-*   `clump_min_temp`: 存储在结果团块中的 `min_temp` 需求。
+*   `clump_min_heat`: 存储在结果团块中的 `min_heat` 需求。
 *   `clump_heat_cost`: 存储在结果团块中的 `heat_cost` 需求。
 
 ---

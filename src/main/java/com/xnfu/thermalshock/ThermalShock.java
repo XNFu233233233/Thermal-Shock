@@ -54,22 +54,24 @@ public class ThermalShock {
 
     private void registerPackets(final RegisterPayloadHandlersEvent event) {
         final PayloadRegistrar registrar = event.registrar("1");
-        registrar.playBidirectional(
+        
+        // --- 仅发送给服务端的消息 (Player Actions) ---
+        registrar.playToServer(
                 PacketSelectRecipe.TYPE,
                 PacketSelectRecipe.STREAM_CODEC,
                 PacketSelectRecipe::handle
         );
-        registrar.playBidirectional(
+        registrar.playToServer(
                 PacketToggleLock.TYPE,
                 PacketToggleLock.STREAM_CODEC,
                 PacketToggleLock::handle
         );
-        registrar.playBidirectional(
+        registrar.playToServer(
                 PacketToggleMode.TYPE,
                 PacketToggleMode.STREAM_CODEC,
                 PacketToggleMode::handle
         );
-        registrar.playBidirectional(
+        registrar.playToServer(
                 PacketTogglePortMode.TYPE,
                 PacketTogglePortMode.STREAM_CODEC,
                 PacketTogglePortMode::handle

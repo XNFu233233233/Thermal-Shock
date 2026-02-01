@@ -68,7 +68,7 @@ public class ThermalShockFillingRecipe extends ThermalShockRecipe {
                 com.mojang.serialization.Codec.INT.fieldOf("min_hot").forGetter(ThermalShockRecipe::getMinHotTemp),
                 com.mojang.serialization.Codec.INT.fieldOf("max_cold").forGetter(ThermalShockRecipe::getMaxColdTemp),
                 com.mojang.serialization.Codec.INT.fieldOf("delta").forGetter(ThermalShockRecipe::getRequiredDelta),
-                com.mojang.serialization.Codec.INT.fieldOf("clump_min_temp").forGetter(ThermalShockFillingRecipe::getClumpMinHeatRate),
+                com.mojang.serialization.Codec.INT.fieldOf("clump_min_heat").forGetter(ThermalShockFillingRecipe::getClumpMinHeatRate),
                 com.mojang.serialization.Codec.INT.fieldOf("clump_heat_cost").forGetter(ThermalShockFillingRecipe::getClumpHeatCost)
         ).apply(instance, ThermalShockFillingRecipe::new));
 

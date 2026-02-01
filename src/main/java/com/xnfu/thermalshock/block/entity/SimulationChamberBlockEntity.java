@@ -406,10 +406,10 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
         // 更新热容上限
         int newCapacity;
         if (this.performance.isVirtual()) {
-            newCapacity = 10000 + (count * 50000);
+            newCapacity = com.xnfu.thermalshock.Config.chamberBaseCapacity + (count * com.xnfu.thermalshock.Config.chamberUpgradeCapacityMult);
         } else {
             int vol = this.structure.isFormed() ? this.structure.getVolume() : 0;
-            newCapacity = 10000 + (vol * 1000);
+            newCapacity = com.xnfu.thermalshock.Config.chamberBaseCapacity + (vol * com.xnfu.thermalshock.Config.chamberVolCapacityMult);
         }
         this.thermo.setMaxHeatCapacity(newCapacity);
         
@@ -606,16 +606,17 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
         if (!this.structure.isFormed()) return;
 
         // 只要 Buffer 没满且有脏标记，就尝试循环填充
-        if (catalystBuffer < 1000.0f && this.catalystDirty) {
+        double maxBuffer = com.xnfu.thermalshock.Config.catalystBufferCap;
+        if (catalystBuffer < maxBuffer && this.catalystDirty) {
 
             // 1. 循环填充：从接口 (直到满或没东西)
             boolean keepRefilling = true;
-            while (keepRefilling && catalystBuffer < 1000.0f) {
+            while (keepRefilling && catalystBuffer < maxBuffer) {
                 keepRefilling = refillBufferFromPorts();
             }
 
             // 2. 循环填充：从内部 Slot
-            while (catalystBuffer <= 90.0f) { // 留一点余量防止溢出浪费
+            while (catalystBuffer <= maxBuffer - 10.0f) { // 留一点余量防止溢出浪费
                 ItemStack s = itemHandler.getStackInSlot(0);
                 if (s.isEmpty()) break;
 
@@ -949,7 +950,35 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
 
     @Nullable
     @Override
-    public AbstractContainerMenu createMenu(int i, Inventory inv, Player p) {
-        return new SimulationChamberMenu(i, inv, this, this.data);
+    public net.minecraft.world.inventory.AbstractContainerMenu createMenu(int id, Inventory inventory, Player player) {
+        return new com.xnfu.thermalshock.client.gui.SimulationChamberMenu(id, inventory, this, this.data);
+    }
+
+    // =========================================================
+    // 8. 数据组件集成 (1.21.1 全量迁移)
+    // =========================================================
+
+    @Override
+    protected void collectImplicitComponents(net.minecraft.core.component.DataComponentMap.Builder builder) {
+        super.collectImplicitComponents(builder);
+        builder.set(ThermalShockDataComponents.MACHINE_MODE.get(), this.mode);
+        builder.set(ThermalShockDataComponents.HEAT_LEVEL.get(), (int) this.thermo.getCurrentHeat());
+        builder.set(ThermalShockDataComponents.IS_LOCKED.get(), this.recipeLocked);
+        if (this.selectedRecipeId != null) {
+            builder.set(ThermalShockDataComponents.SELECTED_RECIPE.get(), this.selectedRecipeId);
+        }
+    }
+
+    @Override
+    protected void applyImplicitComponents(BlockEntity.DataComponentInput input) {
+        super.applyImplicitComponents(input);
+        this.mode = input.getOrDefault(ThermalShockDataComponents.MACHINE_MODE.get(), MachineMode.OVERHEATING);
+        this.recipeLocked = input.getOrDefault(ThermalShockDataComponents.IS_LOCKED.get(), false);
+        this.selectedRecipeId = input.get(ThermalShockDataComponents.SELECTED_RECIPE.get());
+        Integer heat = input.get(ThermalShockDataComponents.HEAT_LEVEL.get());
+        if (heat != null) {
+            this.thermo.clearHeat();
+            this.thermo.addHeat(heat);
+        }
     }
 }

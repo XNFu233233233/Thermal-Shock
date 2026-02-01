@@ -18,7 +18,7 @@ public record ClumpInfo(ItemStack result, int minHeatRate, int heatCost) {
 
     public static final Codec<ClumpInfo> CODEC = RecordCodecBuilder.create(instance -> instance.group(
             ItemStack.CODEC.fieldOf("result").forGetter(ClumpInfo::result),
-            Codec.INT.fieldOf("min_temp").forGetter(ClumpInfo::minHeatRate),
+            Codec.INT.fieldOf("min_heat").forGetter(ClumpInfo::minHeatRate),
             Codec.INT.fieldOf("heat_cost").forGetter(ClumpInfo::heatCost)
     ).apply(instance, ClumpInfo::new));
 
