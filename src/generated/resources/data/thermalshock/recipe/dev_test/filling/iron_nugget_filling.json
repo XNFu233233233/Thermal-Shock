@@ -1,9 +1,4 @@
 {
-  "neoforge:conditions": [
-    {
-      "type": "neoforge:false"
-    }
-  ],
   "type": "thermalshock:thermal_shock_filling",
   "clump_heat_cost": 500,
   "clump_min_temp": 100,

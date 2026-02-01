@@ -1,9 +1,4 @@
 {
-  "neoforge:conditions": [
-    {
-      "type": "neoforge:false"
-    }
-  ],
   "type": "thermalshock:thermal_converter",
   "fluid_outputs": [
     {

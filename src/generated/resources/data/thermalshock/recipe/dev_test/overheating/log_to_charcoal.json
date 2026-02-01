@@ -1,9 +1,4 @@
 {
-  "neoforge:conditions": [
-    {
-      "type": "neoforge:false"
-    }
-  ],
   "type": "thermalshock:overheating",
   "heat_cost": 200,
   "ingredients": [

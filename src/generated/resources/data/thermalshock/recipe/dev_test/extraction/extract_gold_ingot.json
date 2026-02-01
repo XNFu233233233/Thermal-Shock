@@ -1,9 +1,4 @@
 {
-  "neoforge:conditions": [
-    {
-      "type": "neoforge:false"
-    }
-  ],
   "type": "thermalshock:clump_processing",
   "heat_cost": 2000,
   "ingredients": [

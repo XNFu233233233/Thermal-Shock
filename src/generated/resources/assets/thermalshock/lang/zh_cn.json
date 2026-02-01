@@ -19,6 +19,7 @@
   "gui.thermalshock.jei.category.shock": "模拟室: 热冲击加工",
   "gui.thermalshock.jei.chance.consume": "消耗概率: %d%%",
   "gui.thermalshock.jei.chance.output": "产出概率: %d%%",
+  "gui.thermalshock.jei.error.wrong_mode": "§c机器模式不匹配！",
   "gui.thermalshock.jei.fe_conversion": "能量 -> 热量 转换比例",
   "gui.thermalshock.jei.label.heat_cost": "消耗热量: %d H",
   "gui.thermalshock.jei.label.min_heat_rate": "所需热量速率: >%d H/t",

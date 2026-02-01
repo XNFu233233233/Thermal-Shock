@@ -20,6 +20,7 @@
   "gui.thermalshock.jei.category.shock": "Simulation: Thermal Shock",
   "gui.thermalshock.jei.chance.consume": "Consume Chance: %s%%",
   "gui.thermalshock.jei.chance.output": "Output Chance: %s%%",
+  "gui.thermalshock.jei.error.wrong_mode": "§cMachine Mode Mismatch!",
   "gui.thermalshock.jei.fe_conversion": "Energy Conversion",
   "gui.thermalshock.jei.label.heat_cost": "Heat Cost: %d H",
   "gui.thermalshock.jei.label.min_heat_rate": "min > %d H/t",

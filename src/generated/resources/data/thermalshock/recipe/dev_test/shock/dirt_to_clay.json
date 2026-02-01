@@ -1,9 +1,4 @@
 {
-  "neoforge:conditions": [
-    {
-      "type": "neoforge:false"
-    }
-  ],
   "type": "thermalshock:thermal_shock",
   "delta": 150,
   "ingredients": [

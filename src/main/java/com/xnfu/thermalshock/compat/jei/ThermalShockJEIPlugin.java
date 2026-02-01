@@ -243,11 +243,6 @@ public class ThermalShockJEIPlugin implements IModPlugin {
                         return new net.minecraft.client.renderer.Rect2i(58, 48, 60, 5);
                     }
 
-                    @Override 
-                    public java.util.List<net.minecraft.network.chat.Component> getTooltipStrings() {
-                        return java.util.List.of();
-                    }
-
                     @Override
                     public void onClick(mezz.jei.api.recipe.IFocusFactory focusFactory, mezz.jei.api.runtime.IRecipesGui recipesGui) {
                         recipesGui.showTypes(java.util.List.of(TYPE_HEATER_FUEL, TYPE_FREEZER_FUEL));
@@ -255,6 +250,16 @@ public class ThermalShockJEIPlugin implements IModPlugin {
                 });
             }
         });
+    }
+
+    @Override
+    public void registerRecipeTransferHandlers(mezz.jei.api.registration.IRecipeTransferRegistration registration) {
+        var menuType = com.xnfu.thermalshock.registries.ThermalShockMenus.SIMULATION_CHAMBER_MENU.get();
+        
+        registration.addRecipeTransferHandler(new ChamberRecipeTransferHandler<>(com.xnfu.thermalshock.client.gui.SimulationChamberMenu.class, menuType, TYPE_OVERHEATING), TYPE_OVERHEATING);
+        registration.addRecipeTransferHandler(new ChamberRecipeTransferHandler<>(com.xnfu.thermalshock.client.gui.SimulationChamberMenu.class, menuType, TYPE_SHOCK), TYPE_SHOCK);
+        registration.addRecipeTransferHandler(new ChamberRecipeTransferHandler<>(com.xnfu.thermalshock.client.gui.SimulationChamberMenu.class, menuType, TYPE_FILLING_SHOCK), TYPE_FILLING_SHOCK);
+        registration.addRecipeTransferHandler(new ChamberRecipeTransferHandler<>(com.xnfu.thermalshock.client.gui.SimulationChamberMenu.class, menuType, TYPE_EXTRACTION), TYPE_EXTRACTION);
     }
 
     @Override

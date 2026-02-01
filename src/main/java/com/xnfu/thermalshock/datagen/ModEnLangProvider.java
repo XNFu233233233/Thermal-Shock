@@ -174,6 +174,8 @@ public class ModEnLangProvider extends LanguageProvider {
         add("gui.thermalshock.tooltip.show_recipes", "Show Recipes (JEI)");
         add("gui.thermalshock.tooltip.show_recipes.desc", "Supported recipe categories:");
 
+        add("gui.thermalshock.jei.error.wrong_mode", "§cMachine Mode Mismatch!");
+
         // === 11. Jade 集成 ===
                 add("jade.thermalshock.status", "Status: ");
                 add("jade.thermalshock.mode", "Mode: ");

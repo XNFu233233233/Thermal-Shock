@@ -30,23 +30,23 @@ public class ModRecipeProvider extends RecipeProvider {
     protected void buildRecipes(RecipeOutput output) {
         // [修改] 为所有配方添加 neoforge:false 条件，使其默认不加载 (作为开发测试用)
         RecipeOutput testOutput = output.withConditions(net.neoforged.neoforge.common.conditions.FalseCondition.INSTANCE);
-        
+
         // =================================================================
         // 1. 过热模式 (Overheating) - 积累热量
         // Path: recipes/dev_test/overheating/
         // =================================================================
-        
+
         // 1.1 Item -> Item (基础金属加工)
         // 铁粒 -> 铁粒 (处理测试: 3个输入 -> 1个输出)
-        buildOverheating(testOutput, "iron_nuggets_processing", 
-                Ingredient.of(Items.IRON_NUGGET), 3, 
+        buildOverheating(testOutput, "iron_nuggets_processing",
+                Ingredient.of(Items.IRON_NUGGET), 3,
                 new ItemStack(Items.IRON_NUGGET),
-                200, 50, false); 
+                200, 50, false);
 
         // 1.2 Block -> Item (烧制)
         // 原木 -> 木炭 (需要 100度, 消耗 200H)
-        buildOverheating(testOutput, "log_to_charcoal", 
-                Ingredient.of(net.minecraft.tags.ItemTags.LOGS), 1, 
+        buildOverheating(testOutput, "log_to_charcoal",
+                Ingredient.of(net.minecraft.tags.ItemTags.LOGS), 1,
                 new ItemStack(Items.CHARCOAL, 2), // 产量加倍奖励
                 100, 200, true); // true = Block Input
 
@@ -127,7 +127,7 @@ public class ModRecipeProvider extends RecipeProvider {
         // Path: recipes/dev_test/extraction/
         // =================================================================
         // 注意: 这里需要为每种可能的团块生成对应的提取配方
-        
+
         // 铁锭团块提取
         buildClumpProcessing(testOutput, "extract_iron_ingot",
                 new ItemStack(Items.IRON_INGOT), 200, 1000);

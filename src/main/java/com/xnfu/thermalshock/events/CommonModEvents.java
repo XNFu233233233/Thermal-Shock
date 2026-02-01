@@ -16,6 +16,9 @@ import net.neoforged.neoforge.event.level.LevelEvent;
 import net.neoforged.neoforge.event.level.PistonEvent;
 import net.neoforged.neoforge.event.tick.LevelTickEvent;
 
+import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
+import net.minecraft.world.item.BucketItem;
+
 @EventBusSubscriber(modid = ThermalShock.MODID)
 public class CommonModEvents {
 
@@ -32,6 +35,34 @@ public class CommonModEvents {
         if (!event.getLevel().isClientSide() && event.getLevel() instanceof ServerLevel sl) {
             // 传入新放置的方块状态进行智能过滤
             StructureManager.checkActivity(sl, event.getPos(), StructureManager.UpdateType.PLACE, event.getPlacedBlock());
+        }
+    }
+
+    /**
+     * [新增] 专门监听物品右键事件 (处理桶倒水)
+     */
+    @SubscribeEvent
+    public static void onItemUse(PlayerInteractEvent.RightClickItem event) {
+        if (!event.getLevel().isClientSide && event.getItemStack().getItem() instanceof BucketItem) {
+            // 玩家倒桶时，我们尝试获取其视线指向的位置
+            if (event.getLevel() instanceof ServerLevel sl) {
+                // 使用 entity.pick 获取视线碰撞
+                var hit = event.getEntity().pick(5.0D, 0.0F, true);
+                if (hit instanceof net.minecraft.world.phys.BlockHitResult blockHit) {
+                    BlockPos targetPos = blockHit.getBlockPos().relative(blockHit.getDirection());
+                    StructureManager.checkActivity(sl, targetPos, StructureManager.UpdateType.PLACE);
+                }
+            }
+        }
+    }
+
+    /**
+     * [新增] 更加通用的流体变动监听：当方块状态由于流体而改变时 (如流体蔓延、黑曜石生成等)
+     */
+    @SubscribeEvent
+    public static void onFluidPlace(BlockEvent.FluidPlaceBlockEvent event) {
+        if (!event.getLevel().isClientSide() && event.getLevel() instanceof ServerLevel sl) {
+            StructureManager.checkActivity(sl, event.getPos(), StructureManager.UpdateType.PLACE, event.getNewState());
         }
     }
 

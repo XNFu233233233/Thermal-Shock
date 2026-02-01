@@ -175,6 +175,8 @@ public class ModCnLangProvider extends LanguageProvider {
         add("gui.thermalshock.tooltip.show_recipes", "查看配方 (JEI)");
         add("gui.thermalshock.tooltip.show_recipes.desc", "支持的配方类型：");
 
+        add("gui.thermalshock.jei.error.wrong_mode", "§c机器模式不匹配！");
+
         // === 11. Jade 适配 ===
         add("jade.thermalshock.status", "状态: ");
         add("jade.thermalshock.mode", "模式: ");
