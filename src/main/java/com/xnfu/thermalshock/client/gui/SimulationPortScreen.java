@@ -85,7 +85,6 @@ public class SimulationPortScreen extends AbstractContainerScreen<SimulationPort
 
     @Override
     public void render(GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
-        this.renderBackground(gfx, mouseX, mouseY, partialTick);
         super.render(gfx, mouseX, mouseY, partialTick);
         this.renderTooltip(gfx, mouseX, mouseY);
         renderFluidTooltips(gfx, mouseX, mouseY);

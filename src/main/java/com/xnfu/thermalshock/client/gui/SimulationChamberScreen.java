@@ -194,7 +194,6 @@ public class SimulationChamberScreen extends AbstractContainerScreen<SimulationC
 
     @Override
     public void render(GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
-        this.renderBackground(gfx, mouseX, mouseY, partialTick);
         super.render(gfx, mouseX, mouseY, partialTick);
         renderRecipeList(gfx, mouseX, mouseY);
         renderUnifiedTooltips(gfx, mouseX, mouseY);

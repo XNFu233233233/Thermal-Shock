@@ -78,7 +78,6 @@ public class ThermalSourceScreen extends AbstractContainerScreen<ThermalSourceMe
 
     @Override
     public void render(GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
-        this.renderBackground(gfx, mouseX, mouseY, partialTick);
         super.render(gfx, mouseX, mouseY, partialTick);
 
         this.renderTooltip(gfx, mouseX, mouseY);

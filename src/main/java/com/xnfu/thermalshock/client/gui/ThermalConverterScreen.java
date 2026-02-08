@@ -66,7 +66,6 @@ public class ThermalConverterScreen extends AbstractContainerScreen<ThermalConve
 
     @Override
     public void render(GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
-        this.renderBackground(gfx, mouseX, mouseY, partialTick);
         super.render(gfx, mouseX, mouseY, partialTick);
         this.renderTooltip(gfx, mouseX, mouseY);
         renderFluidTooltips(gfx, mouseX, mouseY);
