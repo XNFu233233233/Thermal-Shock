@@ -18,7 +18,7 @@ public class ModBlockTagsProvider extends BlockTagsProvider {
     }
 
     @Override
-    protected void addTags(HolderLookup.Provider provider) {
+    protected void addTags(HolderLookup.Provider pProvider) {
         // 1. 生成 VENTS (排气口)
         // 包括：铁栏杆, 栅栏
         this.tag(ThermalShockTags.VENTS)
@@ -28,8 +28,9 @@ public class ModBlockTagsProvider extends BlockTagsProvider {
         // 2. 生成 CASING_ACCESS (结构上面的门/接口)
         // 直接引用原版的标签，这样所有木门、铁门、栅栏门都自动生效
         this.tag(ThermalShockTags.CASING_ACCESS)
-                .addTag(BlockTags.DOORS)        // 所有门
-                .addTag(BlockTags.TRAPDOORS)    // 所有活板门
-                .addTag(BlockTags.FENCE_GATES); // 所有栅栏门
+                .addTag(BlockTags.PLANKS)
+                .addTag(BlockTags.FENCES)
+                .addTag(BlockTags.WALLS)
+                .addTag(BlockTags.STAIRS);
     }
 }
