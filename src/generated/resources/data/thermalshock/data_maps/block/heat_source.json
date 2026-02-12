@@ -1,9 +1,4 @@
 {
-  "neoforge:conditions": [
-    {
-      "type": "neoforge:false"
-    }
-  ],
   "values": {
     "minecraft:lava": {
       "heat_per_tick": 20

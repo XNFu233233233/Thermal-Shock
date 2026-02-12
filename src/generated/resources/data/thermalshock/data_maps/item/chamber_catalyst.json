@@ -1,9 +1,4 @@
 {
-  "neoforge:conditions": [
-    {
-      "type": "neoforge:false"
-    }
-  ],
   "values": {
     "minecraft:diamond": {
       "bonus_yield": 0.5,

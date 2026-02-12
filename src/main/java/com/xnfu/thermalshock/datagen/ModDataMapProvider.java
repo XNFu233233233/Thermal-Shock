@@ -24,8 +24,7 @@ public class ModDataMapProvider extends DataMapProvider {
     @Override
     protected void gather(HolderLookup.Provider lookupProvider) {
         // 1. 外壳 (Casing)
-        var casing = this.builder(ThermalShockDataMaps.CASING_PROPERTY)
-                .conditions(net.neoforged.neoforge.common.conditions.FalseCondition.INSTANCE);
+        var casing = this.builder(ThermalShockDataMaps.CASING_PROPERTY);
         // [更新] 参数: maxHeatRate, maxColdRate, efficiency
         casing.add(BlockTags.PLANKS, new CasingData(50, 20, 0.8f), false);
         casing.add(key(Blocks.COBBLESTONE), new CasingData(200, 100, 1.0f), false);
@@ -33,14 +32,12 @@ public class ModDataMapProvider extends DataMapProvider {
         casing.add(key(Blocks.OBSIDIAN), new CasingData(5000, 5000, 1.0f), false);
 
         // 2. 催化剂 (Catalyst)
-        var catalyst = this.builder(ThermalShockDataMaps.CATALYST_PROPERTY)
-                .conditions(net.neoforged.neoforge.common.conditions.FalseCondition.INSTANCE);
+        var catalyst = this.builder(ThermalShockDataMaps.CATALYST_PROPERTY);
         catalyst.add(key(Items.IRON_INGOT), new CatalystData(0.10f, 10.0f), false);
         catalyst.add(key(Items.DIAMOND), new CatalystData(0.50f, 20.0f), false);
 
         // 3. 热源 (Heat Source) - 正数
-        var heat = this.builder(ThermalShockDataMaps.HEAT_SOURCE_PROPERTY)
-                .conditions(net.neoforged.neoforge.common.conditions.FalseCondition.INSTANCE);
+        var heat = this.builder(ThermalShockDataMaps.HEAT_SOURCE_PROPERTY);
         heat.add(key(Blocks.TORCH), new HeatSourceData(2), false);
         heat.add(key(Blocks.LAVA), new HeatSourceData(20), false);
         heat.add(key(Blocks.MAGMA_BLOCK), new HeatSourceData(50), false);
@@ -48,8 +45,7 @@ public class ModDataMapProvider extends DataMapProvider {
         // 4. 冷源 (Cold Source)
         // [修复] 使用正数表示制冷量 (Magnitude)
         // 逻辑层会自动取负值：-5, -40
-        var cold = this.builder(ThermalShockDataMaps.COLD_SOURCE_PROPERTY)
-                .conditions(net.neoforged.neoforge.common.conditions.FalseCondition.INSTANCE);
+        var cold = this.builder(ThermalShockDataMaps.COLD_SOURCE_PROPERTY);
         cold.add(key(Blocks.ICE), new ColdSourceData(5), false);
         cold.add(key(Blocks.BLUE_ICE), new ColdSourceData(40), false);
     }
