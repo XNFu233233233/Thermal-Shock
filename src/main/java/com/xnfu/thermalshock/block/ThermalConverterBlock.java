@@ -81,14 +81,58 @@ public class ThermalConverterBlock extends BaseEntityBlock {
         return InteractionResult.SUCCESS;
     }
 
-    @Override
-    public void neighborChanged(BlockState state, Level level, BlockPos pos, Block neighborBlock, BlockPos neighborPos, boolean movedByPiston) {
-        super.neighborChanged(state, level, pos, neighborBlock, neighborPos, movedByPiston);
-        if (!level.isClientSide) {
-            BlockEntity be = level.getBlockEntity(pos);
-            if (be instanceof ThermalConverterBlockEntity converter) {
-                converter.markHeatDirty();
+        @Override
+
+        public void neighborChanged(BlockState state, Level level, BlockPos pos, Block neighborBlock, BlockPos neighborPos, boolean movedByPiston) {
+
+            super.neighborChanged(state, level, pos, neighborBlock, neighborPos, movedByPiston);
+
+            if (!level.isClientSide) {
+
+                BlockEntity be = level.getBlockEntity(pos);
+
+                if (be instanceof ThermalConverterBlockEntity converter) {
+
+                    converter.markHeatDirty();
+
+                }
+
             }
+
         }
+
+    
+
+        @Override
+
+        public void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean isMoving) {
+
+            if (state.getBlock() != newState.getBlock()) {
+
+                BlockEntity be = level.getBlockEntity(pos);
+
+                if (be instanceof ThermalConverterBlockEntity converter) {
+
+                    // 掉落所有槽位物品
+
+                    var handler = converter.getItemHandler();
+
+                    for (int i = 0; i < handler.getSlots(); i++) {
+
+                        net.minecraft.world.Containers.dropItemStack(level, pos.getX(), pos.getY(), pos.getZ(), handler.getStackInSlot(i));
+
+                    }
+
+                    level.updateNeighbourForOutputSignal(pos, this);
+
+                }
+
+                super.onRemove(state, level, pos, newState, isMoving);
+
+            }
+
+        }
+
     }
-}
+
+    

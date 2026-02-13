@@ -46,7 +46,11 @@ public class ThermalConverterBlockEntity extends BlockEntity implements MenuProv
         @Override
         protected void onContentsChanged(int slot) {
             setChanged();
-            markRecipeDirty(); // 库存变动 -> 可能改变配方匹配结果
+            if (slot == 0) {
+                markRecipeDirty(); // 只有输入槽变动才可能改变配方
+            } else {
+                wakeUp(); // 输出或升级槽变动，只需唤醒机器
+            }
         }
 
         @Override
@@ -65,14 +69,12 @@ public class ThermalConverterBlockEntity extends BlockEntity implements MenuProv
         @Override
         public void deserializeNBT(HolderLookup.Provider provider, CompoundTag nbt) {
             super.deserializeNBT(provider, nbt);
-            // [Fix] 存档迁移：如果读取旧存档导致 slot 变少，强制扩容到 7
             if (this.stacks.size() < 7) {
                 NonNullList<ItemStack> oldStacks = this.stacks;
                 this.stacks = NonNullList.withSize(7, ItemStack.EMPTY);
                 for (int i = 0; i < oldStacks.size(); i++) {
                     this.stacks.set(i, oldStacks.get(i));
                 }
-                // 强制标记需要保存，确保下次存盘写入 Size: 7
                 setChanged();
             }
         }
@@ -80,15 +82,11 @@ public class ThermalConverterBlockEntity extends BlockEntity implements MenuProv
 
     // === Fluid ===
     // 0: Input Tank, 1: Output Tank
-    private final FluidTank inputTank = new FluidTank(com.xnfu.thermalshock.Config.tankCapacity) { // 稍微加大一点缓存
-        @Override protected void onContentsChanged() { setChanged(); markRecipeDirty(); }
+    private final FluidTank inputTank = new FluidTank(com.xnfu.thermalshock.Config.tankCapacity) { 
+        @Override protected void onContentsChanged() { setChanged(); markRecipeDirty(); } // 输入流体变动 -> 查配方
     };
     private final FluidTank outputTank = new FluidTank(com.xnfu.thermalshock.Config.tankCapacity) {
-        @Override protected void onContentsChanged() { 
-            setChanged(); 
-            // 输出变化时也需要唤醒，以检查是否腾出了空间
-            wakeUp(); 
-        }
+        @Override protected void onContentsChanged() { setChanged(); wakeUp(); } // 输出流体变动 -> 唤醒
     };
 
     // 包装器：用于 Capability 暴露
@@ -227,11 +225,12 @@ public class ThermalConverterBlockEntity extends BlockEntity implements MenuProv
     private int calculateMaxBatch(ThermalConverterRecipe recipe, int limit) {
         int maxPossible = limit;
 
-        // 1. 检查原料限制
+        // 1. 检查原料限制 (除法)
         if (!recipe.getItemInputs().isEmpty()) {
             var req = recipe.getItemInputs().get(0);
             ItemStack inStack = itemHandler.getStackInSlot(0);
-            if (inStack.isEmpty() || !req.ingredient().test(inStack)) return 0;
+            // 注意: 这里假设 matches 已经通过，inStack 必定符合且非空，但为了安全保留检查
+            if (inStack.isEmpty()) return 0;
             int itemLimit = inStack.getCount() / req.count();
             maxPossible = Math.min(maxPossible, itemLimit);
         }
@@ -241,14 +240,56 @@ public class ThermalConverterBlockEntity extends BlockEntity implements MenuProv
             maxPossible = Math.min(maxPossible, fluidLimit);
         }
 
-        // 2. 检查输出空间限制 (模拟)
-        // 简单起见，逐步递减检查，找到最大的可行值
-        for (int i = maxPossible; i > 0; i--) {
-            if (checkOutputSpace(recipe, i)) {
-                return i;
+        if (maxPossible <= 0) return 0;
+
+        // 2. 检查输出空间限制 (数学计算)
+        // 假设概率为 1.0 (最坏情况预留空间)
+        
+        // 物品输出1 (Slot 1)
+        if (!recipe.getItemOutputs().isEmpty()) {
+            var outRule = recipe.getItemOutputs().get(0);
+            ItemStack currentStack = itemHandler.getStackInSlot(1);
+            int space;
+            if (currentStack.isEmpty()) {
+                space = itemHandler.getSlotLimit(1);
+            } else if (ItemStack.isSameItemSameComponents(currentStack, outRule.stack())) {
+                space = itemHandler.getSlotLimit(1) - currentStack.getCount();
+            } else {
+                return 0; // 类型不符，堵塞
             }
+            int outLimit = space / outRule.stack().getCount();
+            maxPossible = Math.min(maxPossible, outLimit);
         }
-        return 0;
+
+        // 物品输出2 (Slot 2)
+        if (recipe.getItemOutputs().size() > 1) {
+            var outRule = recipe.getItemOutputs().get(1);
+            ItemStack currentStack = itemHandler.getStackInSlot(2);
+            int space;
+            if (currentStack.isEmpty()) {
+                space = itemHandler.getSlotLimit(2);
+            } else if (ItemStack.isSameItemSameComponents(currentStack, outRule.stack())) {
+                space = itemHandler.getSlotLimit(2) - currentStack.getCount();
+            } else {
+                return 0; // 类型不符
+            }
+            int outLimit = space / outRule.stack().getCount();
+            maxPossible = Math.min(maxPossible, outLimit);
+        }
+
+        // 流体输出
+        if (!recipe.getFluidOutputs().isEmpty()) {
+            var outRule = recipe.getFluidOutputs().get(0);
+            int space = outputTank.getSpace();
+            // 还需要检查流体类型是否匹配 (Tank 自带逻辑，但这里我们手动算)
+            if (!outputTank.isEmpty() && !outputTank.getFluid().is(outRule.fluid().getFluid())) {
+                return 0; // 流体类型冲突
+            }
+            int fluidLimit = space / outRule.fluid().getAmount();
+            maxPossible = Math.min(maxPossible, fluidLimit);
+        }
+
+        return Math.max(0, maxPossible);
     }
 
     private void recalculateHeat() {
@@ -295,12 +336,13 @@ public class ThermalConverterBlockEntity extends BlockEntity implements MenuProv
             return;
         }
 
-        // 只有当 当前缓存的配方 不再匹配时，才去查表
+        // [性能优化] 乐观检查：如果缓存的配方依然匹配，则无需重查
         if (this.cachedRecipe != null && this.cachedRecipe.value().matches(input, level)) {
             this.recipeDirty = false;
             return;
         }
 
+        // 只有当不匹配时，才遍历所有配方
         Optional<RecipeHolder<ThermalConverterRecipe>> opt = level.getRecipeManager()
                 .getRecipeFor(ThermalShockRecipes.CONVERTER_TYPE.get(), input, level);
 
