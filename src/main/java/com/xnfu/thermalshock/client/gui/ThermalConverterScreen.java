@@ -189,13 +189,25 @@ public class ThermalConverterScreen extends AbstractContainerScreen<ThermalConve
 
         int total = menu.getTotalProcessTime();
         int current = menu.getProcessTime();
-        if (total > 0 && current > 0) {
+        if (total > 0) {
             float pct = (float) current / total;
             int fillW = (int) (pct * ARROW_W);
 
             if (fillW > 0) {
                 gfx.fill(sx, sy + 4, sx + fillW, sy + 12, 0xFF00FF00);
             }
+
+            // 绘制剩余时间文本 (居中显示在进度条正上方)
+            String text = (total - current) + "t";
+            float scale = 0.8f;
+            gfx.pose().pushPose();
+            // 进度条 Y 轴起始于 sy + 4，我们将文字放在 sy + 2 处并向上对齐
+            gfx.pose().translate(sx + ARROW_W / 2.0f, sy + 2, 200);
+            gfx.pose().scale(scale, scale, 1.0f);
+            int tw = font.width(text);
+            // 浅灰色 0xFFAAAAAA，y 坐标设为 -font.lineHeight 以确保在 translate 点上方
+            gfx.drawString(font, text, -tw / 2, -font.lineHeight, 0xFFAAAAAA, false);
+            gfx.pose().popPose();
         }
     }
 

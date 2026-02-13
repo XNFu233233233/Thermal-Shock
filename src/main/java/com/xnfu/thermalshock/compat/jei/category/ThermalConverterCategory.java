@@ -127,11 +127,24 @@ public class ThermalConverterCategory implements IRecipeCategory<ThermalConverte
         // 进度条 (ARROW_X, ARROW_Y) - 手动绘制简单的绿色进度条
         drawProgressBar(gfx, ARROW_X, ARROW_Y);
 
+        // 绘制处理时间文本 (居中显示在进度条正上方)
+        var font = Minecraft.getInstance().font;
+        String text = recipe.getMinHeat() + "t"; // 错误：这里应该是 getProcessTime()，我刚才在之前的修复中看到它是 getProcessTime
+        // 修正：在之前的 ThermalConverterRecipe 中确认过是 getProcessTime()
+        text = recipe.getProcessTime() + "t";
+        float scale = 0.8f;
+        gfx.pose().pushPose();
+        // 进度条 Y 轴起始于 ARROW_Y + 4
+        gfx.pose().translate(ARROW_X + 12, ARROW_Y + 2, 200);
+        gfx.pose().scale(scale, scale, 1.0f);
+        int tw = font.width(text);
+        gfx.drawString(font, text, -tw / 2, -font.lineHeight, 0xFFAAAAAA, false);
+        gfx.pose().popPose();
+
         // 2. 绘制热量条 (与机器 GUI 同步)
         drawHeatBar(gfx, recipe);
 
         // 3. 绘制文字 (无阴影 clear 模式)
-        var font = Minecraft.getInstance().font;
         
         // 底部文字汇总 (0.9x 缩放，禁用阴影)
         String subText = String.format("min: %d H | max: %d H", recipe.getMinHeat(), recipe.getMaxHeat());
