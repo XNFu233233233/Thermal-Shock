@@ -89,6 +89,10 @@ public class StructureManager {
     }
 
     public static void checkActivity(ServerLevel level, BlockPos targetPos, UpdateType type) {
+        // [修复] 防御性检查：如果服务器正在停止，或者区块未加载，直接跳过。
+        // 这防止了在服务器关闭过程中触发区块状态更新导致的 ConcurrentModificationException。
+        if (!level.getServer().isRunning() || !level.isLoaded(targetPos)) return;
+        
         checkActivity(level, targetPos, type, level.getBlockState(targetPos));
     }
 

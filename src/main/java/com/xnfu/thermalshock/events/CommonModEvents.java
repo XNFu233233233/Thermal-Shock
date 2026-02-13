@@ -99,7 +99,7 @@ public class CommonModEvents {
     public static void onEntityJoin(EntityJoinLevelEvent event) {
         if (event.getLevel().isClientSide()) return;
         if (event.getEntity() instanceof ItemEntity itemEntity) {
-            if (event.getLevel() instanceof ServerLevel sl) {
+            if (event.getLevel() instanceof ServerLevel sl && sl.getServer().isRunning()) {
                 StructureManager.checkActivity(sl, itemEntity.blockPosition(), StructureManager.UpdateType.ITEM);
             }
         }
@@ -109,7 +109,7 @@ public class CommonModEvents {
     public static void onEntityLeave(EntityLeaveLevelEvent event) {
         if (event.getLevel().isClientSide()) return;
         if (event.getEntity() instanceof ItemEntity itemEntity) {
-            if (event.getLevel() instanceof ServerLevel sl) {
+            if (event.getLevel() instanceof ServerLevel sl && sl.getServer().isRunning()) {
                 StructureManager.checkActivity(sl, itemEntity.blockPosition(), StructureManager.UpdateType.ITEM);
             }
         }
