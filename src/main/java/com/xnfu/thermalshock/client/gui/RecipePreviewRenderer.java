@@ -59,7 +59,7 @@ public class RecipePreviewRenderer {
         // Lead Clump
         ItemStack displayClump = new ItemStack(ThermalShockItems.MATERIAL_CLUMP.get());
         displayClump.set(ThermalShockDataComponents.TARGET_OUTPUT, 
-                        new ClumpInfo(recipe.getTargetContent()));
+                        new ClumpInfo(recipe.getTargetItem(), 1));
         
         drawSlot(gfx, x + 65, y + 15, COLOR_SPECIAL);
         gfx.renderItem(displayClump, x + 66, y + 16);

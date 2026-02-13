@@ -47,7 +47,7 @@ public class ClumpExtractionCategory extends BaseSimulationCategory<ClumpProcess
         // 创建一个包含正确内容的团块用于展示
         ItemStack displayClump = new ItemStack(ThermalShockItems.MATERIAL_CLUMP.get());
         displayClump.set(ThermalShockDataComponents.TARGET_OUTPUT, 
-                        new ClumpInfo(recipe.getTargetContent()));
+                        new ClumpInfo(recipe.getTargetItem(), 1));
 
         if (!inputs.isEmpty()) {
             addSlotWithTooltip(builder, RecipeIngredientRole.INPUT, 65, 15, clumpHint)

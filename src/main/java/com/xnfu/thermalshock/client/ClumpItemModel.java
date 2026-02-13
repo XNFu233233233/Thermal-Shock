@@ -57,7 +57,7 @@ public class ClumpItemModel implements BakedModel {
             @Override
             public BakedModel resolve(BakedModel model, ItemStack stack, @Nullable ClientLevel level, @Nullable LivingEntity entity, int seed) {
                 ClumpInfo info = stack.get(ThermalShockDataComponents.TARGET_OUTPUT);
-                boolean dataPresent = info != null && !info.result().isEmpty();
+                boolean dataPresent = info != null && !info.item().value().equals(net.minecraft.world.item.Items.AIR);
                 BakedModel resolvedOriginal = originalModel.getOverrides().resolve(originalModel, stack, level, entity, seed);
                 return new ClumpItemModel(resolvedOriginal != null ? resolvedOriginal : originalModel, dataPresent, false);
             }

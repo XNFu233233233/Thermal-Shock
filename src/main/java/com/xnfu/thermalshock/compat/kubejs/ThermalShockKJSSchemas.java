@@ -23,6 +23,7 @@ import java.util.Map;
 
 /**
  * Thermal Shock Recipe Schemas for KubeJS 1.21.1
+ * Note: Key definition order matters for static initialization!
  */
 public class ThermalShockKJSSchemas {
 
@@ -33,15 +34,15 @@ public class ThermalShockKJSSchemas {
     public static final RecipeComponent<Integer> INT = NumberComponent.INT;
     public static final RecipeComponent<FluidStack> FLUID_STACK = FluidStackComponent.FLUID_STACK.instance();
 
-    // === 2. Keys ===
+    // === 2. Common Keys ===
     public static final RecipeKey<ItemStack> RESULT = ITEM_STACK.outputKey("result");
-    public static final RecipeKey<ItemStack> TARGET_RESULT = ITEM_STACK.outputKey("target_result");
-    public static final RecipeKey<ItemStack> TARGET_CONTENT = ITEM_STACK.outputKey("target_content");
+    public static final RecipeKey<String> TARGET_ITEM = ID_STR.outputKey("target_item"); 
+    public static final RecipeKey<Integer> TARGET_COUNT = INT.otherKey("target_count").optional(1).alwaysWrite();
 
+    // REMOVED .optional() -> Now these MUST be passed as [] in JS
     public static final RecipeKey<List<Ingredient>> ITEM_INPUTS = INGREDIENT.asList().withBounds(IntBounds.of(0, 9)).inputKey("item_inputs");
     public static final RecipeKey<List<String>> BLOCK_INPUTS = ID_STR.asList().withBounds(IntBounds.of(0, 9)).inputKey("block_inputs");
 
-    // Adjusted defaults according to PLAN.md
     public static final RecipeKey<Integer> MIN_HEAT = INT.otherKey("min_heat").optional(0).alwaysWrite();
     public static final RecipeKey<Integer> HEAT_COST = INT.otherKey("heat_cost").optional(100).alwaysWrite();
     
@@ -49,13 +50,12 @@ public class ThermalShockKJSSchemas {
     public static final RecipeKey<Integer> MAX_COLD = INT.otherKey("max_cold").optional(Integer.MAX_VALUE).alwaysWrite();
     public static final RecipeKey<Integer> DELTA = INT.otherKey("delta").alwaysWrite(); // Required
 
-    // === 3. Converter Keys with Custom Wrappers ===
+    // === 3. Converter Components & Keys ===
     
     public static final RecipeKey<List<ThermalConverterRecipe.OutputItem>> CON_OUT_I = new RecipeComponent<ThermalConverterRecipe.OutputItem>() {
         @Override public TypeInfo typeInfo() { return TypeInfo.of(ThermalConverterRecipe.OutputItem.class); }
         @Override public Codec<ThermalConverterRecipe.OutputItem> codec() { return ThermalConverterRecipe.OutputItem.CODEC; }
         @Override public RecipeComponentType<?> type() { return RecipeComponentType.unit(ResourceLocation.fromNamespaceAndPath(ThermalShock.MODID, "con_out_i"), this); }
-        
         @Override
         public ThermalConverterRecipe.OutputItem wrap(RecipeScriptContext cx, Object from) {
             if (from instanceof ThermalConverterRecipe.OutputItem i) return i;
@@ -69,13 +69,12 @@ public class ThermalShockKJSSchemas {
             }
             return new ThermalConverterRecipe.OutputItem(ItemStack.EMPTY, 1.0f);
         }
-    }.asList().withBounds(IntBounds.of(0, 9)).outputKey("item_outputs");
+    }.asList().withBounds(IntBounds.of(0, 9)).outputKey("item_outputs").optional(List.of());
 
     public static final RecipeKey<List<ThermalConverterRecipe.OutputFluid>> CON_OUT_F = new RecipeComponent<ThermalConverterRecipe.OutputFluid>() {
         @Override public TypeInfo typeInfo() { return TypeInfo.of(ThermalConverterRecipe.OutputFluid.class); }
         @Override public Codec<ThermalConverterRecipe.OutputFluid> codec() { return ThermalConverterRecipe.OutputFluid.CODEC; }
         @Override public RecipeComponentType<?> type() { return RecipeComponentType.unit(ResourceLocation.fromNamespaceAndPath(ThermalShock.MODID, "con_out_f"), this); }
-        
         @Override
         public ThermalConverterRecipe.OutputFluid wrap(RecipeScriptContext cx, Object from) {
             if (from instanceof ThermalConverterRecipe.OutputFluid i) return i;
@@ -89,13 +88,12 @@ public class ThermalShockKJSSchemas {
             }
             return new ThermalConverterRecipe.OutputFluid(FluidStack.EMPTY, 1.0f);
         }
-    }.asList().withBounds(IntBounds.of(0, 9)).outputKey("fluid_outputs");
+    }.asList().withBounds(IntBounds.of(0, 9)).outputKey("fluid_outputs").optional(List.of());
 
     public static final RecipeKey<List<ThermalConverterRecipe.InputItem>> CON_IN_I = new RecipeComponent<ThermalConverterRecipe.InputItem>() {
         @Override public TypeInfo typeInfo() { return TypeInfo.of(ThermalConverterRecipe.InputItem.class); }
         @Override public Codec<ThermalConverterRecipe.InputItem> codec() { return ThermalConverterRecipe.InputItem.CODEC; }
         @Override public RecipeComponentType<?> type() { return RecipeComponentType.unit(ResourceLocation.fromNamespaceAndPath(ThermalShock.MODID, "con_in_i"), this); }
-        
         @Override
         public ThermalConverterRecipe.InputItem wrap(RecipeScriptContext cx, Object from) {
             if (from instanceof ThermalConverterRecipe.InputItem i) return i;
@@ -111,13 +109,12 @@ public class ThermalShockKJSSchemas {
             }
             return new ThermalConverterRecipe.InputItem(Ingredient.EMPTY, 1, 1.0f);
         }
-    }.asList().withBounds(IntBounds.of(0, 9)).inputKey("item_inputs");
+    }.asList().withBounds(IntBounds.of(0, 9)).inputKey("item_inputs").optional(List.of());
 
     public static final RecipeKey<List<ThermalConverterRecipe.InputFluid>> CON_IN_F = new RecipeComponent<ThermalConverterRecipe.InputFluid>() {
         @Override public TypeInfo typeInfo() { return TypeInfo.of(ThermalConverterRecipe.InputFluid.class); }
         @Override public Codec<ThermalConverterRecipe.InputFluid> codec() { return ThermalConverterRecipe.InputFluid.CODEC; }
         @Override public RecipeComponentType<?> type() { return RecipeComponentType.unit(ResourceLocation.fromNamespaceAndPath(ThermalShock.MODID, "con_in_f"), this); }
-        
         @Override
         public ThermalConverterRecipe.InputFluid wrap(RecipeScriptContext cx, Object from) {
             if (from instanceof ThermalConverterRecipe.InputFluid i) return i;
@@ -131,7 +128,7 @@ public class ThermalShockKJSSchemas {
             }
             return new ThermalConverterRecipe.InputFluid(FluidStack.EMPTY, 1.0f);
         }
-    }.asList().withBounds(IntBounds.of(0, 9)).inputKey("fluid_inputs");
+    }.asList().withBounds(IntBounds.of(0, 9)).inputKey("fluid_inputs").optional(List.of());
 
     // === 4. Factory ===
     public static final KubeRecipeFactory FACTORY = new KubeRecipeFactory(
@@ -141,17 +138,17 @@ public class ThermalShockKJSSchemas {
     );
 
     // === 5. Schemas ===
+    // IMPORTANT: Required keys must be at the beginning of the arguments list!
     public static final RecipeSchema OVERHEATING = new RecipeSchema(RESULT, ITEM_INPUTS, BLOCK_INPUTS, MIN_HEAT, HEAT_COST)
             .factory(FACTORY);
 
-    // FIX: DELTA (Required) must be before MIN_HOT/MAX_COLD (Optional)
-    public static final RecipeSchema SHOCK = new RecipeSchema(RESULT, ITEM_INPUTS, BLOCK_INPUTS, DELTA, MIN_HOT, MAX_COLD)
+    public static final RecipeSchema SHOCK = new RecipeSchema(RESULT, DELTA, ITEM_INPUTS, BLOCK_INPUTS, MIN_HOT, MAX_COLD)
             .factory(FACTORY);
 
-    public static final RecipeSchema SHOCK_FILLING = new RecipeSchema(TARGET_RESULT, ITEM_INPUTS, BLOCK_INPUTS, DELTA, MIN_HOT, MAX_COLD)
+    public static final RecipeSchema SHOCK_FILLING = new RecipeSchema(TARGET_ITEM, DELTA, ITEM_INPUTS, BLOCK_INPUTS, TARGET_COUNT, MIN_HOT, MAX_COLD)
             .factory(FACTORY);
 
-    public static final RecipeSchema EXTRACTION = new RecipeSchema(RESULT, TARGET_CONTENT, ITEM_INPUTS, BLOCK_INPUTS, MIN_HEAT, HEAT_COST)
+    public static final RecipeSchema EXTRACTION = new RecipeSchema(RESULT, TARGET_ITEM, ITEM_INPUTS, BLOCK_INPUTS, MIN_HEAT, HEAT_COST)
             .factory(FACTORY);
 
     public static final RecipeSchema FUEL = new RecipeSchema(INGREDIENT.inputKey("ingredient"), 

@@ -64,9 +64,10 @@ public class ClientModEvents {
     public static void registerItemDecorators(RegisterItemDecorationsEvent event) {
         event.register(ThermalShockItems.MATERIAL_CLUMP.get(), (guiGraphics, font, stack, x, y) -> {
             ClumpInfo info = stack.get(ThermalShockDataComponents.TARGET_OUTPUT);
-            if (info == null || info.result().isEmpty()) return false;
+            if (info == null) return false;
 
-            ItemStack subStack = info.result();
+            ItemStack subStack = info.createStack();
+            if (subStack.isEmpty()) return false;
 
             guiGraphics.pose().pushPose();
 

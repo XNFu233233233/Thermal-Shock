@@ -15,21 +15,30 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.*;
 import org.jetbrains.annotations.NotNull;
 
+import net.minecraft.core.Holder;
+import net.minecraft.world.item.Item;
+
+import net.minecraft.core.registries.BuiltInRegistries;
+
 public class ClumpFillingRecipe implements CraftingRecipe {
     final String group;
     final CraftingBookCategory category;
     final ShapedRecipePattern pattern;
-    final ItemStack resultItem;
+    final Holder<Item> targetItem;
+    private final ClumpInfo cachedInfo;
 
-    public ClumpFillingRecipe(String group, CraftingBookCategory category, ShapedRecipePattern pattern, ItemStack resultItem) {
+    public ClumpFillingRecipe(String group, CraftingBookCategory category, ShapedRecipePattern pattern, Holder<Item> targetItem) {
         this.group = group;
         this.category = category;
         this.pattern = pattern;
-        this.resultItem = resultItem;
+        this.targetItem = targetItem;
+        this.cachedInfo = new ClumpInfo(targetItem, 1);
     }
 
+    @Override public String getGroup() { return group; }
+    public CraftingBookCategory getCategory() { return category; }
     public ShapedRecipePattern getPattern() { return pattern; }
-    public ItemStack getResultTemplate() { return resultItem; }
+    public Holder<Item> getTargetItem() { return targetItem; }
 
     @Override
     public boolean matches(CraftingInput input, net.minecraft.world.level.Level level) {
@@ -39,7 +48,7 @@ public class ClumpFillingRecipe implements CraftingRecipe {
     @Override
     public ItemStack assemble(CraftingInput input, HolderLookup.Provider registries) {
         ItemStack result = new ItemStack(ThermalShockItems.MATERIAL_CLUMP.get());
-        result.set(ThermalShockDataComponents.TARGET_OUTPUT, new ClumpInfo(resultItem));
+        result.set(ThermalShockDataComponents.TARGET_OUTPUT, cachedInfo);
         return result;
     }
 
@@ -51,7 +60,7 @@ public class ClumpFillingRecipe implements CraftingRecipe {
     @Override
     public ItemStack getResultItem(HolderLookup.Provider registries) {
         ItemStack stack = new ItemStack(ThermalShockItems.MATERIAL_CLUMP.get());
-        stack.set(ThermalShockDataComponents.TARGET_OUTPUT, new ClumpInfo(resultItem));
+        stack.set(ThermalShockDataComponents.TARGET_OUTPUT, cachedInfo);
         return stack;
     }
 
@@ -70,24 +79,19 @@ public class ClumpFillingRecipe implements CraftingRecipe {
         return category;
     }
 
-    @Override
-    public String getGroup() {
-        return group;
-    }
-
     public static class Serializer implements RecipeSerializer<ClumpFillingRecipe> {
         public static final MapCodec<ClumpFillingRecipe> CODEC = RecordCodecBuilder.mapCodec(inst -> inst.group(
-                Codec.STRING.optionalFieldOf("group", "").forGetter(r -> r.group),
-                CraftingBookCategory.CODEC.fieldOf("category").orElse(CraftingBookCategory.MISC).forGetter(r -> r.category),
-                ShapedRecipePattern.MAP_CODEC.forGetter(r -> r.pattern),
-                ItemStack.CODEC.fieldOf("result_item").forGetter(r -> r.resultItem)
+                Codec.STRING.optionalFieldOf("group", "").forGetter(ClumpFillingRecipe::getGroup),
+                CraftingBookCategory.CODEC.fieldOf("category").orElse(CraftingBookCategory.MISC).forGetter(ClumpFillingRecipe::getCategory),
+                ShapedRecipePattern.MAP_CODEC.forGetter(ClumpFillingRecipe::getPattern),
+                BuiltInRegistries.ITEM.holderByNameCodec().fieldOf("target_item").forGetter(ClumpFillingRecipe::getTargetItem)
         ).apply(inst, ClumpFillingRecipe::new));
 
         public static final StreamCodec<RegistryFriendlyByteBuf, ClumpFillingRecipe> STREAM_CODEC = StreamCodec.composite(
                 ByteBufCodecs.STRING_UTF8, r -> r.group,
                 CraftingBookCategory.STREAM_CODEC, r -> r.category,
                 ShapedRecipePattern.STREAM_CODEC, r -> r.pattern,
-                ItemStack.STREAM_CODEC, r -> r.resultItem,
+                ByteBufCodecs.holderRegistry(net.minecraft.core.registries.Registries.ITEM), r -> r.targetItem,
                 ClumpFillingRecipe::new
         );
 

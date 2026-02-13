@@ -15,8 +15,5 @@
     }
   ],
   "min_heat": 500,
-  "target_content": {
-    "count": 1,
-    "id": "minecraft:gold_ingot"
-  }
+  "target_item": "minecraft:gold_ingot"
 }

@@ -20,20 +20,26 @@ public class MaterialClumpItem extends Item {
     public Component getName(ItemStack stack) {
         ClumpInfo info = stack.get(ThermalShockDataComponents.TARGET_OUTPUT);
 
-        if (info == null || info.result().isEmpty()) {
+        if (info == null) {
+            return Component.translatable("item.thermalshock.material_clump.empty")
+                    .withStyle(ChatFormatting.GRAY);
+        }
+
+        ItemStack result = info.createStack();
+        if (result.isEmpty()) {
             return Component.translatable("item.thermalshock.material_clump.empty")
                     .withStyle(ChatFormatting.GRAY);
         }
 
         return Component.translatable("item.thermalshock.material_clump.filled",
-                        info.result().getHoverName())
+                        result.getHoverName())
                 .withStyle(ChatFormatting.GOLD);
     }
 
     @Override
     public void appendHoverText(ItemStack stack, TooltipContext context, List<Component> tooltipComponents, TooltipFlag tooltipFlag) {
         ClumpInfo info = stack.get(ThermalShockDataComponents.TARGET_OUTPUT);
-        if (info != null && !info.result().isEmpty()) {
+        if (info != null && !info.createStack().isEmpty()) {
             tooltipComponents.add(Component.translatable("tooltip.thermalshock.clump_instruction")
                     .withStyle(ChatFormatting.GRAY, ChatFormatting.ITALIC));
             if (Screen.hasShiftDown()) {

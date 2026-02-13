@@ -7,10 +7,13 @@ import com.xnfu.thermalshock.data.ClumpInfo;
 import com.xnfu.thermalshock.registries.ThermalShockDataComponents;
 import com.xnfu.thermalshock.registries.ThermalShockItems;
 import com.xnfu.thermalshock.registries.ThermalShockRecipes;
+import net.minecraft.core.Holder;
 import net.minecraft.core.HolderLookup;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.RecipeSerializer;
 import net.minecraft.world.item.crafting.RecipeType;
@@ -19,30 +22,33 @@ import java.util.List;
 
 public class ThermalShockFillingRecipe extends ThermalShockRecipe {
 
-    private final ItemStack targetResult;
+    private final Holder<Item> targetItem;
+    private final int count;
+    private final ClumpInfo cachedInfo;
 
-    public ThermalShockFillingRecipe(List<SimulationIngredient> inputs, ItemStack targetResult, int minHot, int maxCold, int delta) {
+    public ThermalShockFillingRecipe(List<SimulationIngredient> inputs, Holder<Item> targetItem, int count, int minHot, int maxCold, int delta) {
         super(inputs, new ItemStack(ThermalShockItems.MATERIAL_CLUMP.get()), minHot, maxCold, delta);
-        this.targetResult = targetResult;
+        this.targetItem = targetItem;
+        this.count = count;
+        this.cachedInfo = new ClumpInfo(targetItem, count);
     }
 
     @Override
     public ItemStack assemble(SimulationRecipeInput input, HolderLookup.Provider registries) {
-        ItemStack result = new ItemStack(ThermalShockItems.MATERIAL_CLUMP.get());
-        ClumpInfo info = new ClumpInfo(targetResult);
-        result.set(ThermalShockDataComponents.TARGET_OUTPUT, info);
-        return result;
+        ItemStack stack = new ItemStack(ThermalShockItems.MATERIAL_CLUMP.get());
+        stack.set(ThermalShockDataComponents.TARGET_OUTPUT, cachedInfo);
+        return stack;
     }
 
     @Override
     public ItemStack getResultItem(HolderLookup.Provider registries) {
         ItemStack stack = new ItemStack(ThermalShockItems.MATERIAL_CLUMP.get());
-        ClumpInfo info = new ClumpInfo(targetResult);
-        stack.set(ThermalShockDataComponents.TARGET_OUTPUT, info);
+        stack.set(ThermalShockDataComponents.TARGET_OUTPUT, cachedInfo);
         return stack;
     }
 
-    public ItemStack getTargetResult() { return targetResult; }
+    public Holder<Item> getTargetItem() { return targetItem; }
+    public int getCount() { return count; }
 
     @Override
     public boolean matches(SimulationRecipeInput input, net.minecraft.world.level.Level level) {
@@ -61,30 +67,23 @@ public class ThermalShockFillingRecipe extends ThermalShockRecipe {
     }
 
     public static class Serializer implements RecipeSerializer<ThermalShockFillingRecipe> {
-        public static final MapCodec<ThermalShockFillingRecipe> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
+        public static final MapCodec<ThermalShockFillingRecipe> CODEC = RecordCodecBuilder.mapCodec(inst -> inst.group(
                 SimulationIngredient.CODEC.listOf().fieldOf("ingredients").forGetter(ThermalShockRecipe::getSimulationIngredients),
-                ItemStack.CODEC.fieldOf("target_result").forGetter(ThermalShockFillingRecipe::getTargetResult),
+                BuiltInRegistries.ITEM.holderByNameCodec().fieldOf("target_item").forGetter(ThermalShockFillingRecipe::getTargetItem),
+                Codec.INT.optionalFieldOf("count", 1).forGetter(ThermalShockFillingRecipe::getCount),
                 Codec.INT.optionalFieldOf("min_hot", Integer.MIN_VALUE).forGetter(ThermalShockRecipe::getMinHotTemp),
                 Codec.INT.optionalFieldOf("max_cold", Integer.MAX_VALUE).forGetter(ThermalShockRecipe::getMaxColdTemp),
                 Codec.INT.fieldOf("delta").forGetter(ThermalShockRecipe::getRequiredDelta)
-        ).apply(instance, ThermalShockFillingRecipe::new));
+        ).apply(inst, ThermalShockFillingRecipe::new));
 
-        public static final StreamCodec<RegistryFriendlyByteBuf, ThermalShockFillingRecipe> STREAM_CODEC = StreamCodec.of(
-                (buf, recipe) -> {
-                    SimulationIngredient.STREAM_CODEC.apply(ByteBufCodecs.list()).encode(buf, recipe.getSimulationIngredients());
-                    ItemStack.STREAM_CODEC.encode(buf, recipe.getTargetResult());
-                    ByteBufCodecs.VAR_INT.encode(buf, recipe.getMinHotTemp());
-                    ByteBufCodecs.VAR_INT.encode(buf, recipe.getMaxColdTemp());
-                    ByteBufCodecs.VAR_INT.encode(buf, recipe.getRequiredDelta());
-                },
-                buf -> {
-                    var ingredients = SimulationIngredient.STREAM_CODEC.apply(ByteBufCodecs.list()).decode(buf);
-                    var target = ItemStack.STREAM_CODEC.decode(buf);
-                    var minHot = ByteBufCodecs.VAR_INT.decode(buf);
-                    var maxCold = ByteBufCodecs.VAR_INT.decode(buf);
-                    var delta = ByteBufCodecs.VAR_INT.decode(buf);
-                    return new ThermalShockFillingRecipe(ingredients, target, minHot, maxCold, delta);
-                }
+        public static final StreamCodec<RegistryFriendlyByteBuf, ThermalShockFillingRecipe> STREAM_CODEC = StreamCodec.composite(
+                SimulationIngredient.STREAM_CODEC.apply(ByteBufCodecs.list()), ThermalShockRecipe::getSimulationIngredients,
+                ByteBufCodecs.holderRegistry(net.minecraft.core.registries.Registries.ITEM), ThermalShockFillingRecipe::getTargetItem,
+                ByteBufCodecs.VAR_INT, ThermalShockFillingRecipe::getCount,
+                ByteBufCodecs.VAR_INT, ThermalShockRecipe::getMinHotTemp,
+                ByteBufCodecs.VAR_INT, ThermalShockRecipe::getMaxColdTemp,
+                ByteBufCodecs.VAR_INT, ThermalShockRecipe::getRequiredDelta,
+                ThermalShockFillingRecipe::new
         );
 
         @Override public MapCodec<ThermalShockFillingRecipe> codec() { return CODEC; }

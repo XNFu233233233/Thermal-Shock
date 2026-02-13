@@ -28,9 +28,7 @@ public class ModBlockTagsProvider extends BlockTagsProvider {
         // 2. 生成 CASING_ACCESS (结构上面的门/接口)
         // 直接引用原版的标签，这样所有木门、铁门、栅栏门都自动生效
         this.tag(ThermalShockTags.CASING_ACCESS)
-                .addTag(BlockTags.PLANKS)
-                .addTag(BlockTags.FENCES)
-                .addTag(BlockTags.WALLS)
-                .addTag(BlockTags.STAIRS);
+                .addTag(BlockTags.DOORS)
+                .addTag(BlockTags.TRAPDOORS);
     }
 }

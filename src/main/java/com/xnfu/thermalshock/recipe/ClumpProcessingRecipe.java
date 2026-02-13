@@ -7,9 +7,12 @@ import com.xnfu.thermalshock.data.ClumpInfo;
 import com.xnfu.thermalshock.registries.ThermalShockDataComponents;
 import com.xnfu.thermalshock.registries.ThermalShockItems;
 import com.xnfu.thermalshock.registries.ThermalShockRecipes;
+import net.minecraft.core.Holder;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.RecipeSerializer;
 import net.minecraft.world.item.crafting.RecipeType;
@@ -19,13 +22,12 @@ import java.util.List;
 
 public class ClumpProcessingRecipe extends OverheatingRecipe {
 
-    private final ItemStack targetContent; // Clump 里必须装的是这个东西
-    protected final List<SimulationIngredient> simulationIngredients;
+    private final Holder<Item> targetItem; // Clump 里必须装的是这个东西
 
-    public ClumpProcessingRecipe(List<SimulationIngredient> inputs, ItemStack targetContent, int minHeatRate, int heatCost) {
-        super(inputs, targetContent, minHeatRate, heatCost);
-        this.targetContent = targetContent;
-        this.simulationIngredients = inputs;
+    public ClumpProcessingRecipe(List<SimulationIngredient> inputs, Holder<Item> targetItem, int minHeatRate, int heatCost) {
+        // Parent result is the output when processing is done
+        super(inputs, new ItemStack(targetItem), minHeatRate, heatCost);
+        this.targetItem = targetItem;
     }
 
     @Override
@@ -34,13 +36,13 @@ public class ClumpProcessingRecipe extends OverheatingRecipe {
         if (!stack.is(ThermalShockItems.MATERIAL_CLUMP.get())) return false;
 
         ClumpInfo info = stack.get(ThermalShockDataComponents.TARGET_OUTPUT);
-        if (info == null || info.result().isEmpty()) return false;
+        if (info == null) return false;
 
-        return ItemStack.isSameItemSameComponents(info.result(), this.targetContent);
+        return info.item().equals(this.targetItem);
     }
 
-    public ItemStack getTargetContent() {
-        return targetContent;
+    public Holder<Item> getTargetItem() {
+        return targetItem;
     }
 
     @Override
@@ -55,17 +57,17 @@ public class ClumpProcessingRecipe extends OverheatingRecipe {
 
     public static class Serializer implements RecipeSerializer<ClumpProcessingRecipe> {
         public static final MapCodec<ClumpProcessingRecipe> CODEC = RecordCodecBuilder.mapCodec(inst -> inst.group(
-                SimulationIngredient.CODEC.listOf().fieldOf("ingredients").forGetter(r -> r.simulationIngredients),
-                ItemStack.CODEC.fieldOf("target_content").forGetter(ClumpProcessingRecipe::getTargetContent),
+                SimulationIngredient.CODEC.listOf().fieldOf("ingredients").forGetter(ClumpProcessingRecipe::getSimulationIngredients),
+                BuiltInRegistries.ITEM.holderByNameCodec().fieldOf("target_item").forGetter(ClumpProcessingRecipe::getTargetItem),
                 Codec.INT.optionalFieldOf("min_heat", 0).forGetter(r -> r.getMinHeatRate()),
                 Codec.INT.optionalFieldOf("heat_cost", 100).forGetter(r -> r.getHeatCost())
         ).apply(inst, ClumpProcessingRecipe::new));
 
         public static final StreamCodec<RegistryFriendlyByteBuf, ClumpProcessingRecipe> STREAM_CODEC = StreamCodec.composite(
-                SimulationIngredient.STREAM_CODEC.apply(ByteBufCodecs.list()), r -> r.simulationIngredients,
-                ItemStack.STREAM_CODEC, ClumpProcessingRecipe::getTargetContent,
-                ByteBufCodecs.VAR_INT, r -> r.getMinHeatRate(),
-                ByteBufCodecs.VAR_INT, r -> r.getHeatCost(),
+                SimulationIngredient.STREAM_CODEC.apply(ByteBufCodecs.list()), ClumpProcessingRecipe::getSimulationIngredients,
+                ByteBufCodecs.holderRegistry(net.minecraft.core.registries.Registries.ITEM), ClumpProcessingRecipe::getTargetItem,
+                ByteBufCodecs.VAR_INT, ClumpProcessingRecipe::getMinHeatRate,
+                ByteBufCodecs.VAR_INT, ClumpProcessingRecipe::getHeatCost,
                 ClumpProcessingRecipe::new
         );
 

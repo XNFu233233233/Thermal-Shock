@@ -348,7 +348,7 @@ public class ChamberProcess {
         for (SimulationIngredient simIng : recipe.getSimulationIngredients()) {
             boolean foundAny = false;
             boolean isStrictClumpCheck = (recipe instanceof ClumpProcessingRecipe);
-            ItemStack strictTarget = isStrictClumpCheck ? ((ClumpProcessingRecipe) recipe).getTargetContent() : ItemStack.EMPTY;
+            net.minecraft.core.Holder<net.minecraft.world.item.Item> strictTarget = isStrictClumpCheck ? ((ClumpProcessingRecipe) recipe).getTargetItem() : null;
 
             for (BlockPos pos : ports) {
                 BlockEntity portBe = level.getBlockEntity(pos);
@@ -359,7 +359,7 @@ public class ChamberProcess {
                         if (!stack.isEmpty() && simIng.ingredient().test(stack)) {
                             if (isStrictClumpCheck) {
                                 ClumpInfo info = stack.get(ThermalShockDataComponents.TARGET_OUTPUT);
-                                if (info == null || !ItemStack.isSameItemSameComponents(info.result(), strictTarget))
+                                if (info == null || !info.item().equals(strictTarget))
                                     continue;
                             }
                             foundAny = true;
@@ -399,12 +399,12 @@ public class ChamberProcess {
     private AbstractSimulationRecipe findMatchingClumpRecipe(Level level, ItemStack stack) {
         if (!stack.is(ThermalShockItems.MATERIAL_CLUMP.get())) return null;
         ClumpInfo info = stack.get(ThermalShockDataComponents.TARGET_OUTPUT);
-        if (info == null || info.result().isEmpty()) return null;
+        if (info == null) return null;
 
         var all = RecipeCache.getRecipes(MachineMode.OVERHEATING);
         for (RecipeHolder<? extends AbstractSimulationRecipe> h : all) {
             if (h.value() instanceof ClumpProcessingRecipe cr) {
-                if (ItemStack.isSameItemSameComponents(cr.getTargetContent(), info.result())) {
+                if (info.item().equals(cr.getTargetItem())) {
                     return cr;
                 }
             }
@@ -441,7 +441,7 @@ public class ChamberProcess {
         for (SimulationIngredient simIng : recipe.getSimulationIngredients()) {
             int totalFound = 0;
             boolean isStrictClumpCheck = (recipe instanceof ClumpProcessingRecipe);
-            ItemStack strictTarget = isStrictClumpCheck ? ((ClumpProcessingRecipe) recipe).getTargetContent() : ItemStack.EMPTY;
+            net.minecraft.core.Holder<net.minecraft.world.item.Item> strictTarget = isStrictClumpCheck ? ((ClumpProcessingRecipe) recipe).getTargetItem() : null;
 
             // [流体支持] 检查是否为流体需求 (Type=BLOCK 且 Ingredient 是桶)
             net.minecraft.world.level.material.Fluid requiredFluid = getFluidFromIngredient(simIng);
@@ -468,7 +468,7 @@ public class ChamberProcess {
                         if (simIng.ingredient().test(stack)) {
                             if (isStrictClumpCheck) {
                                 ClumpInfo info = stack.get(ThermalShockDataComponents.TARGET_OUTPUT);
-                                if (info == null || !ItemStack.isSameItemSameComponents(info.result(), strictTarget))
+                                if (info == null || !info.item().equals(strictTarget))
                                     continue;
                             }
                             totalFound += stack.getCount();
@@ -518,7 +518,7 @@ public class ChamberProcess {
         for (SimulationIngredient simIng : recipe.getSimulationIngredients()) {
             int remainingToConsume = batchToConsume;
             boolean isStrictClumpCheck = (recipe instanceof ClumpProcessingRecipe);
-            ItemStack strictTarget = isStrictClumpCheck ? ((ClumpProcessingRecipe) recipe).getTargetContent() : ItemStack.EMPTY;
+            net.minecraft.core.Holder<net.minecraft.world.item.Item> strictTarget = isStrictClumpCheck ? ((ClumpProcessingRecipe) recipe).getTargetItem() : null;
             
             // [流体支持]
             net.minecraft.world.level.material.Fluid requiredFluid = getFluidFromIngredient(simIng);
@@ -551,7 +551,7 @@ public class ChamberProcess {
                         if (simIng.ingredient().test(stack)) {
                             if (isStrictClumpCheck) {
                                 ClumpInfo info = stack.get(ThermalShockDataComponents.TARGET_OUTPUT);
-                                if (info == null || !ItemStack.isSameItemSameComponents(info.result(), strictTarget))
+                                if (info == null || !info.item().equals(strictTarget))
                                     continue;
                             }
                             int extractCount = Math.min(stack.getCount(), remainingToConsume);

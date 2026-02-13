@@ -36,7 +36,7 @@ public class ClumpShockRecipe extends OverheatingRecipe {
         ItemStack stack = input.primary();
         ClumpInfo info = stack.get(ThermalShockDataComponents.TARGET_OUTPUT);
         if (info != null) {
-            return info.result().copy();
+            return info.createStack();
         }
         return ItemStack.EMPTY;
     }

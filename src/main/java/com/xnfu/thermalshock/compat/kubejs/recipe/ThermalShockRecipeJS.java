@@ -17,8 +17,8 @@ public class ThermalShockRecipeJS extends KubeRecipe {
 
         // Custom Merge Logic
         if (json.has("item_inputs") || json.has("block_inputs")) {
-            boolean isFilling = json.has("target_result");
-            boolean isProcessing = json.has("target_content");
+            boolean isFilling = json.has("target_item") && !json.has("result"); // Filling 模式
+            boolean isProcessing = json.has("target_item") && json.has("result"); // Processing 模式
 
             JsonArray itemIn = json.has("item_inputs") ? json.getAsJsonArray("item_inputs") : new JsonArray();
             JsonArray blockIn = json.has("block_inputs") ? json.getAsJsonArray("block_inputs") : new JsonArray();

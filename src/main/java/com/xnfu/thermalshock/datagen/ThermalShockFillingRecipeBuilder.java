@@ -16,14 +16,16 @@ import java.util.List;
 
 public class ThermalShockFillingRecipeBuilder implements RecipeBuilder {
     private final Ingredient inputIngredient;
-    private final ItemStack resultItem;
+    private final net.minecraft.core.Holder<Item> targetItem;
+    private final int targetCount;
     private final int minHot;
     private final int maxCold;
     private final int delta;
 
-    public ThermalShockFillingRecipeBuilder(Ingredient input, ItemStack result, int minHot, int maxCold, int delta) {
+    public ThermalShockFillingRecipeBuilder(Ingredient input, net.minecraft.core.Holder<Item> targetItem, int targetCount, int minHot, int maxCold, int delta) {
         this.inputIngredient = input;
-        this.resultItem = result;
+        this.targetItem = targetItem;
+        this.targetCount = targetCount;
         this.minHot = minHot;
         this.maxCold = maxCold;
         this.delta = delta;
@@ -46,7 +48,7 @@ public class ThermalShockFillingRecipeBuilder implements RecipeBuilder {
         );
 
         ThermalShockFillingRecipe recipe = new ThermalShockFillingRecipe(
-                inputs, resultItem, minHot, maxCold, delta
+                inputs, targetItem, targetCount, minHot, maxCold, delta
         );
         output.accept(id, recipe, null);
     }

@@ -3,11 +3,16 @@ package com.xnfu.thermalshock.datagen;
 import com.xnfu.thermalshock.ThermalShock;
 import com.xnfu.thermalshock.recipe.*;
 import com.xnfu.thermalshock.registries.ThermalShockItems;
+import net.minecraft.core.Holder;
+import net.minecraft.core.HolderGetter;
 import net.minecraft.core.HolderLookup;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.data.PackOutput;
 import net.minecraft.data.recipes.RecipeOutput;
 import net.minecraft.data.recipes.RecipeProvider;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.CraftingBookCategory;
@@ -21,13 +26,19 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 public class ModRecipeProvider extends RecipeProvider {
+    private final CompletableFuture<HolderLookup.Provider> registries;
 
     public ModRecipeProvider(PackOutput output, CompletableFuture<HolderLookup.Provider> registries) {
         super(output, registries);
+        this.registries = registries;
     }
 
     @Override
     protected void buildRecipes(RecipeOutput output) {
+        // Safe way to get registries in NeoForge 1.21.1 Datagen
+        HolderLookup.Provider lookup = this.registries.join();
+        HolderGetter<Item> itemGetter = lookup.lookupOrThrow(Registries.ITEM);
+
         RecipeOutput testOutput = output.withConditions(net.neoforged.neoforge.common.conditions.FalseCondition.INSTANCE);
 
         // 1. Overheating
@@ -43,14 +54,14 @@ public class ModRecipeProvider extends RecipeProvider {
         buildShock(testOutput, "glass_cutting", Ingredient.of(Blocks.GLASS), 1, new ItemStack(Blocks.GLASS_PANE, 4), 150, 20, 200, false);
 
         // 3. Clump Filling
-        buildFillingCrafting(testOutput, "iron_filling_crafting", Ingredient.of(Items.IRON_ORE), new ItemStack(Items.IRON_INGOT));
-        buildFillingCrafting(testOutput, "gold_filling_crafting", Ingredient.of(Items.GOLD_ORE), new ItemStack(Items.GOLD_INGOT));
-        buildFillingShock(testOutput, "iron_nugget_filling", Ingredient.of(Items.IRON_BARS), new ItemStack(Items.IRON_NUGGET), 100, 10, 150);
+        buildFillingCrafting(testOutput, "iron_filling_crafting", Ingredient.of(Items.IRON_ORE), getHolder(itemGetter, Items.IRON_INGOT));
+        buildFillingCrafting(testOutput, "gold_filling_crafting", Ingredient.of(Items.GOLD_ORE), getHolder(itemGetter, Items.GOLD_INGOT));
+        buildFillingShock(testOutput, "iron_nugget_filling", Ingredient.of(Items.IRON_BARS), getHolder(itemGetter, Items.IRON_NUGGET), 100, 10, 150);
 
         // 4. Clump Processing
-        buildClumpProcessing(testOutput, "extract_iron_ingot", new ItemStack(Items.IRON_INGOT), 200, 1000);
-        buildClumpProcessing(testOutput, "extract_gold_ingot", new ItemStack(Items.GOLD_INGOT), 500, 2000);
-        buildClumpProcessing(testOutput, "extract_iron_nugget", new ItemStack(Items.IRON_NUGGET), 100, 500);
+        buildClumpProcessing(testOutput, "extract_iron_ingot", getHolder(itemGetter, Items.IRON_INGOT), 200, 1000);
+        buildClumpProcessing(testOutput, "extract_gold_ingot", getHolder(itemGetter, Items.GOLD_INGOT), 500, 2000);
+        buildClumpProcessing(testOutput, "extract_iron_nugget", getHolder(itemGetter, Items.IRON_NUGGET), 100, 500);
 
         // 5. Fuel
         buildFuel(testOutput, "fuel_coal", Ingredient.of(Items.COAL), 1600, 200);
@@ -67,6 +78,10 @@ public class ModRecipeProvider extends RecipeProvider {
         ThermalConverterRecipeBuilder.create().inputFluid(new FluidStack(net.minecraft.world.level.material.Fluids.WATER, 1000), 1.0f).outputItem(new ItemStack(Blocks.ICE), 1.0f).maxHeat(0).time(100).save(testOutput, loc("converter/freeze_water"));
         ThermalConverterRecipeBuilder.create().inputItem(Ingredient.of(Blocks.WET_SPONGE), 1, 1.0f).outputItem(new ItemStack(Blocks.SPONGE), 1.0f).outputFluid(new FluidStack(net.minecraft.world.level.material.Fluids.WATER, 1000), 1.0f).minHeat(50).time(60).save(testOutput, loc("converter/dry_sponge"));
         ThermalConverterRecipeBuilder.create().inputItem(Ingredient.of(Blocks.GRAVEL), 1, 1.0f).outputItem(new ItemStack(Blocks.SAND), 1.0f).outputItem(new ItemStack(Items.IRON_NUGGET), 0.1f).minHeat(200).time(80).save(testOutput, loc("converter/sift_gravel"));
+    }
+
+    private Holder<Item> getHolder(HolderGetter<Item> getter, Item item) {
+        return getter.getOrThrow(BuiltInRegistries.ITEM.getResourceKey(item).get());
     }
 
     private ResourceLocation loc(String path) {
@@ -91,7 +106,7 @@ public class ModRecipeProvider extends RecipeProvider {
         builder.setThermalShockParams(minHot, maxCold, delta).save(output, loc("shock/" + name));
     }
 
-    private void buildFillingCrafting(RecipeOutput output, String name, Ingredient input, ItemStack clumpResult) {
+    private void buildFillingCrafting(RecipeOutput output, String name, Ingredient input, Holder<Item> target) {
         ClumpFillingRecipe recipe = new ClumpFillingRecipe(
                 "clump_filling",
                 CraftingBookCategory.MISC,
@@ -99,20 +114,20 @@ public class ModRecipeProvider extends RecipeProvider {
                         Map.of('I', input, 'C', Ingredient.of(ThermalShockItems.MATERIAL_CLUMP.get())),
                         List.of("I", "C")
                 ),
-                clumpResult
+                target
         );
         output.accept(loc("filling/" + name), recipe, null);
     }
 
-    private void buildFillingShock(RecipeOutput output, String name, Ingredient input, ItemStack clumpResult, int minHot, int maxCold, int delta) {
-        new ThermalShockFillingRecipeBuilder(input, clumpResult, minHot, maxCold, delta)
+    private void buildFillingShock(RecipeOutput output, String name, Ingredient input, Holder<Item> target, int minHot, int maxCold, int delta) {
+        new ThermalShockFillingRecipeBuilder(input, target, 1, minHot, maxCold, delta)
                 .save(output, loc("filling/" + name));
     }
 
-    private void buildClumpProcessing(RecipeOutput output, String name, ItemStack result, int minHeat, int cost) {
+    private void buildClumpProcessing(RecipeOutput output, String name, Holder<Item> target, int minHeat, int cost) {
         ClumpProcessingRecipe recipe = new ClumpProcessingRecipe(
                 List.of(new SimulationIngredient(Ingredient.of(ThermalShockItems.MATERIAL_CLUMP.get()), RecipeSourceType.ITEM)),
-                result, minHeat, cost
+                target, minHeat, cost
         );
         output.accept(loc("extraction/" + name), recipe, null);
     }

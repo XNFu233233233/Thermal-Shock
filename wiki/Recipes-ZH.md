@@ -63,7 +63,8 @@
 | 属性 | 类型 | 必须 | 默认值 | 说明 |
 | :--- | :--- | :--- | :--- | :--- |
 | `ingredients` | 数组 | 是 | - | 输入列表。必须包含 `thermalshock:material_clump`。 |
-| `target_result` | 对象 | 是 | - | 被注入团块内部的产物信息（提取时产出什么）。 |
+| `target_item` | 字符串 | 是 | - | 被注入团块内部的产物物品 ID。 |
+| `count` | 整数 | 否 | **1** | 被注入团块内部的产出数量。 |
 | `delta` | 整数 | **是** | - | 填充所需的最小温差。 |
 | `min_hot` | 整数 | 否 | **不检查** | 填充所需的最小高温。 |
 | `max_cold` | 整数 | 否 | **不检查** | 填充所需的最大低温。 |
@@ -76,7 +77,8 @@
     { "type": "item", "value": { "item": "thermalshock:material_clump" } },
     { "type": "item", "value": { "item": "minecraft:gold_ore" } }
   ],
-  "target_result": { "id": "minecraft:gold_ingot", "count": 1 },
+  "target_item": "minecraft:gold_ingot",
+  "count": 1,
   "delta": 700
 }
 ```
@@ -90,7 +92,7 @@
 | 属性 | 类型 | 必须 | 默认值 | 说明 |
 | :--- | :--- | :--- | :--- | :--- |
 | `ingredients` | 数组 | 是 | - | 输入列表。必须包含带数据的团块。 |
-| `target_content` | 对象 | 是 | - | 只有内部数据与此项匹配的团块才会被处理。 |
+| `target_item` | 字符串 | 是 | - | 只有内部数据与此 ID 匹配的团块才会被处理。 |
 | `min_heat` | 整数 | 否 | **0** | 提取该团块所需的最小热量速率。 |
 | `heat_cost` | 整数 | 否 | **100** | 提取该团块所需的累计热量。 |
 
@@ -101,7 +103,7 @@
   "ingredients": [
     { "type": "item", "value": { "item": "thermalshock:material_clump" } }
   ],
-  "target_content": { "id": "minecraft:gold_ingot" },
+  "target_item": "minecraft:gold_ingot",
   "min_heat": 300,
   "heat_cost": 2000
 }

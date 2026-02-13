@@ -7,7 +7,6 @@
   "type": "thermalshock:clump_filling",
   "category": "misc",
   "group": "clump_filling",
-  "heat_cost": 2000,
   "key": {
     "C": {
       "item": "thermalshock:material_clump"
@@ -16,13 +15,9 @@
       "item": "minecraft:gold_ore"
     }
   },
-  "min_heat_rate": 500,
   "pattern": [
     "I",
     "C"
   ],
-  "result_item": {
-    "count": 1,
-    "id": "minecraft:gold_ingot"
-  }
+  "target_item": "minecraft:gold_ingot"
 }
