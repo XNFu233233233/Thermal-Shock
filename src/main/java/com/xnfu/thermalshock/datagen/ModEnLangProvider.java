@@ -137,24 +137,23 @@ public class ModEnLangProvider extends LanguageProvider {
         add("gui.thermalshock.source.set", "Set");
         add("gui.thermalshock.source.energy_input", "Input: %s FE/t");
         add("gui.thermalshock.source.energy_buffer", "Energy Buffer");
-        add("gui.thermalshock.source.remaining_time", "Remaining: %s");
+        add("gui.thermalshock.source.duration", "Duration: %ss");
+        add("gui.thermalshock.source.remaining_time", "Remaining: %ss");
         add("gui.thermalshock.source.jei_output", "Output: %s H/t");
         add("gui.thermalshock.converter.heat_label", "Current Heat: %d H");
         add("gui.thermalshock.converter.heat_requirement", "Recipe requires specific heat levels.");
+        add("gui.thermalshock.jei.label.min_heat_rate", "Required Heat Rate: >%d H/t");
+        add("gui.thermalshock.jei.label.heat_cost", "Heat Cost: %d H");
+        add("gui.thermalshock.jei.chance.consume", "Consume Chance: %d%%");
+        add("gui.thermalshock.jei.chance.output", "Output Chance: %d%%");
+        add("gui.thermalshock.jei.fe_conversion", "FE -> Heat Conversion");
+        add("gui.thermalshock.jei.category.fe_to_heat", "FE Conversion");
+        add("gui.thermalshock.jei.map.casing", "Structural Casing Properties");
+        add("gui.thermalshock.jei.map.catalyst", "Chamber Catalyst Properties");
+        add("gui.thermalshock.jei.map.heat_source", "Heat Source Data");
+        add("gui.thermalshock.jei.map.cold_source", "Cold Source Data");
 
         // === 10. JEI 集成 ===
-        add("gui.thermalshock.jei.chance.consume", "Consume Chance: %s%%");
-        add("gui.thermalshock.jei.chance.output", "Output Chance: %s%%");
-        add("gui.thermalshock.jei.label.min_heat_rate", "min > %d H/t");
-        add("gui.thermalshock.jei.label.heat_cost", "Heat Cost: %d H");
-        add("gui.thermalshock.jei.fe_conversion", "Energy Conversion");
-        add("gui.thermalshock.jei.category.fe_to_heat", "FE to Heat");
-        add("gui.thermalshock.jei.map.casing", "Structural Casing");
-        add("gui.thermalshock.jei.map.catalyst", "Chamber Catalyst");
-        add("gui.thermalshock.jei.map.heat_source", "Heat Source");
-        add("gui.thermalshock.jei.map.cold_source", "Cold Source");
-
-        // === 模拟室 JEI ===
         add("gui.thermalshock.jei.category.overheating", "Simulation: Overheating");
         add("gui.thermalshock.jei.category.shock", "Simulation: Thermal Shock");
         add("gui.thermalshock.jei.category.clump_filling_shock", "Simulation: Clump Filling (Shock)");
@@ -170,6 +169,9 @@ public class ModEnLangProvider extends LanguageProvider {
 
         add("jei.thermalshock.label.high", "High: >%d");
         add("jei.thermalshock.label.low", "Low: <%d");
+
+        add("recipe.thermalshock.future_req", "Extraction Req: >%d H/t");
+        add("recipe.thermalshock.future_cost", "Extraction Cost: %d H");
 
         add("gui.thermalshock.tooltip.show_recipes", "Show Recipes (JEI)");
         add("gui.thermalshock.tooltip.show_recipes.desc", "Supported recipe categories:");

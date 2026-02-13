@@ -83,7 +83,7 @@ public class HeatBarWidget extends AbstractWidget {
 
             if (isShiftDown) {
                 // 这里我们不再显示 generic desc，而是留给 InfoPanel 显示详细配方需求
-                tooltip.add(Component.translatable("gui.thermalshock.tooltip.delta_t.desc", "???", "???").withStyle(ChatFormatting.DARK_GRAY));
+                tooltip.add(Component.translatable("gui.thermalshock.tooltip.delta.desc", "---", "---").withStyle(ChatFormatting.DARK_GRAY));
             }
         }
     }

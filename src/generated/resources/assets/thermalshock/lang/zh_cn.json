@@ -10,6 +10,7 @@
   "gui.thermalshock.btn.generic_clump.desc1": "自动识别内部的团块类型。",
   "gui.thermalshock.btn.generic_clump.desc2": "请确保温度满足对应需求。",
   "gui.thermalshock.btn.generic_clump.title": "通用团块处理",
+  "gui.thermalshock.converter.heat_label": "当前热量: %d H",
   "gui.thermalshock.converter.heat_requirement": "运行配方需要热量条件，需要保证机器热量满足配方运行条件。",
   "gui.thermalshock.jei.category.clump_extraction": "模拟室: 团块提取",
   "gui.thermalshock.jei.category.clump_filling_crafting": "工作台: 团块充填 (手工)",

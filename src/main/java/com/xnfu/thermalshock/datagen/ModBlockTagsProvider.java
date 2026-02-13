@@ -19,14 +19,19 @@ public class ModBlockTagsProvider extends BlockTagsProvider {
 
     @Override
     protected void addTags(HolderLookup.Provider pProvider) {
-        // 1. 生成 VENTS (排气口)
-        // 包括：铁栏杆, 栅栏
+        var blocks = com.xnfu.thermalshock.registries.ThermalShockBlocks.BLOCKS.getEntries();
+        var pickaxeTag = this.tag(BlockTags.MINEABLE_WITH_PICKAXE);
+
+        for (var block : blocks) {
+            pickaxeTag.add(block.get());
+        }
+
+        // 1. 生成 VENTS (排气口)：仅包括铁栏杆和栅栏
         this.tag(ThermalShockTags.VENTS)
                 .add(Blocks.IRON_BARS)
                 .addTag(BlockTags.FENCES);
 
-        // 2. 生成 CASING_ACCESS (结构上面的门/接口)
-        // 直接引用原版的标签，这样所有木门、铁门、栅栏门都自动生效
+        // 2. 生成 CASING_ACCESS (结构访问口)：仅包括门和活板门
         this.tag(ThermalShockTags.CASING_ACCESS)
                 .addTag(BlockTags.DOORS)
                 .addTag(BlockTags.TRAPDOORS);

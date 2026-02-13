@@ -140,6 +140,7 @@ public class ModCnLangProvider extends LanguageProvider {
         add("gui.thermalshock.source.energy_buffer", "能量缓存");
         add("gui.thermalshock.source.duration", "持续时间: %ss");
         add("gui.thermalshock.source.remaining_time", "剩余时间: %ss");
+        add("gui.thermalshock.converter.heat_label", "当前热量: %d H");
         add("gui.thermalshock.converter.heat_requirement", "运行配方需要热量条件，需要保证机器热量满足配方运行条件。");
         add("gui.thermalshock.jei.label.min_heat_rate", "所需热量速率: >%d H/t");
         add("gui.thermalshock.jei.label.heat_cost", "消耗热量: %d H");

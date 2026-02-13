@@ -23,23 +23,23 @@ public class ThermalShockBlocks {
 
         // 1. 控制器 (Controller)
         public static final DeferredBlock<Block> SIMULATION_CHAMBER_CONTROLLER = register("simulation_chamber_controller",
-                () -> new SimulationChamberBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.IRON_BLOCK).noOcclusion()));
+                () -> new SimulationChamberBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.IRON_BLOCK).strength(5.0f).requiresCorrectToolForDrops().noOcclusion()));
 
         // 2. 通用接口 (Port)
         public static final DeferredBlock<Block> SIMULATION_CHAMBER_PORT = register("simulation_chamber_port",
-                () -> new SimulationChamberPortBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.COPPER_BLOCK).noOcclusion()));
+                () -> new SimulationChamberPortBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.IRON_BLOCK).strength(5.0f).requiresCorrectToolForDrops().noOcclusion()));
 
         // 3. 热发生器 (Heater)
         public static final DeferredBlock<Block> THERMAL_HEATER = register("thermal_heater",
-                () -> new ThermalSourceBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.IRON_BLOCK).strength(3.5f).requiresCorrectToolForDrops().lightLevel(state -> state.getValue(BlockStateProperties.LIT) ? 13 : 0)));
+                () -> new ThermalSourceBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.IRON_BLOCK).strength(5.0f).requiresCorrectToolForDrops().lightLevel(state -> state.getValue(BlockStateProperties.LIT) ? 13 : 0)));
 
         // 4. 冷发生器 (Freezer)
         public static final DeferredBlock<Block> THERMAL_FREEZER = register("thermal_freezer",
-                () -> new ThermalSourceBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.IRON_BLOCK).strength(3.5f).requiresCorrectToolForDrops().lightLevel(state -> state.getValue(BlockStateProperties.LIT) ? 5 : 0)));
+                () -> new ThermalSourceBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.IRON_BLOCK).strength(5.0f).requiresCorrectToolForDrops().lightLevel(state -> state.getValue(BlockStateProperties.LIT) ? 5 : 0)));
 
         // 5. 热力转换器 (Thermal Converter)
         public static final DeferredBlock<Block> THERMAL_CONVERTER = register("thermal_converter",
-                () -> new ThermalConverterBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.IRON_BLOCK).strength(3.5f).requiresCorrectToolForDrops().lightLevel(state -> state.getValue(BlockStateProperties.LIT) ? 13 : 0)));
+                () -> new ThermalConverterBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.IRON_BLOCK).strength(5.0f).requiresCorrectToolForDrops().lightLevel(state -> state.getValue(BlockStateProperties.LIT) ? 13 : 0)));
 
         // 辅助方法
         private static <T extends Block> DeferredBlock<T> register(String name, Supplier<T> block) {
