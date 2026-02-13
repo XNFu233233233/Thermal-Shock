@@ -67,14 +67,11 @@ public class ThermalShockJEIPlugin implements IModPlugin {
         // 转换器
         registration.addRecipeCategories(new ThermalConverterCategory(helper, new ItemStack(ThermalShockBlocks.THERMAL_CONVERTER.get())));
 
-        // Data Maps - FIX Icons to solid items
+        // Data Maps
         registration.addRecipeCategories(new DataMapEntries.CasingCategory(helper, TYPE_MAP_CASING, new ItemStack(ThermalShockBlocks.SIMULATION_CHAMBER_CONTROLLER.get())));
         registration.addRecipeCategories(new DataMapEntries.CatalystCategory(helper, TYPE_MAP_CATALYST, new ItemStack(Items.DIAMOND)));
         registration.addRecipeCategories(new DataMapEntries.SourceCategory(helper, TYPE_MAP_HEAT_SOURCE, "gui.thermalshock.jei.map.heat_source", new ItemStack(Blocks.MAGMA_BLOCK)));
         registration.addRecipeCategories(new DataMapEntries.SourceCategory(helper, TYPE_MAP_COLD_SOURCE, "gui.thermalshock.jei.map.cold_source", new ItemStack(Blocks.BLUE_ICE)));
-
-        // FE To Heat
-        registration.addRecipeCategories(new FEToHeatCategory(helper, new ItemStack(Items.REDSTONE)));
 
         // 模拟室 (Simulation Chamber)
         ItemStack simIcon = new ItemStack(ThermalShockBlocks.SIMULATION_CHAMBER_CONTROLLER.get());
@@ -105,24 +102,15 @@ public class ThermalShockJEIPlugin implements IModPlugin {
         // 3. Data Maps 加载
         registerDataMapRecipes(registration);
 
-        // 4. FE To Heat 静态配方 (从配置读取)
-        int fePerHeat = 1000;
-        try {
-            fePerHeat = Config.fePerHeat;
-        } catch (Exception e) {
-            // 忽略配置尚未加载的情况
-        }
-        registration.addRecipes(FEToHeatCategory.TYPE, List.of(new FEToHeatCategory.FEToHeatRecipe(fePerHeat, 1)));
-        
-        // 5. 模拟室配方
+        // 4. 模拟室配方
         registration.addRecipes(TYPE_OVERHEATING, recipeManager.getAllRecipesFor(ThermalShockRecipes.OVERHEATING_TYPE.get()).stream()
                 .map(RecipeHolder::value)
-                .filter(r -> !(r instanceof ClumpProcessingRecipe)) // [Fix] 排除团块提取配方
+                .filter(r -> !(r instanceof ClumpProcessingRecipe)) 
                 .toList());
 
         registration.addRecipes(TYPE_SHOCK, recipeManager.getAllRecipesFor(ThermalShockRecipes.THERMAL_SHOCK_TYPE.get()).stream()
                 .map(RecipeHolder::value)
-                .filter(r -> !(r instanceof ThermalShockFillingRecipe)) // [Fix] 排除冲击充填配方
+                .filter(r -> !(r instanceof ThermalShockFillingRecipe)) 
                 .toList());
 
         registration.addRecipes(TYPE_FILLING_SHOCK, recipeManager.getAllRecipesFor(ThermalShockRecipes.THERMAL_SHOCK_TYPE.get()).stream()
@@ -139,28 +127,15 @@ public class ThermalShockJEIPlugin implements IModPlugin {
                 .map(r -> (ClumpProcessingRecipe)r).toList());
     }
 
-    /*
-    private void addDemoConverterRecipes(IRecipeRegistration registration) {
-        // 创建一个包含概率消耗和概率产出的演示配方
-        var demo = new ThermalConverterRecipe(
-                List.of(new ThermalConverterRecipe.InputItem(net.minecraft.world.item.crafting.Ingredient.of(Items.COAL), 1, 0.5f)), // 50% 概率消耗
-                List.of(),
-                List.of(
-                        new ThermalConverterRecipe.OutputItem(new ItemStack(Items.DIAMOND), 0.1f), // 10% 概率产出钻石
-                        new ThermalConverterRecipe.OutputItem(new ItemStack(Items.COAL_ORE), 1.0f)
-                ),
-                List.of(),
-                100, 200, 800
-        );
-        registration.addRecipes(TYPE_CONVERTER, List.of(demo));
-    }
-    */
-
     private void registerDataMapRecipes(IRecipeRegistration registration) {
         var level = Minecraft.getInstance().level;
         if (level == null) return;
 
-        // Casing - Grouping by data to support tags/cycling in JEI
+        // FE Ratio
+        int fePerHeat = 1000;
+        try { fePerHeat = Config.fePerHeat; } catch (Exception e) {}
+
+        // Casing
         java.util.Map<com.xnfu.thermalshock.data.CasingData, List<ItemStack>> groupedCasings = new java.util.HashMap<>();
         BuiltInRegistries.BLOCK.holders().forEach(holder -> {
             var data = holder.getData(ThermalShockDataMaps.CASING_PROPERTY);
@@ -186,46 +161,50 @@ public class ThermalShockJEIPlugin implements IModPlugin {
 
         // Heat Source
         List<DataMapEntries.SourceEntry> heatSources = new ArrayList<>();
+        // Add FE Entry: No stacks, 1 Heat, feValue from config
+        heatSources.add(new DataMapEntries.SourceEntry(List.of(), java.util.Optional.empty(), 1, fePerHeat, true, true));
+
         java.util.Map<Integer, List<ItemStack>> groupedHeat = new java.util.HashMap<>();
         BuiltInRegistries.BLOCK.holders().forEach(holder -> {
             var data = holder.getData(ThermalShockDataMaps.HEAT_SOURCE_PROPERTY);
             if (data != null) {
                 var block = holder.value();
                 if (block instanceof LiquidBlock liquid) {
-                    heatSources.add(new DataMapEntries.SourceEntry(List.of(), java.util.Optional.of(new net.neoforged.neoforge.fluids.FluidStack(liquid.defaultBlockState().getFluidState().getType(), 1000)), data.heatPerTick(), true));
+                    heatSources.add(new DataMapEntries.SourceEntry(List.of(), java.util.Optional.of(new net.neoforged.neoforge.fluids.FluidStack(liquid.defaultBlockState().getFluidState().getType(), 1000)), data.heatPerTick(), 0, true, false));
                 } else {
                     groupedHeat.computeIfAbsent(data.heatPerTick(), k -> new ArrayList<>()).add(new ItemStack(block));
                 }
             }
         });
-        groupedHeat.forEach((rate, items) -> heatSources.add(new DataMapEntries.SourceEntry(items, java.util.Optional.empty(), rate, true)));
+        groupedHeat.forEach((rate, items) -> heatSources.add(new DataMapEntries.SourceEntry(items, java.util.Optional.empty(), rate, 0, true, false)));
         registration.addRecipes(TYPE_MAP_HEAT_SOURCE, heatSources);
 
         // Cold Source
         List<DataMapEntries.SourceEntry> coldSources = new ArrayList<>();
+        // Add FE Entry
+        coldSources.add(new DataMapEntries.SourceEntry(List.of(), java.util.Optional.empty(), 1, fePerHeat, false, true));
+
         java.util.Map<Integer, List<ItemStack>> groupedCold = new java.util.HashMap<>();
         BuiltInRegistries.BLOCK.holders().forEach(holder -> {
             var data = holder.getData(ThermalShockDataMaps.COLD_SOURCE_PROPERTY);
             if (data != null) {
                 var block = holder.value();
                 if (block instanceof LiquidBlock liquid) {
-                    coldSources.add(new DataMapEntries.SourceEntry(List.of(), java.util.Optional.of(new net.neoforged.neoforge.fluids.FluidStack(liquid.defaultBlockState().getFluidState().getType(), 1000)), data.coolingPerTick(), false));
+                    coldSources.add(new DataMapEntries.SourceEntry(List.of(), java.util.Optional.of(new net.neoforged.neoforge.fluids.FluidStack(liquid.defaultBlockState().getFluidState().getType(), 1000)), data.coolingPerTick(), 0, false, false));
                 } else {
                     groupedCold.computeIfAbsent(data.coolingPerTick(), k -> new ArrayList<>()).add(new ItemStack(block));
                 }
             }
         });
-        groupedCold.forEach((rate, items) -> coldSources.add(new DataMapEntries.SourceEntry(items, java.util.Optional.empty(), rate, false)));
+        groupedCold.forEach((rate, items) -> coldSources.add(new DataMapEntries.SourceEntry(items, java.util.Optional.empty(), rate, 0, false, false)));
         registration.addRecipes(TYPE_MAP_COLD_SOURCE, coldSources);
     }
 
 
     @Override
     public void registerGuiHandlers(IGuiHandlerRegistration registration) {
-        // 注册转换器点击区域
         registration.addRecipeClickArea(com.xnfu.thermalshock.client.gui.ThermalConverterScreen.class, 66, 36, 24, 16, TYPE_CONVERTER);
         
-        // 注册模拟室点击区域 (右上角 R 按钮)
         registration.addRecipeClickArea(com.xnfu.thermalshock.client.gui.SimulationChamberScreen.class, 
                 com.xnfu.thermalshock.client.gui.SimulationChamberScreen.BTN_RECIPE_X, 
                 com.xnfu.thermalshock.client.gui.SimulationChamberScreen.BTN_RECIPE_Y, 
@@ -233,7 +212,6 @@ public class ThermalShockJEIPlugin implements IModPlugin {
                 com.xnfu.thermalshock.client.gui.SimulationChamberScreen.BTN_RECIPE_H, 
                 TYPE_OVERHEATING, TYPE_SHOCK, TYPE_FILLING_SHOCK, TYPE_FILLING_CRAFTING, TYPE_EXTRACTION);
 
-        // [自定义] 注册发生器点击处理器 (实现无 Tooltip 点击区域)
         registration.addGuiContainerHandler(com.xnfu.thermalshock.client.gui.ThermalSourceScreen.class, new mezz.jei.api.gui.handlers.IGuiContainerHandler<com.xnfu.thermalshock.client.gui.ThermalSourceScreen>() {
             @Override
             public java.util.Collection<mezz.jei.api.gui.handlers.IGuiClickableArea> getGuiClickableAreas(com.xnfu.thermalshock.client.gui.ThermalSourceScreen containerScreen, double mouseX, double mouseY) {
@@ -268,10 +246,9 @@ public class ThermalShockJEIPlugin implements IModPlugin {
         registration.addRecipeCatalyst(new ItemStack(ThermalShockBlocks.THERMAL_FREEZER.get()), TYPE_FREEZER_FUEL);
         registration.addRecipeCatalyst(new ItemStack(ThermalShockBlocks.THERMAL_CONVERTER.get()), TYPE_CONVERTER);
         
-        registration.addRecipeCatalyst(new ItemStack(ThermalShockBlocks.THERMAL_HEATER.get()), FEToHeatCategory.TYPE);
-        registration.addRecipeCatalyst(new ItemStack(ThermalShockBlocks.THERMAL_FREEZER.get()), FEToHeatCategory.TYPE);
+        registration.addRecipeCatalyst(new ItemStack(ThermalShockBlocks.THERMAL_HEATER.get()), TYPE_MAP_HEAT_SOURCE);
+        registration.addRecipeCatalyst(new ItemStack(ThermalShockBlocks.THERMAL_FREEZER.get()), TYPE_MAP_COLD_SOURCE);
 
-        // 模拟室分类
         ItemStack simIcon = new ItemStack(ThermalShockBlocks.SIMULATION_CHAMBER_CONTROLLER.get());
         registration.addRecipeCatalyst(simIcon, TYPE_OVERHEATING);
         registration.addRecipeCatalyst(simIcon, TYPE_SHOCK);
