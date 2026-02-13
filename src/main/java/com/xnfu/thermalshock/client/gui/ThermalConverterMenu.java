@@ -19,17 +19,24 @@ public class ThermalConverterMenu extends AbstractContainerMenu {
     // 两个流体的同步数据 (ID, Amount, Capacity) x 2 = 6 ints
     private final ContainerData fluidData = new SimpleContainerData(6) {
         @Override public int get(int index) {
-            int tankIdx = index / 3;
-            int type = index % 3;
-            var tank = tankIdx == 0 ? be.getInputTank() : be.getOutputTank();
-            return switch (type) {
-                case 0 -> BuiltInRegistries.FLUID.getId(tank.getFluid().getFluid());
-                case 1 -> tank.getFluidAmount();
-                case 2 -> tank.getCapacity();
-                default -> 0;
-            };
+            // [Fix] 服务端直接读取 BE 实时数据，客户端读取 SimpleContainerData 缓存的数据
+            if (be.getLevel() != null && !be.getLevel().isClientSide) {
+                int tankIdx = index / 3;
+                int type = index % 3;
+                var tank = tankIdx == 0 ? be.getInputTank() : be.getOutputTank();
+                return switch (type) {
+                    case 0 -> BuiltInRegistries.FLUID.getId(tank.getFluid().getFluid());
+                    case 1 -> tank.getFluidAmount();
+                    case 2 -> tank.getCapacity();
+                    default -> 0;
+                };
+            }
+            return super.get(index);
         }
-        @Override public void set(int index, int value) {}
+        @Override public void set(int index, int value) {
+            // 客户端接收数据时存入内部数组
+            super.set(index, value);
+        }
     };
 
     public ThermalConverterMenu(int containerId, Inventory inv, FriendlyByteBuf extraData) {
