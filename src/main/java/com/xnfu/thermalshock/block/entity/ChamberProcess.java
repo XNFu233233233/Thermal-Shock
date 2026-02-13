@@ -792,11 +792,9 @@ public class ChamberProcess {
             if (!(recipe instanceof ThermalShockRecipe ts)) return false;
 
             // 必须满足：High > MinHot, Low < MaxCold, Delta > ReqDelta
-            // 注意：be.getThermo().getCurrentHighTemp() 是正数
-            // be.getThermo().getCurrentLowTemp() 是负数 (e.g. -20)
-
-            boolean highOk = be.getThermo().getCurrentHighTemp() >= ts.getMinHotTemp();
-            boolean lowOk = be.getThermo().getCurrentLowTemp() <= ts.getMaxColdTemp(); // e.g. -50 < -20
+            // 支持可选参数 (使用 marker 值跳过检查)
+            boolean highOk = ts.getMinHotTemp() == Integer.MIN_VALUE || be.getThermo().getCurrentHighTemp() >= ts.getMinHotTemp();
+            boolean lowOk = ts.getMaxColdTemp() == Integer.MAX_VALUE || be.getThermo().getCurrentLowTemp() <= ts.getMaxColdTemp();
             boolean deltaOk = be.getThermo().getDeltaT() >= ts.getRequiredDelta();
 
             return highOk && lowOk && deltaOk;

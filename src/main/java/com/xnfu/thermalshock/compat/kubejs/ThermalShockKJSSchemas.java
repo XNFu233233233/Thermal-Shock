@@ -41,13 +41,13 @@ public class ThermalShockKJSSchemas {
     public static final RecipeKey<List<Ingredient>> ITEM_INPUTS = INGREDIENT.asList().withBounds(IntBounds.of(0, 9)).inputKey("item_inputs");
     public static final RecipeKey<List<String>> BLOCK_INPUTS = ID_STR.asList().withBounds(IntBounds.of(0, 9)).inputKey("block_inputs");
 
+    // Adjusted defaults according to PLAN.md
     public static final RecipeKey<Integer> MIN_HEAT = INT.otherKey("min_heat").optional(0).alwaysWrite();
-    public static final RecipeKey<Integer> HEAT_COST = INT.otherKey("heat_cost").optional(0).alwaysWrite();
-    public static final RecipeKey<Integer> MIN_HOT = INT.otherKey("min_hot").optional(0).alwaysWrite();
-    public static final RecipeKey<Integer> MAX_COLD = INT.otherKey("max_cold").optional(0).alwaysWrite();
-    public static final RecipeKey<Integer> DELTA = INT.otherKey("delta").optional(0).alwaysWrite();
-    public static final RecipeKey<Integer> CLUMP_MIN_HEAT = INT.otherKey("clump_min_heat").optional(0).alwaysWrite();
-    public static final RecipeKey<Integer> CLUMP_HEAT_COST = INT.otherKey("clump_heat_cost").optional(0).alwaysWrite();
+    public static final RecipeKey<Integer> HEAT_COST = INT.otherKey("heat_cost").optional(100).alwaysWrite();
+    
+    public static final RecipeKey<Integer> MIN_HOT = INT.otherKey("min_hot").optional(Integer.MIN_VALUE).alwaysWrite();
+    public static final RecipeKey<Integer> MAX_COLD = INT.otherKey("max_cold").optional(Integer.MAX_VALUE).alwaysWrite();
+    public static final RecipeKey<Integer> DELTA = INT.otherKey("delta").alwaysWrite(); // Required
 
     // === 3. Converter Keys with Custom Wrappers ===
     
@@ -144,10 +144,11 @@ public class ThermalShockKJSSchemas {
     public static final RecipeSchema OVERHEATING = new RecipeSchema(RESULT, ITEM_INPUTS, BLOCK_INPUTS, MIN_HEAT, HEAT_COST)
             .factory(FACTORY);
 
-    public static final RecipeSchema SHOCK = new RecipeSchema(RESULT, ITEM_INPUTS, BLOCK_INPUTS, MIN_HOT, MAX_COLD, DELTA)
+    // FIX: DELTA (Required) must be before MIN_HOT/MAX_COLD (Optional)
+    public static final RecipeSchema SHOCK = new RecipeSchema(RESULT, ITEM_INPUTS, BLOCK_INPUTS, DELTA, MIN_HOT, MAX_COLD)
             .factory(FACTORY);
 
-    public static final RecipeSchema SHOCK_FILLING = new RecipeSchema(TARGET_RESULT, ITEM_INPUTS, BLOCK_INPUTS, MIN_HOT, MAX_COLD, DELTA, CLUMP_MIN_HEAT, CLUMP_HEAT_COST)
+    public static final RecipeSchema SHOCK_FILLING = new RecipeSchema(TARGET_RESULT, ITEM_INPUTS, BLOCK_INPUTS, DELTA, MIN_HOT, MAX_COLD)
             .factory(FACTORY);
 
     public static final RecipeSchema EXTRACTION = new RecipeSchema(RESULT, TARGET_CONTENT, ITEM_INPUTS, BLOCK_INPUTS, MIN_HEAT, HEAT_COST)
@@ -158,7 +159,7 @@ public class ThermalShockKJSSchemas {
             INT.otherKey("heat_rate").optional(0).alwaysWrite());
 
     public static final RecipeSchema CONVERTER = new RecipeSchema(CON_OUT_I, CON_OUT_F, CON_IN_I, CON_IN_F, 
-            INT.otherKey("process_time").optional(200).alwaysWrite(), 
+            INT.otherKey("process_time").optional(20).alwaysWrite(), 
             INT.otherKey("min_heat").optional(Integer.MIN_VALUE).alwaysWrite(), 
             INT.otherKey("max_heat").optional(Integer.MAX_VALUE).alwaysWrite());
 }

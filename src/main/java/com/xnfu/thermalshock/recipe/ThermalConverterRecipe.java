@@ -77,10 +77,8 @@ public class ThermalConverterRecipe implements Recipe<ConverterRecipeInput> {
         );
     }
 
-    // === 辅助 Record：解决 StreamCodec 参数过多的问题 ===
     private record RecipeParams(int processTime, int minHeat, int maxHeat) {}
 
-    // === 主类字段 ===
     private final List<InputItem> itemInputs;
     private final List<InputFluid> fluidInputs;
     private final List<OutputItem> itemOutputs;
@@ -101,14 +99,12 @@ public class ThermalConverterRecipe implements Recipe<ConverterRecipeInput> {
         this.maxHeat = maxHeat;
     }
 
-    // 辅助构造：用于 StreamCodec 还原
     private ThermalConverterRecipe(List<InputItem> itemInputs, List<InputFluid> fluidInputs,
                                    List<OutputItem> itemOutputs, List<OutputFluid> fluidOutputs,
                                    RecipeParams params) {
         this(itemInputs, fluidInputs, itemOutputs, fluidOutputs, params.processTime, params.minHeat, params.maxHeat);
     }
 
-    // 辅助 Getter：用于 StreamCodec 提取参数
     private RecipeParams getParams() {
         return new RecipeParams(processTime, minHeat, maxHeat);
     }
@@ -145,7 +141,6 @@ public class ThermalConverterRecipe implements Recipe<ConverterRecipeInput> {
         return itemOutputs.isEmpty() ? ItemStack.EMPTY : itemOutputs.get(0).stack();
     }
 
-    // Getters
     public List<InputItem> getItemInputs() { return itemInputs; }
     public List<InputFluid> getFluidInputs() { return fluidInputs; }
     public List<OutputItem> getItemOutputs() { return itemOutputs; }
@@ -159,20 +154,17 @@ public class ThermalConverterRecipe implements Recipe<ConverterRecipeInput> {
     @Override
     public @NotNull RecipeType<?> getType() { return ThermalShockRecipes.CONVERTER_TYPE.get(); }
 
-    // === Serializer ===
     public static class Serializer implements RecipeSerializer<ThermalConverterRecipe> {
         public static final MapCodec<ThermalConverterRecipe> CODEC = RecordCodecBuilder.mapCodec(inst -> inst.group(
                 InputItem.CODEC.listOf().optionalFieldOf("item_inputs", List.of()).forGetter(ThermalConverterRecipe::getItemInputs),
                 InputFluid.CODEC.listOf().optionalFieldOf("fluid_inputs", List.of()).forGetter(ThermalConverterRecipe::getFluidInputs),
                 OutputItem.CODEC.listOf().optionalFieldOf("item_outputs", List.of()).forGetter(ThermalConverterRecipe::getItemOutputs),
                 OutputFluid.CODEC.listOf().optionalFieldOf("fluid_outputs", List.of()).forGetter(ThermalConverterRecipe::getFluidOutputs),
-                Codec.INT.fieldOf("process_time").forGetter(ThermalConverterRecipe::getProcessTime),
+                Codec.INT.optionalFieldOf("process_time", 20).forGetter(ThermalConverterRecipe::getProcessTime),
                 Codec.INT.optionalFieldOf("min_heat", Integer.MIN_VALUE).forGetter(ThermalConverterRecipe::getMinHeat),
                 Codec.INT.optionalFieldOf("max_heat", Integer.MAX_VALUE).forGetter(ThermalConverterRecipe::getMaxHeat)
         ).apply(inst, ThermalConverterRecipe::new));
 
-        // 拆分 StreamCodec：
-        // Part 1: 3 个整数参数
         private static final StreamCodec<ByteBuf, RecipeParams> PARAMS_STREAM_CODEC = StreamCodec.composite(
                 ByteBufCodecs.VAR_INT, RecipeParams::processTime,
                 ByteBufCodecs.VAR_INT, RecipeParams::minHeat,
@@ -180,7 +172,6 @@ public class ThermalConverterRecipe implements Recipe<ConverterRecipeInput> {
                 RecipeParams::new
         );
 
-        // Part 2: 组合列表和参数 (4个列表 + 1个 Params对象 = 5个参数，符合 composite 限制)
         public static final StreamCodec<RegistryFriendlyByteBuf, ThermalConverterRecipe> STREAM_CODEC = StreamCodec.composite(
                 InputItem.STREAM_CODEC.apply(ByteBufCodecs.list()), ThermalConverterRecipe::getItemInputs,
                 InputFluid.STREAM_CODEC.apply(ByteBufCodecs.list()), ThermalConverterRecipe::getFluidInputs,

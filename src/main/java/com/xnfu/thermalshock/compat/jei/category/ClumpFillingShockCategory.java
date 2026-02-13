@@ -91,8 +91,11 @@ public class ClumpFillingShockCategory extends BaseSimulationCategory<ThermalSho
         gfx.drawString(font, modeName, 5, 50, 0xFF008B8B, false);
         
         // 2. 高低温需求 (红色/蓝色)
-        Component highText = Component.translatable("jei.thermalshock.label.high", recipe.getMinHotTemp()).withStyle(ChatFormatting.RED);
-        Component lowText = Component.translatable("jei.thermalshock.label.low", recipe.getMaxColdTemp()).withStyle(ChatFormatting.BLUE);
+        String hotStr = recipe.getMinHotTemp() == Integer.MIN_VALUE ? "-" : String.valueOf(recipe.getMinHotTemp());
+        String coldStr = recipe.getMaxColdTemp() == Integer.MAX_VALUE ? "-" : String.valueOf(recipe.getMaxColdTemp());
+        
+        Component highText = Component.translatable("jei.thermalshock.label.high", hotStr).withStyle(ChatFormatting.RED);
+        Component lowText = Component.translatable("jei.thermalshock.label.low", coldStr).withStyle(ChatFormatting.BLUE);
         
         gfx.drawString(font, highText, 5, 62, 0xFFFFFFFF, false);
         int highWidth = font.width(highText);

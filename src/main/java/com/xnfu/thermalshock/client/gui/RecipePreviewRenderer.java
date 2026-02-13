@@ -59,7 +59,7 @@ public class RecipePreviewRenderer {
         // Lead Clump
         ItemStack displayClump = new ItemStack(ThermalShockItems.MATERIAL_CLUMP.get());
         displayClump.set(ThermalShockDataComponents.TARGET_OUTPUT, 
-                        new ClumpInfo(recipe.getTargetContent(), recipe.getMinHeatRate(), recipe.getHeatCost()));
+                        new ClumpInfo(recipe.getTargetContent()));
         
         drawSlot(gfx, x + 65, y + 15, COLOR_SPECIAL);
         gfx.renderItem(displayClump, x + 66, y + 16);
@@ -180,10 +180,13 @@ public class RecipePreviewRenderer {
 
     private static void renderShockTemps(GuiGraphics gfx, int x, int y, int hot, int cold, int delta) {
         var font = Minecraft.getInstance().font;
-        Component highText = Component.translatable("jei.thermalshock.label.high", hot);
-        Component lowText = Component.translatable("jei.thermalshock.label.low", cold);
+        String hotStr = hot == Integer.MIN_VALUE ? "-" : String.valueOf(hot);
+        String coldStr = cold == Integer.MAX_VALUE ? "-" : String.valueOf(cold);
         
-        gfx.drawString(font, highText, x + 5, y + 62, 0xFFAA0000, false);
+        Component highText = Component.translatable("jei.thermalshock.label.high", hotStr);
+        Component lowText = Component.translatable("jei.thermalshock.label.low", coldStr);
+        
+        gfx.drawString(font, highText, x + 5, y + 62, 0xFFAAAA00, false);
         int highWidth = font.width(highText);
         gfx.drawString(font, ", ", x + 5 + highWidth, 62 + y, 0xFF444444, false);
         gfx.drawString(font, lowText, x + 5 + highWidth + font.width(", "), y + 62, 0xFF55FFFF, false);

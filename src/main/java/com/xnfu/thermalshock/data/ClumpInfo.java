@@ -9,23 +9,18 @@ import net.minecraft.world.item.ItemStack;
 import java.util.Objects;
 
 /**
- * 热熔团的数据载体。
- * @param result 最终产出物品 (机器实际产出的东西，如: 铁锭)
- * @param minHeatRate 所需温度条件 (用于过热模式处理这个团)
- * @param heatCost 热量消耗 (用于过热模式处理这个团)
+ * 物质团块的数据载体。
+ * 现在只负责存储注入的产物信息。提取阶段所需的温度和消耗由配方 (ClumpProcessingRecipe) 独立定义。
+ * @param result 最终产出物品
  */
-public record ClumpInfo(ItemStack result, int minHeatRate, int heatCost) {
+public record ClumpInfo(ItemStack result) {
 
     public static final Codec<ClumpInfo> CODEC = RecordCodecBuilder.create(instance -> instance.group(
-            ItemStack.CODEC.fieldOf("result").forGetter(ClumpInfo::result),
-            Codec.INT.fieldOf("min_heat").forGetter(ClumpInfo::minHeatRate),
-            Codec.INT.fieldOf("heat_cost").forGetter(ClumpInfo::heatCost)
+            ItemStack.CODEC.fieldOf("result").forGetter(ClumpInfo::result)
     ).apply(instance, ClumpInfo::new));
 
     public static final StreamCodec<RegistryFriendlyByteBuf, ClumpInfo> STREAM_CODEC = StreamCodec.composite(
             ItemStack.STREAM_CODEC, ClumpInfo::result,
-            net.minecraft.network.codec.ByteBufCodecs.VAR_INT, ClumpInfo::minHeatRate,
-            net.minecraft.network.codec.ByteBufCodecs.VAR_INT, ClumpInfo::heatCost,
             ClumpInfo::new
     );
 
@@ -45,14 +40,11 @@ public record ClumpInfo(ItemStack result, int minHeatRate, int heatCost) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         ClumpInfo clumpInfo = (ClumpInfo) o;
-        return minHeatRate == clumpInfo.minHeatRate &&
-                heatCost == clumpInfo.heatCost &&
-                ItemStack.isSameItemSameComponents(result, clumpInfo.result);
+        return ItemStack.isSameItemSameComponents(result, clumpInfo.result);
     }
 
     @Override
     public int hashCode() {
-        int h = ItemStack.hashItemAndComponents(result);
-        return Objects.hash(h, minHeatRate, heatCost);
+        return ItemStack.hashItemAndComponents(result);
     }
 }

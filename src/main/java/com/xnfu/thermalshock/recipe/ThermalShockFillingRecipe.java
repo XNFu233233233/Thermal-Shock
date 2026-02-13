@@ -1,5 +1,6 @@
 package com.xnfu.thermalshock.recipe;
 
+import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import com.xnfu.thermalshock.data.ClumpInfo;
@@ -19,22 +20,16 @@ import java.util.List;
 public class ThermalShockFillingRecipe extends ThermalShockRecipe {
 
     private final ItemStack targetResult;
-    private final int clumpMinHeatRate;
-    private final int clumpHeatCost;
 
-    public ThermalShockFillingRecipe(List<SimulationIngredient> inputs, ItemStack targetResult, int minHot, int maxCold, int delta, int clumpMinHeatRate, int clumpHeatCost) {
-        // [修复] 参数改为匹配 ThermalShockRecipe (Inputs, Result, MinHot, MaxCold, Delta)
-        // Result 暂时给个空 Clump，assemble 时会覆盖
+    public ThermalShockFillingRecipe(List<SimulationIngredient> inputs, ItemStack targetResult, int minHot, int maxCold, int delta) {
         super(inputs, new ItemStack(ThermalShockItems.MATERIAL_CLUMP.get()), minHot, maxCold, delta);
         this.targetResult = targetResult;
-        this.clumpMinHeatRate = clumpMinHeatRate;
-        this.clumpHeatCost = clumpHeatCost;
     }
 
     @Override
     public ItemStack assemble(SimulationRecipeInput input, HolderLookup.Provider registries) {
         ItemStack result = new ItemStack(ThermalShockItems.MATERIAL_CLUMP.get());
-        ClumpInfo info = new ClumpInfo(targetResult, clumpMinHeatRate, clumpHeatCost);
+        ClumpInfo info = new ClumpInfo(targetResult);
         result.set(ThermalShockDataComponents.TARGET_OUTPUT, info);
         return result;
     }
@@ -42,18 +37,15 @@ public class ThermalShockFillingRecipe extends ThermalShockRecipe {
     @Override
     public ItemStack getResultItem(HolderLookup.Provider registries) {
         ItemStack stack = new ItemStack(ThermalShockItems.MATERIAL_CLUMP.get());
-        ClumpInfo info = new ClumpInfo(targetResult, clumpMinHeatRate, clumpHeatCost);
+        ClumpInfo info = new ClumpInfo(targetResult);
         stack.set(ThermalShockDataComponents.TARGET_OUTPUT, info);
         return stack;
     }
 
     public ItemStack getTargetResult() { return targetResult; }
-    public int getClumpMinHeatRate() { return clumpMinHeatRate; }
-    public int getClumpHeatCost() { return clumpHeatCost; }
 
     @Override
     public boolean matches(SimulationRecipeInput input, net.minecraft.world.level.Level level) {
-        // [核心强制] 团块填充必须包含一个物质团块作为主原料
         if (!input.primary().is(ThermalShockItems.MATERIAL_CLUMP.get())) return false;
         return super.matches(input, level);
     }
@@ -72,11 +64,9 @@ public class ThermalShockFillingRecipe extends ThermalShockRecipe {
         public static final MapCodec<ThermalShockFillingRecipe> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
                 SimulationIngredient.CODEC.listOf().fieldOf("ingredients").forGetter(ThermalShockRecipe::getSimulationIngredients),
                 ItemStack.CODEC.fieldOf("target_result").forGetter(ThermalShockFillingRecipe::getTargetResult),
-                com.mojang.serialization.Codec.INT.fieldOf("min_hot").forGetter(ThermalShockRecipe::getMinHotTemp),
-                com.mojang.serialization.Codec.INT.fieldOf("max_cold").forGetter(ThermalShockRecipe::getMaxColdTemp),
-                com.mojang.serialization.Codec.INT.fieldOf("delta").forGetter(ThermalShockRecipe::getRequiredDelta),
-                com.mojang.serialization.Codec.INT.fieldOf("clump_min_heat").forGetter(ThermalShockFillingRecipe::getClumpMinHeatRate),
-                com.mojang.serialization.Codec.INT.fieldOf("clump_heat_cost").forGetter(ThermalShockFillingRecipe::getClumpHeatCost)
+                Codec.INT.optionalFieldOf("min_hot", Integer.MIN_VALUE).forGetter(ThermalShockRecipe::getMinHotTemp),
+                Codec.INT.optionalFieldOf("max_cold", Integer.MAX_VALUE).forGetter(ThermalShockRecipe::getMaxColdTemp),
+                Codec.INT.fieldOf("delta").forGetter(ThermalShockRecipe::getRequiredDelta)
         ).apply(instance, ThermalShockFillingRecipe::new));
 
         public static final StreamCodec<RegistryFriendlyByteBuf, ThermalShockFillingRecipe> STREAM_CODEC = StreamCodec.of(
@@ -86,8 +76,6 @@ public class ThermalShockFillingRecipe extends ThermalShockRecipe {
                     ByteBufCodecs.VAR_INT.encode(buf, recipe.getMinHotTemp());
                     ByteBufCodecs.VAR_INT.encode(buf, recipe.getMaxColdTemp());
                     ByteBufCodecs.VAR_INT.encode(buf, recipe.getRequiredDelta());
-                    ByteBufCodecs.VAR_INT.encode(buf, recipe.getClumpMinHeatRate());
-                    ByteBufCodecs.VAR_INT.encode(buf, recipe.getClumpHeatCost());
                 },
                 buf -> {
                     var ingredients = SimulationIngredient.STREAM_CODEC.apply(ByteBufCodecs.list()).decode(buf);
@@ -95,9 +83,7 @@ public class ThermalShockFillingRecipe extends ThermalShockRecipe {
                     var minHot = ByteBufCodecs.VAR_INT.decode(buf);
                     var maxCold = ByteBufCodecs.VAR_INT.decode(buf);
                     var delta = ByteBufCodecs.VAR_INT.decode(buf);
-                    var clumpMin = ByteBufCodecs.VAR_INT.decode(buf);
-                    var clumpCost = ByteBufCodecs.VAR_INT.decode(buf);
-                    return new ThermalShockFillingRecipe(ingredients, target, minHot, maxCold, delta, clumpMin, clumpCost);
+                    return new ThermalShockFillingRecipe(ingredients, target, minHot, maxCold, delta);
                 }
         );
 

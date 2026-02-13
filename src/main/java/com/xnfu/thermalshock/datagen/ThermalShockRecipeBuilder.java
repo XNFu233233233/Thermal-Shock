@@ -22,8 +22,8 @@ public class ThermalShockRecipeBuilder implements RecipeBuilder {
 
     private int minHeatRate = 0;
     private int heatCost = 0;
-    private int minHotTemp = 0;
-    private int maxColdTemp = 0;
+    private int minHotTemp = Integer.MIN_VALUE;
+    private int maxColdTemp = Integer.MAX_VALUE;
     private int requiredDelta = 0;
 
     private ThermalShockRecipeBuilder(MachineMode mode, ItemStack result) {

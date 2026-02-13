@@ -49,8 +49,8 @@ public class ThermalShockRecipe extends AbstractSimulationRecipe {
         public static final MapCodec<ThermalShockRecipe> CODEC = RecordCodecBuilder.mapCodec(inst -> inst.group(
                 SimulationIngredient.CODEC.listOf().fieldOf("ingredients").forGetter(ThermalShockRecipe::getSimulationIngredients),
                 ItemStack.CODEC.fieldOf("result").forGetter(ThermalShockRecipe::getResultStack),
-                Codec.INT.fieldOf("min_hot").forGetter(ThermalShockRecipe::getMinHotTemp),
-                Codec.INT.fieldOf("max_cold").forGetter(ThermalShockRecipe::getMaxColdTemp),
+                Codec.INT.optionalFieldOf("min_hot", Integer.MIN_VALUE).forGetter(ThermalShockRecipe::getMinHotTemp),
+                Codec.INT.optionalFieldOf("max_cold", Integer.MAX_VALUE).forGetter(ThermalShockRecipe::getMaxColdTemp),
                 Codec.INT.fieldOf("delta").forGetter(ThermalShockRecipe::getRequiredDelta)
         ).apply(inst, ThermalShockRecipe::new));
 

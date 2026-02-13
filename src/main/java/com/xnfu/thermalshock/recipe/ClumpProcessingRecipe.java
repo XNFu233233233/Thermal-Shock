@@ -23,7 +23,6 @@ public class ClumpProcessingRecipe extends OverheatingRecipe {
     protected final List<SimulationIngredient> simulationIngredients;
 
     public ClumpProcessingRecipe(List<SimulationIngredient> inputs, ItemStack targetContent, int minHeatRate, int heatCost) {
-        // 父类构造：输入列表不再固定，由 JSON 定义
         super(inputs, targetContent, minHeatRate, heatCost);
         this.targetContent = targetContent;
         this.simulationIngredients = inputs;
@@ -32,14 +31,11 @@ public class ClumpProcessingRecipe extends OverheatingRecipe {
     @Override
     public boolean matches(SimulationRecipeInput input, Level level) {
         ItemStack stack = input.primary();
-        // 1. 必须是 Material Clump (这里假设 input 是主原料)
         if (!stack.is(ThermalShockItems.MATERIAL_CLUMP.get())) return false;
 
-        // 2. 获取数据组件
         ClumpInfo info = stack.get(ThermalShockDataComponents.TARGET_OUTPUT);
         if (info == null || info.result().isEmpty()) return false;
 
-        // 3. [核心] 比较 Clump 里的东西 是否等于 配方要求的东西
         return ItemStack.isSameItemSameComponents(info.result(), this.targetContent);
     }
 
@@ -61,8 +57,8 @@ public class ClumpProcessingRecipe extends OverheatingRecipe {
         public static final MapCodec<ClumpProcessingRecipe> CODEC = RecordCodecBuilder.mapCodec(inst -> inst.group(
                 SimulationIngredient.CODEC.listOf().fieldOf("ingredients").forGetter(r -> r.simulationIngredients),
                 ItemStack.CODEC.fieldOf("target_content").forGetter(ClumpProcessingRecipe::getTargetContent),
-                Codec.INT.fieldOf("min_heat").forGetter(r -> r.getMinHeatRate()),
-                Codec.INT.fieldOf("heat_cost").forGetter(r -> r.getHeatCost())
+                Codec.INT.optionalFieldOf("min_heat", 0).forGetter(r -> r.getMinHeatRate()),
+                Codec.INT.optionalFieldOf("heat_cost", 100).forGetter(r -> r.getHeatCost())
         ).apply(inst, ClumpProcessingRecipe::new));
 
         public static final StreamCodec<RegistryFriendlyByteBuf, ClumpProcessingRecipe> STREAM_CODEC = StreamCodec.composite(

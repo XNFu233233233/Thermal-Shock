@@ -20,8 +20,6 @@ public class ThermalShockFillingRecipeBuilder implements RecipeBuilder {
     private final int minHot;
     private final int maxCold;
     private final int delta;
-    private int clumpMinTemp = 200; // 默认值
-    private int clumpHeatCost = 1000; // 默认值
 
     public ThermalShockFillingRecipeBuilder(Ingredient input, ItemStack result, int minHot, int maxCold, int delta) {
         this.inputIngredient = input;
@@ -29,12 +27,6 @@ public class ThermalShockFillingRecipeBuilder implements RecipeBuilder {
         this.minHot = minHot;
         this.maxCold = maxCold;
         this.delta = delta;
-    }
-
-    public ThermalShockFillingRecipeBuilder clumpParams(int minTemp, int heatCost) {
-        this.clumpMinTemp = minTemp;
-        this.clumpHeatCost = heatCost;
-        return this;
     }
 
     @Override
@@ -54,7 +46,7 @@ public class ThermalShockFillingRecipeBuilder implements RecipeBuilder {
         );
 
         ThermalShockFillingRecipe recipe = new ThermalShockFillingRecipe(
-                inputs, resultItem, minHot, maxCold, delta, clumpMinTemp, clumpHeatCost
+                inputs, resultItem, minHot, maxCold, delta
         );
         output.accept(id, recipe, null);
     }
