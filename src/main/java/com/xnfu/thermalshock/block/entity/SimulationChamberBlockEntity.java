@@ -196,6 +196,15 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
     public void rebuildInternalCache() {
         if (level == null || !structure.isFormed()) return;
 
+        // [核心优化] 虚拟化模式下，不需要扫描物理空间方块和掉落物实体
+        if (this.performance.isVirtual()) {
+            this.internalBlockCache.clear();
+            this.internalEntityCache.clear();
+            this.blockCacheDirty = false;
+            this.entityCacheDirty = false;
+            return;
+        }
+
         // 1. 重建方块缓存
         if (this.blockCacheDirty) {
             this.internalBlockCache.clear();
