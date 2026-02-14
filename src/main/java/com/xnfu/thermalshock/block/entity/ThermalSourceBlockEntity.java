@@ -149,11 +149,6 @@ public class ThermalSourceBlockEntity extends BlockEntity implements MenuProvide
         // === 1. 燃料逻辑 ===
         if (be.burnTime > 0) {
             be.burnTime--;
-            // C. 特殊硬编码 (水) - 也可以写进 DataMap，但为了保险保留硬编码
-            if (state.getFluidState().is(FluidTags.WATER)) {
-                // 水大概提供微弱冷却? 这里暂设为 0 或者 -5
-                // 如果 DataMap 没覆盖到，可以在这里补充
-            }
             dirty = true;
         } else {
             if (be.fuelHeatOutput != 0) {

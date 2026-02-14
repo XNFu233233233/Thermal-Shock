@@ -26,6 +26,8 @@ public class ThermalShockKJSPlugin implements KubeJSPlugin {
         ns.register("thermal_converter", ThermalShockKJSSchemas.CONVERTER);
         ns.register("clump_processing", ThermalShockKJSSchemas.EXTRACTION);
         ns.register("extraction", ThermalShockKJSSchemas.EXTRACTION);
+        ns.shaped("clump_filling");
+        ns.getRegisteredOrThrow("clump_filling").schema.factory(ThermalShockKJSSchemas.FACTORY);
     }
 
     @Override

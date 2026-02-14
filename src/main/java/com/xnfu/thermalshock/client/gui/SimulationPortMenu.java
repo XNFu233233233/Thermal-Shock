@@ -13,10 +13,7 @@ import net.minecraft.world.inventory.*;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.items.SlotItemHandler;
 import net.neoforged.neoforge.items.wrapper.InvWrapper;
-import org.slf4j.Logger; // [新增]
-
-import java.lang.reflect.Field;
-import java.util.List;
+import org.slf4j.Logger;
 
 public class SimulationPortMenu extends AbstractContainerMenu {
     private static final Logger LOGGER = LogUtils.getLogger(); // [新增] 日志记录器
@@ -54,53 +51,16 @@ public class SimulationPortMenu extends AbstractContainerMenu {
         checkContainerDataCount(data, 9);
         addDataSlots(data);
 
-        // 初始化布局
-        layoutSlots();
+        // 1. 初始化时一次性添加所有槽位
+        addSlots();
+        // 2. 根据初始状态设置坐标
+        updateSlotPositions();
     }
 
-    public void layoutSlots() {
-        // 1. 清空 public 的 slots 列表
-        this.slots.clear();
-
-        // 2. [反射] 强制清空父类的 private 列表
-        try {
-            Field lastSlotsField = AbstractContainerMenu.class.getDeclaredField("lastSlots");
-            lastSlotsField.setAccessible(true);
-            ((List<?>) lastSlotsField.get(this)).clear();
-
-            Field remoteSlotsField = AbstractContainerMenu.class.getDeclaredField("remoteSlots");
-            remoteSlotsField.setAccessible(true);
-            ((List<?>) remoteSlotsField.get(this)).clear();
-        } catch (Exception e) {
-            // [修复] 使用 logger 替代 printStackTrace
-            LOGGER.error("Failed to clear slots via reflection in SimulationPortMenu", e);
-        }
-
-        // 3. 重新添加机器槽位 (Index 0-26)
-        int totalMachineSlots = 27;
-        for (int i = 0; i < totalMachineSlots; i++) {
-            int x = -10000; // 默认隐藏
-            int y = -10000;
-
-            if (isExpanded) {
-                // 展开模式: 9x3
-                int col = i % 9;
-                int row = i / 9;
-                x = EXPANDED_START_X + col * SLOT_SIZE;
-                y = EXPANDED_START_Y + row * SLOT_SIZE;
-            } else {
-                // 默认模式: 3x3 带滚动
-                int col = i % 3;
-                int row = i / 3;
-                if (row >= scrollOffset && row < scrollOffset + VISIBLE_ROWS) {
-                    int viewRow = row - scrollOffset;
-                    x = SLOT_START_X + col * SLOT_SIZE;
-                    y = SLOT_START_Y + viewRow * SLOT_SIZE;
-                }
-            }
-
-            // 使用 NeoForge 标准 SlotItemHandler
-            this.addSlot(new SlotItemHandler(be.getItemHandler(), i, x + 1, y + 1) {
+    private void addSlots() {
+        // 添加机器槽位 (Index 0-26)
+        for (int i = 0; i < 27; i++) {
+            this.addSlot(new SlotItemHandler(be.getItemHandler(), i, 0, 0) {
                 @Override
                 public boolean mayPlace(ItemStack stack) {
                     PortMode mode = be.getPortMode();
@@ -113,19 +73,57 @@ public class SimulationPortMenu extends AbstractContainerMenu {
             });
         }
 
-        // 4. 重新添加玩家背包 (Index 27-62)
+        // 添加玩家背包 (Index 27-62)
         addPlayerInventory(new InvWrapper(playerInventory));
+    }
+
+    public void updateSlotPositions() {
+        for (int i = 0; i < 27; i++) {
+            Slot slot = this.slots.get(i);
+            int x = -10000; 
+            int y = -10000;
+
+            if (isExpanded) {
+                int col = i % 9;
+                int row = i / 9;
+                x = EXPANDED_START_X + col * SLOT_SIZE;
+                y = EXPANDED_START_Y + row * SLOT_SIZE;
+            } else {
+                int col = i % 3;
+                int row = i / 3;
+                if (row >= scrollOffset && row < scrollOffset + VISIBLE_ROWS) {
+                    int viewRow = row - scrollOffset;
+                    x = SLOT_START_X + col * SLOT_SIZE;
+                    y = SLOT_START_Y + viewRow * SLOT_SIZE;
+                }
+            }
+            
+            setSlotPosition(slot, x + 1, y + 1);
+        }
+    }
+
+    private void setSlotPosition(Slot slot, int x, int y) {
+        try {
+            java.lang.reflect.Field fieldX = Slot.class.getDeclaredField("x");
+            java.lang.reflect.Field fieldY = Slot.class.getDeclaredField("y");
+            fieldX.setAccessible(true);
+            fieldY.setAccessible(true);
+            fieldX.setInt(slot, x);
+            fieldY.setInt(slot, y);
+        } catch (Exception e) {
+            LOGGER.error("Failed to set slot position via reflection", e);
+        }
     }
 
     public void setExpanded(boolean expanded) {
         this.isExpanded = expanded;
         this.scrollOffset = 0;
-        layoutSlots();
+        updateSlotPositions();
     }
 
     public void setScrollOffset(int offset) {
         this.scrollOffset = Math.max(0, Math.min(offset, 6));
-        layoutSlots();
+        updateSlotPositions();
     }
 
     public int getScrollOffset() { return scrollOffset; }

@@ -15,6 +15,7 @@ import net.neoforged.neoforge.fluids.FluidStack;
 import net.minecraft.resources.ResourceLocation;
 import com.mojang.serialization.Codec;
 import java.util.List;
+import java.util.Map;
 
 public class ThermalShockKJSSchemas {
 
@@ -23,6 +24,16 @@ public class ThermalShockKJSSchemas {
     public static final RecipeComponent<String> ID_STR = StringComponent.ID.instance();
     public static final RecipeComponent<Integer> INT = NumberComponent.INT;
     public static final RecipeComponent<FluidStack> FLUID_STACK = FluidStackComponent.FLUID_STACK.instance();
+    public static final RecipeComponent<String> ANY_STR = StringComponent.STRING.instance();
+
+    // === 3. RAW Converter Components (Pass-through) ===
+    public static final RecipeComponent<Object> RAW_COMPONENT = new RecipeComponent<Object>() {
+        @Override public TypeInfo typeInfo() { return TypeInfo.of(Object.class); }
+        @Override public Codec<Object> codec() { return null; }
+        @Override public RecipeComponentType<?> type() { return RecipeComponentType.unit(ResourceLocation.fromNamespaceAndPath(ThermalShock.MODID, "raw"), this); }
+        @Override public Object wrap(RecipeScriptContext cx, Object from) { return from; }
+        @Override public boolean hasPriority(dev.latvian.mods.kubejs.recipe.filter.RecipeMatchContext cx, Object from) { return true; }
+    };
 
     public static final RecipeKey<ItemStack> RESULT = ITEM_STACK.outputKey("result");
     public static final RecipeKey<String> TARGET_ITEM = ID_STR.outputKey("target_item"); 
@@ -39,21 +50,14 @@ public class ThermalShockKJSSchemas {
     public static final RecipeKey<Integer> MAX_HEAT = INT.otherKey("max_heat").optional(Integer.MAX_VALUE).alwaysWrite().exclude();
     public static final RecipeKey<Integer> DELTA = INT.otherKey("delta").alwaysWrite();
 
-    // === 3. RAW Converter Components (Pass-through) ===
-    // 我们使用 Object 类型并直接返回 from，这样 KubeJS 就会把原始的 JS Map/List/String 传给 RecipeJS
-    // 从而让我们在 RecipeJS 中自己处理解析逻辑，避开 KubeJS 的自动转换干扰。
-    
-    public static final RecipeComponent<Object> RAW_COMPONENT = new RecipeComponent<Object>() {
-        @Override public TypeInfo typeInfo() { return TypeInfo.of(Object.class); }
-        @Override public Codec<Object> codec() { return null; } // 实际上不会用到，因为我们在 serialize 拦截了
-        @Override public RecipeComponentType<?> type() { return RecipeComponentType.unit(ResourceLocation.fromNamespaceAndPath(ThermalShock.MODID, "raw"), this); }
-        @Override public Object wrap(RecipeScriptContext cx, Object from) { return from; }
-    };
-
     public static final RecipeKey<Object> CON_OUT_I = RAW_COMPONENT.outputKey("item_outputs").optional(List.of());
     public static final RecipeKey<Object> CON_OUT_F = RAW_COMPONENT.outputKey("fluid_outputs").optional(List.of()).exclude();
     public static final RecipeKey<Object> CON_IN_I = RAW_COMPONENT.inputKey("item_inputs").optional(List.of());
     public static final RecipeKey<Object> CON_IN_F = RAW_COMPONENT.inputKey("fluid_inputs").optional(List.of()).exclude();
+
+    // 有序配方专用键
+    public static final RecipeKey<Object> PATTERN = RAW_COMPONENT.inputKey("pattern");
+    public static final RecipeKey<Object> KEY = RAW_COMPONENT.inputKey("key");
 
     public static final KubeRecipeFactory FACTORY = new KubeRecipeFactory(
             ResourceLocation.fromNamespaceAndPath(ThermalShock.MODID, "recipe_js"),

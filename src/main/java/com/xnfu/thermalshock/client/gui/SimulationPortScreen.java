@@ -26,8 +26,8 @@ public class SimulationPortScreen extends AbstractContainerScreen<SimulationPort
     private static final int SLOT_BORDER = 0xFF373737;
 
     // === 滚动条 (紧贴列表右侧) ===
-    private static final int SCROLL_X = 90;
-    private static final int SCROLL_Y = 20;
+    private static final int SCROLL_X = 91;
+    private static final int SCROLL_Y = 21;
     private static final int SCROLL_W = 8;
     private static final int SCROLL_H = 54;
 

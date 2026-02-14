@@ -23,7 +23,8 @@ public class ModDataMapProvider extends DataMapProvider {
 
     @Override
     protected void gather(HolderLookup.Provider lookupProvider) {
-        // 1. 外壳 (Casing)
+        // 开发测试
+        /*// 1. 外壳 (Casing)
         var casing = this.builder(ThermalShockDataMaps.CASING_PROPERTY);
         // [更新] 参数: maxHeatRate, maxColdRate, efficiency
         casing.add(BlockTags.PLANKS, new CasingData(50, 20, 0.8f), false);
@@ -47,8 +48,12 @@ public class ModDataMapProvider extends DataMapProvider {
         // [修复] 使用正数表示制冷量 (Magnitude)
         // 逻辑层会自动取负值：-5, -40
         var cold = this.builder(ThermalShockDataMaps.COLD_SOURCE_PROPERTY);
+        cold.add(key(Blocks.WATER), new ColdSourceData(2), false);
         cold.add(key(Blocks.ICE), new ColdSourceData(5), false);
-        cold.add(key(Blocks.BLUE_ICE), new ColdSourceData(40), false);
+        cold.add(key(Blocks.BLUE_ICE), new ColdSourceData(40), false);*/
+
+        var cold = this.builder(ThermalShockDataMaps.COLD_SOURCE_PROPERTY);
+        cold.add(key(Blocks.WATER), new ColdSourceData(2), false);
     }
 
     private static ResourceKey<Block> key(Block block) {

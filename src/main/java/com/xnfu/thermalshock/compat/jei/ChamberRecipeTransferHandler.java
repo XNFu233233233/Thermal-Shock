@@ -47,14 +47,21 @@ public class ChamberRecipeTransferHandler<T extends AbstractSimulationRecipe> im
     }
 
     @Override
-    public @Nullable IRecipeTransferError transferRecipe(SimulationChamberMenu container, T recipe, IRecipeSlotsView recipeSlots, Player player, boolean maxTransfer, boolean doTransfer) {
+    public @Nullable IRecipeTransferError transferRecipe(SimulationChamberMenu container, T recipe, IRecipeSlotsView recipeSlots, net.minecraft.world.entity.player.Player player, boolean maxTransfer, boolean doTransfer) {
         SimulationChamberBlockEntity be = container.getBlockEntity();
         MachineMode machineMode = be.getMachineMode();
         MachineMode recipeMode = recipe.getMachineMode();
 
         // 1. 检查模式是否匹配
         if (machineMode != recipeMode) {
-            return () -> IRecipeTransferError.Type.USER_FACING;
+            return new IRecipeTransferError() {
+                @Override public Type getType() { return Type.USER_FACING; }
+                @Override
+                public void showError(net.minecraft.client.gui.GuiGraphics gfx, int mouseX, int mouseY, IRecipeSlotsView slots, int recipeX, int recipeY) {
+                    gfx.renderTooltip(net.minecraft.client.Minecraft.getInstance().font, 
+                        net.minecraft.network.chat.Component.translatable("gui.thermalshock.jei.error.wrong_mode"), mouseX, mouseY);
+                }
+            };
         }
 
         // 2. 执行转移 (选择配方)
@@ -68,7 +75,7 @@ public class ChamberRecipeTransferHandler<T extends AbstractSimulationRecipe> im
             }
             
             if (id != null) {
-                PacketDistributor.sendToServer(new PacketSelectRecipe(be.getBlockPos(), id));
+                net.neoforged.neoforge.network.PacketDistributor.sendToServer(new PacketSelectRecipe(be.getBlockPos(), id));
             }
         }
 

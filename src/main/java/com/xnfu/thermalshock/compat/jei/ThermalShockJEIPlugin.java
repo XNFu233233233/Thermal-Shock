@@ -27,9 +27,65 @@ import net.minecraft.world.level.block.LiquidBlock;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.xnfu.thermalshock.registries.ThermalShockDataComponents;
+import com.xnfu.thermalshock.registries.ThermalShockItems;
+import com.xnfu.thermalshock.item.MaterialClumpItem;
+import mezz.jei.api.registration.*;
+import mezz.jei.api.ingredients.subtypes.ISubtypeInterpreter;
+import mezz.jei.api.constants.VanillaTypes;
+
 @JeiPlugin
 public class ThermalShockJEIPlugin implements IModPlugin {
     public static final ResourceLocation PLUGIN_ID = ResourceLocation.fromNamespaceAndPath(ThermalShock.MODID, "jei_plugin");
+
+    // === Subtype Interpreter ===
+    private static class ClumpSubtypeInterpreter implements ISubtypeInterpreter<ItemStack> {
+        @Override
+        public Object getSubtypeData(ItemStack stack, mezz.jei.api.ingredients.subtypes.UidContext context) {
+            var info = stack.get(ThermalShockDataComponents.TARGET_OUTPUT);
+            return info != null ? info : "";
+        }
+
+        @Override
+        public String getLegacyStringSubtypeInfo(ItemStack stack, mezz.jei.api.ingredients.subtypes.UidContext context) {
+            var info = stack.get(ThermalShockDataComponents.TARGET_OUTPUT);
+            if (info == null) return "";
+            return info.item().getRegisteredName() + ":" + info.count();
+        }
+    }
+
+    @Override
+    public void registerItemSubtypes(ISubtypeRegistration registration) {
+        registration.registerSubtypeInterpreter(ThermalShockItems.MATERIAL_CLUMP.get(), new ClumpSubtypeInterpreter());
+    }
+
+    @Override
+    public void registerExtraIngredients(IExtraIngredientRegistration registration) {
+        var level = Minecraft.getInstance().level;
+        if (level == null) return;
+
+        List<ItemStack> clumpVariants = new ArrayList<>();
+        var rm = level.getRecipeManager();
+
+        rm.getAllRecipesFor(net.minecraft.world.item.crafting.RecipeType.CRAFTING).stream()
+                .map(RecipeHolder::value)
+                .filter(r -> r instanceof ClumpFillingRecipe)
+                .forEach(r -> clumpVariants.add(r.getResultItem(level.registryAccess())));
+
+        rm.getAllRecipesFor(ThermalShockRecipes.THERMAL_SHOCK_TYPE.get()).stream()
+                .map(RecipeHolder::value)
+                .filter(r -> r instanceof ThermalShockFillingRecipe)
+                .forEach(r -> clumpVariants.add(r.getResultItem(level.registryAccess())));
+
+        if (!clumpVariants.isEmpty()) {
+            registration.addExtraItemStacks(clumpVariants);
+        }
+    }
+
+    @Override
+    public void registerIngredients(IModIngredientRegistration registration) {
+        // [MODIFIED] Moved dynamic ingredients to registerExtraIngredients
+    }
 
     // === Simulation Chamber RecipeTypes ===
     public static final RecipeType<OverheatingRecipe> TYPE_OVERHEATING = SimulationOverheatingCategory.TYPE;

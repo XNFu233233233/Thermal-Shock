@@ -23,7 +23,7 @@ public class DataGenerators {
 
         // Server Data Providers (测试使用)
         generator.addProvider(event.includeServer(), new ModBlockTagsProvider(packOutput, lookupProvider, existingFileHelper));
-        //generator.addProvider(event.includeServer(), new ModDataMapProvider(packOutput, lookupProvider));
+        generator.addProvider(event.includeServer(), new ModDataMapProvider(packOutput, lookupProvider));
         generator.addProvider(event.includeServer(), new ModRecipeProvider(packOutput, lookupProvider));
         generator.addProvider(event.includeServer(), new net.minecraft.data.loot.LootTableProvider(packOutput, java.util.Collections.emptySet(), 
                 java.util.List.of(new net.minecraft.data.loot.LootTableProvider.SubProviderEntry(ModBlockLootTableProvider::new, net.minecraft.world.level.storage.loot.parameters.LootContextParamSets.BLOCK)), lookupProvider));

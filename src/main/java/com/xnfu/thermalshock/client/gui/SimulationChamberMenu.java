@@ -106,7 +106,50 @@ public class SimulationChamberMenu extends AbstractContainerMenu {
     }
     
     @Override
-    public ItemStack quickMoveStack(Player playerIn, int index) {
-        return ItemStack.EMPTY;
+    public ItemStack quickMoveStack(Player player, int index) {
+        ItemStack itemstack = ItemStack.EMPTY;
+        Slot slot = this.slots.get(index);
+        if (slot != null && slot.hasItem()) {
+            ItemStack itemstack1 = slot.getItem();
+            itemstack = itemstack1.copy();
+            
+            if (index < 2) { // 机器槽位 (0, 1) -> 玩家背包 (2-37)
+                if (!this.moveItemStackTo(itemstack1, 2, 38, true)) {
+                    return ItemStack.EMPTY;
+                }
+            } else { // 玩家背包 -> 机器
+                // 1. 尝试放入催化剂槽 (Slot 0)
+                if (blockEntity.getItemHandler().isItemValid(0, itemstack1)) {
+                    if (!this.moveItemStackTo(itemstack1, 0, 1, false)) {
+                        return ItemStack.EMPTY;
+                    }
+                }
+                // 2. 尝试放入升级卡槽 (Slot 1)
+                else if (blockEntity.getItemHandler().isItemValid(1, itemstack1)) {
+                    if (!this.moveItemStackTo(itemstack1, 1, 2, false)) {
+                        return ItemStack.EMPTY;
+                    }
+                }
+                // 3. 玩家背包内部移动
+                else if (index < 29) {
+                    if (!this.moveItemStackTo(itemstack1, 29, 38, false)) return ItemStack.EMPTY;
+                } else {
+                    if (!this.moveItemStackTo(itemstack1, 2, 29, false)) return ItemStack.EMPTY;
+                }
+            }
+
+            if (itemstack1.isEmpty()) {
+                slot.setByPlayer(ItemStack.EMPTY);
+            } else {
+                slot.setChanged();
+            }
+
+            if (itemstack1.getCount() == itemstack.getCount()) {
+                return ItemStack.EMPTY;
+            }
+
+            slot.onTake(player, itemstack1);
+        }
+        return itemstack;
     }
 }

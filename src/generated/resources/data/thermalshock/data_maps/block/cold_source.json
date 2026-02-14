@@ -1,0 +1,7 @@
+{
+  "values": {
+    "minecraft:water": {
+      "cooling_per_tick": 2
+    }
+  }
+}

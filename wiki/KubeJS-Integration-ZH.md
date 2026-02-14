@@ -43,15 +43,15 @@
 
 ### 示例
 ```js
-// 2.1 基础熔炼 (使用默认热量门槛)
+// 3.1 基础熔炼 (使用默认热量门槛)
 event.recipes.thermalshock.overheating('minecraft:charcoal', ['#minecraft:logs'], [])
 
-// 2.2 高级加工 (指定高热量需求与高消耗)
+// 3.2 高级加工 (指定高热量需求与高消耗)
 event.recipes.thermalshock.overheating('9x iron_nugget', ['iron_ingot'], [])
      .minHeat(500)
      .heatCost(2000)
 
-// 2.3 涉及流体方块的加工 (如：干化)
+// 3.3 涉及流体方块的加工 (如：干化)
 // 注意：若安装 [模拟升级]，block_inputs 中的流体方块会自动转为从接口流体槽抽取 1000mB 流体。
 event.recipes.thermalshock.overheating('sponge', [], ['minecraft:water'])
      .heatCost(50)
@@ -78,10 +78,10 @@ event.recipes.thermalshock.overheating('sponge', [], ['minecraft:water'])
 
 ### 示例
 ```js
-// 3.1 基础破碎
+// 4.1 基础破碎
 event.recipes.thermalshock.thermal_shock('sand', ['gravel'], [], 50)
 
-// 3.2 极端环境破碎 (限制环境必须极热或极冷)
+// 4.2 极端环境破碎 (限制环境必须极热或极冷)
 event.recipes.thermalshock.thermal_shock('obsidian', [], ['minecraft:lava'], 800)
      .minHot(1000)
      .maxCold(0)
@@ -91,7 +91,9 @@ event.recipes.thermalshock.thermal_shock('obsidian', [], ['minecraft:lava'], 800
 
 ## 5. 团块填充 (热冲击) (`thermal_shock_filling`)
 通过热冲击将产物数据编码进物质团块。
-*注：系统会自动在输入中追加 `thermalshock:material_clump`。*
+ - 注: 必须输入一个 `thermalshock:material_clump`
+
+*系统会自动在输入中追加 `thermalshock:material_clump`。*
 
 ### 位置参数 (构造函数)
 | 位置 | 参数名 | 类型 | 必填 | 说明 |
@@ -110,17 +112,54 @@ event.recipes.thermalshock.thermal_shock('obsidian', [], ['minecraft:lava'], 800
 
 ### 示例
 ```js
-// 4.1 基础填充
+// 5.1 基础填充
 event.recipes.thermalshock.thermal_shock_filling('iron_ingot', ['iron_ore'], [], 700)
 
-// 4.2 批量填充 (设置提取时的产出数量)
+// 5.2 批量填充 (设置提取时的产出数量)
 event.recipes.thermalshock.thermal_shock_filling('gold_nugget', ['raw_gold'], [], 500)
      .targetCount(4)
 ```
 
 ---
 
-## 6. 团块提取 (`clump_processing`)
+## 6. 团块填充 (工作台合成) (`clump_filling`)
+在工作台中手动填充团块。继承原版有序合成逻辑。
+- 注: 必须输入一个 `thermalshock:material_clump`
+
+### 位置参数 (构造函数)
+| 位置 | 参数名 | 类型 | 必填 | 说明 |
+| :--- | :--- | :--- | :--- | :--- |
+| 1 | `target_item` | String | **是** | 编码产物 ID。 |
+| 2 | `pattern` | Array | **是** | 有序合成形状。 |
+| 3 | `key` | Map | **是** | 字符与物品的映射。 |
+
+### 极致便捷特性
+为了简化书写，若 `key` 中未定义 `C` 映射，系统会**自动将 `C` 映射为 `thermalshock:material_clump` (空团块) (大写的"C")**。
+
+### 示例
+```js
+// 6.1 极致简洁：利用内置 'C' 映射
+event.recipes.thermalshock.clump_filling('iron_ingot', [
+    ' I ',
+    ' C '
+], {
+    I: 'iron_ore'
+})
+
+// 6.2 显式定义与复杂形状
+event.recipes.thermalshock.clump_filling('gold_ingot', [
+    'GGG',
+    'GCG',
+    'GGG'
+], {
+    G: 'gold_nugget',
+    C: 'thermalshock:material_clump'
+})
+```
+
+---
+
+## 7. 团块提取 (`clump_processing`)
 从已填充的团块中还原物品。
 *注：系统会自动在输入中追加带数据的 `thermalshock:material_clump`。*
 
@@ -140,10 +179,10 @@ event.recipes.thermalshock.thermal_shock_filling('gold_nugget', ['raw_gold'], []
 
 ### 示例
 ```js
-// 5.1 常规提取 (仅需团块)
+// 7.1 常规提取 (仅需团块)
 event.recipes.thermalshock.clump_processing('gold_ingot', 'gold_ingot', [], [])
 
-// 5.2 强化提取 (需要额外材料且热量消耗极高)
+// 7.2 强化提取 (需要额外材料且热量消耗极高)
 event.recipes.thermalshock.clump_processing('netherite_ingot', 'netherite_ingot', ['gold_ingot'], [])
      .minHeat(300)
      .heatCost(5000)
@@ -172,14 +211,14 @@ event.recipes.thermalshock.clump_processing('netherite_ingot', 'netherite_ingot'
 
 ### 示例
 ```js
-// 6.1 极致丝滑的映射写法 (多输出 + 概率)
+// 7.1 极致丝滑的映射写法 (多输出 + 概率)
 event.recipes.thermalshock.thermal_converter(
     { "gold_ingot": 1.0, "2x gold_nugget": 0.5 }, 
     "raw_gold", 
     200
 )
 
-// 6.2 链式流体与概率追踪
+// 7.2 链式流体与概率追踪
 event.recipes.thermalshock.thermal_converter("obsidian", "cobblestone", 100)
      .fluidInput("1000x water").chance(0.8) // 0.8 概率应用于 water
      .fluidOutput("100x lava").chance(0.1)  // 0.1 概率应用于 lava
@@ -223,9 +262,17 @@ ThermalShockEvents.registerCasing(event => {
 ```
 
 ### B. 模拟催化剂 (`registerCatalyst`)
+定义物品作为模拟室催化剂时的效能与点数。
 `event.add(item, bonus, buffer)`
-*   `bonus`: 产量增益系数 (0.5 = +50%)。
-*   `buffer`: 该物品提供的催化剂缓存点数。
+*   `bonus`: **产量增益系数** (例如：0.5 表示该催化剂能提升 50% 的额外产率)。
+*   `buffer`: **催化剂点数**。该物品能提供多少加工点数(能使用多少次)。
+
+```js
+ThermalShockEvents.registerCatalyst(event => {
+    // 赋予末影珍珠催化效能：+80% 产量，拥有500点数
+    event.add('minecraft:ender_pearl', 0.8, 500)
+})
+```
 
 ### C. 热力源属性
 定义方块在机器附近时的输出功率。
@@ -243,7 +290,7 @@ ThermalShockEvents.registerColdSource(event => {
 
 ---
 
-## 10. 辅助功能总结
+## 11. 辅助功能总结
 *   **占位符**：构造函数中不使用的参数位置必须填充 `[]`。
 *   **缩写支持**：字符串支持 `3x item` 和 `1000x fluid` 格式。
 *   **模拟升级特性**：在模拟室中，`block_inputs` 若为流体方块，在安装升级后将自动支持接口流体自动化。

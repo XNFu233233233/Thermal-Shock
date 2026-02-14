@@ -37,6 +37,23 @@ public class SimulationChamberRenderer implements BlockEntityRenderer<BlockEntit
     private static final ResourceLocation OVERLAY_FRONT_ON = ResourceLocation.fromNamespaceAndPath(ThermalShock.MODID, "textures/block/chamber_controller_overlay_on.png");
     private static final ResourceLocation OVERLAY_PORT = ResourceLocation.fromNamespaceAndPath(ThermalShock.MODID, "textures/block/chamber_port_overlay.png");
 
+    // [优化] 缓存 RenderType 避免每帧重新创建
+    private static final RenderType ERROR_BOX_RENDER_TYPE = RenderType.create("thermalshock_error_lines",
+            DefaultVertexFormat.POSITION_COLOR_NORMAL,
+            VertexFormat.Mode.LINES,
+            256,
+            false,
+            false,
+            RenderType.CompositeState.builder()
+                    .setShaderState(RenderStateShard.RENDERTYPE_LINES_SHADER)
+                    .setLineState(new RenderStateShard.LineStateShard(OptionalDouble.of(6.0D)))
+                    .setTransparencyState(RenderStateShard.TRANSLUCENT_TRANSPARENCY)
+                    .setOutputState(RenderStateShard.ITEM_ENTITY_TARGET)
+                    .setWriteMaskState(RenderStateShard.COLOR_WRITE)
+                    .setCullState(RenderStateShard.NO_CULL)
+                    .setDepthTestState(RenderStateShard.NO_DEPTH_TEST)
+                    .createCompositeState(false));
+
     private final BlockRenderDispatcher blockDispatcher;
 
     public SimulationChamberRenderer(BlockEntityRendererProvider.Context context) {
@@ -116,32 +133,13 @@ public class SimulationChamberRenderer implements BlockEntityRenderer<BlockEntit
 
         poseStack.translate(dx, dy, dz);
 
-        // 使用自定义的"穿透"渲染类型
-        VertexConsumer builder = bufferSource.getBuffer(getAlwaysOnTopRenderType());
+        // 使用缓存的"穿透"渲染类型
+        VertexConsumer builder = bufferSource.getBuffer(ERROR_BOX_RENDER_TYPE);
         
         // 使用 LevelRenderer 的标准工具方法绘制红框 (1.0f, 0.0f, 0.0f, 1.0f)
-        // 盒体范围缩小一点点以避免 Z-Fighting
         LevelRenderer.renderLineBox(poseStack, builder, new AABB(0.01, 0.01, 0.01, 0.99, 0.99, 0.99), 1.0f, 0.0f, 0.0f, 1.0f);
 
         poseStack.popPose();
-    }
-
-    private static RenderType getAlwaysOnTopRenderType() {
-        return RenderType.create("thermalshock_error_lines",
-                DefaultVertexFormat.POSITION_COLOR_NORMAL,
-                VertexFormat.Mode.LINES,
-                256,
-                false,
-                false,
-                RenderType.CompositeState.builder()
-                        .setShaderState(RenderStateShard.RENDERTYPE_LINES_SHADER)
-                        .setLineState(new RenderStateShard.LineStateShard(OptionalDouble.of(6.0D))) // 加粗线条
-                        .setTransparencyState(RenderStateShard.TRANSLUCENT_TRANSPARENCY)
-                        .setOutputState(RenderStateShard.ITEM_ENTITY_TARGET)
-                        .setWriteMaskState(RenderStateShard.COLOR_WRITE) // [Fix] 不写深度，避免遮挡
-                        .setCullState(RenderStateShard.NO_CULL)
-                        .setDepthTestState(RenderStateShard.NO_DEPTH_TEST) // 关键：关闭深度测试以透视
-                        .createCompositeState(false));
     }
 
     // --- 控制器覆盖层 ---
