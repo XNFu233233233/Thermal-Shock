@@ -55,7 +55,7 @@ public class ModCnLangProvider extends LanguageProvider {
         add("tooltip.thermalshock.heat_source_rate", "高温热源: +%s H (基础值)");
         add("tooltip.thermalshock.cold_source_rate", "低温热源: %s H (基础值)");
         add("tooltip.thermalshock.catalyst_yield", "产量加成: %s");
-        add("tooltip.thermalshock.catalyst_buffer", "补充点数: %s");
+        add("tooltip.thermalshock.catalyst_buffer", "催化点数: %s");
         add("tooltip.thermalshock.type_vent", "组件: 散热排气口");
         add("tooltip.thermalshock.type_access", "组件: 结构密封门");
         add("tooltip.thermalshock.locked", "配方已锁定");

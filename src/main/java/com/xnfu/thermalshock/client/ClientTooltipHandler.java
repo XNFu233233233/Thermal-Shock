@@ -119,9 +119,8 @@ public class ClientTooltipHandler {
         if (catalystData != null) {
             event.getToolTip().add(Component.translatable("tooltip.thermalshock.catalyst_yield",
                     String.format("+%.0f%%", catalystData.bonusYield() * 100)).withStyle(ChatFormatting.LIGHT_PURPLE));
-            event.getToolTip().add(Component.translatable("tooltip.thermalshock.catalyst_buffer",
-                    String.format("%.1f", catalystData.bufferAmount())).withStyle(ChatFormatting.LIGHT_PURPLE));
-        }
+                                event.getToolTip().add(Component.translatable("tooltip.thermalshock.catalyst_buffer",
+                                        String.format("%.1f", catalystData.catalystPoints())).withStyle(ChatFormatting.LIGHT_PURPLE));        }
 
         // === E. 功能组件 ===
         if (isVent) {

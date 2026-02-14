@@ -61,7 +61,7 @@ public class DataMapEntries {
             ItemStack display = recipe.items.isEmpty() ? ItemStack.EMPTY : recipe.items.get(0);
             gfx.drawString(font, display.getHoverName(), 35, 5, 0xFF404040, false);
             gfx.drawString(font, Component.translatable("tooltip.thermalshock.catalyst_yield", String.format("+%.0f%%", recipe.data.bonusYield() * 100)), 35, 15, 0xFF006600, false);
-            gfx.drawString(font, Component.translatable("tooltip.thermalshock.catalyst_buffer", (int)recipe.data.bufferAmount()), 35, 25, 0xFF606060, false);
+            gfx.drawString(font, Component.translatable("tooltip.thermalshock.catalyst_buffer", (int)recipe.data.catalystPoints()), 35, 25, 0xFF606060, false);
         }
     }
 

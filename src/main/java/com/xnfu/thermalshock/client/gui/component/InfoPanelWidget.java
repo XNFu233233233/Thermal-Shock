@@ -54,16 +54,11 @@ public class InfoPanelWidget extends AbstractWidget {
         }
 
         // === Line 2: 效率 (Efficiency) ===
-        // Menu.getStructureYieldMultiplier() 读取 Index 15 (Efficiency)
-        // Menu 内部已除以 100，此处直接使用
-        float eff = menu.getStructureYieldMultiplier();
+        float eff = menu.getStructureEfficiency() * 100.0f;
         gfx.drawString(font, String.format("Eff: %.0f%%", eff), x, y + REL_Y_2, 0xFF00AA00, false);
 
         // === Line 3: 产量加成 (Yield Bonus) ===
-        // [重构] 提取计算逻辑
         float totalRate = calculateTotalYieldRate();
-
-        // 4. 显示增量: (2.2 - 1.0) * 100 = 120%
         float displayVal = (totalRate - 1.0f) * 100.0f;
 
         String yieldText = String.format("Yield: +%.0f%%", displayVal);
@@ -77,13 +72,10 @@ public class InfoPanelWidget extends AbstractWidget {
         gfx.drawString(font, Component.translatable("gui.thermalshock.warning.short"), x, y + REL_Y_5, 0xFFFF5555, false);
     }
 
-    // [新增] 提取的计算方法
     private float calculateTotalYieldRate() {
-        float structMult = menu.getBonusYield();
-        if (structMult < 1.0f) structMult = 1.0f;
-        float catBonus = menu.getEfficiency();
-        // 公式: 1(基础) * 结构倍率 * (1 + 催化剂)
-        return 1.0f * structMult * (1.0f + catBonus);
+        float structMult = menu.getStructureYieldMultiplier();
+        float catBonus = menu.getBonusYield();
+        return structMult * (1.0f + catBonus);
     }
 
     public void appendHoverText(List<Component> tooltip, int mouseX, int mouseY, boolean isShiftDown) {

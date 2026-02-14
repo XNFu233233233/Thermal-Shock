@@ -35,7 +35,7 @@ public class SimulationChamberMenu extends AbstractContainerMenu {
     private final ContainerData data;
 
     public SimulationChamberMenu(int containerId, Inventory inv, FriendlyByteBuf extraData) {
-        this(containerId, inv, (SimulationChamberBlockEntity) inv.player.level().getBlockEntity(extraData.readBlockPos()), new SimpleContainerData(17));
+        this(containerId, inv, (SimulationChamberBlockEntity) inv.player.level().getBlockEntity(extraData.readBlockPos()), new SimpleContainerData(18));
     }
 
     public SimulationChamberMenu(int containerId, Inventory inv, SimulationChamberBlockEntity entity, ContainerData data) {
@@ -43,7 +43,7 @@ public class SimulationChamberMenu extends AbstractContainerMenu {
         this.blockEntity = entity;
         this.data = data;
 
-        checkContainerDataCount(data, 17);
+        checkContainerDataCount(data, 18);
         this.addDataSlots(data);
 
         IItemHandler itemHandler = this.blockEntity.getItemHandler();
@@ -84,8 +84,8 @@ public class SimulationChamberMenu extends AbstractContainerMenu {
     public int getMaxHeat() { return this.data.get(1); }
     public int getMaxColdRate() { return this.data.get(2); }
     public int getMaxHeatRate() { return this.data.get(3); }
-    public float getEfficiency() { return this.data.get(4) / 100.0f; }
-    public float getBonusYield() { return this.data.get(5) / 100.0f; }
+    public float getBonusYield() { return this.data.get(4) / 100.0f; } // Index 4: currentBonusYield
+    public float getStructureYieldMultiplier() { return this.data.get(5) / 100.0f; } // Index 5: yieldMultiplier
     public float getCatalystAmount() { return this.data.get(6) / 10.0f; }
     public int getHeatIoRate() { return this.data.get(7); }
     public int getStructVolume() { return this.data.get(8); }
@@ -95,11 +95,9 @@ public class SimulationChamberMenu extends AbstractContainerMenu {
     public int getAccumulatedYieldProgress() { return this.data.get(12); }
     public int getMachineModeOrdinal() { return this.data.get(13); }
     public int getLowTempInput() { return this.data.get(14); }
-    public int getStructureYieldMultiplier() {
-        int val = this.data.get(15);
-        return val <= 0 ? 1 : val;
-    }
-    public int getbatchSize() { return this.data.get(16);}
+    public float getStructureEfficiency() { return this.data.get(15) / 100.0f; }
+    public int getbatchSize() { return this.data.get(16); }
+    public float getCatalystMax() { return this.data.get(17) / 10.0f; } // [新增] 获取当前催化剂总容量
 
     @Override
     public boolean stillValid(Player player) {

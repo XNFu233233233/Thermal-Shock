@@ -129,6 +129,16 @@ public class ChamberThermodynamics {
     public int getCurrentLowTemp() { return cachedLowTemp; }
     public int getDeltaT() { return cachedDelta; }
     public int getLastInputRate() { return cachedNetInput; }
+
+    /**
+     * [客户端专用] 同步环境温度，用于 Jade 显示
+     */
+    public void setClientTemps(int high, int low) {
+        this.cachedHighTemp = high;
+        this.cachedLowTemp = low;
+        this.cachedDelta = high - low;
+        this.cachedNetInput = high + low;
+    }
     
     // --- 兼容性方法 (防止残留调用报错) ---
     public int getHeatStoredRaw() { return getCurrentHeat(); }

@@ -82,5 +82,12 @@ public class ThermalShock {
                 PacketSetTargetHeat.STREAM_CODEC,
                 PacketSetTargetHeat::handle
         );
+
+        // --- 仅发送给客户端的消息 (Machine Sync) ---
+        registrar.playToClient(
+                PacketSyncMachineStatus.TYPE,
+                PacketSyncMachineStatus.STREAM_CODEC,
+                PacketSyncMachineStatus::handle
+        );
     }
 }

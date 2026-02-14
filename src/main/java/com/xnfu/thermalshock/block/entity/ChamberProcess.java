@@ -242,9 +242,11 @@ public class ChamberProcess {
         int heatToConsume = 0;
         List<ItemStack> rawOutputs = new ArrayList<>();
 
-        // 预创建快照列表以减少循环内分配 (只有当配方确实需要时才填充)
+        // [核心优化] 预创建快照列表并填充 (在 Tick 内材料状态静态，移出循环以减少重复遍历)
         List<ItemStack> physPoolIn = new ArrayList<>(blockPool.size() + itemPool.size());
         List<RecipeSourceType> physPoolTy = new ArrayList<>(blockPool.size() + itemPool.size());
+        for (FoundMaterial m : blockPool) { physPoolIn.add(m.stack); physPoolTy.add(RecipeSourceType.BLOCK); }
+        for (FoundMaterial m : itemPool) { physPoolIn.add(m.stack); physPoolTy.add(RecipeSourceType.ITEM); }
 
         for (int i = 0; i < actualBatch; i++) {
             MatchResult match = tryMatchIngredient(recipeToRun, blockPool, itemPool);
@@ -257,12 +259,7 @@ public class ChamberProcess {
             successCount++;
             ItemStack mainInput = match.consumedInputs.get(0);
             
-            // 构建快照 (只有在真正需要时才重建，或者可以考虑进一步优化 assemble 接口)
-            physPoolIn.clear();
-            physPoolTy.clear();
-            for (FoundMaterial m : blockPool) { physPoolIn.add(m.stack); physPoolTy.add(RecipeSourceType.BLOCK); }
-            for (FoundMaterial m : itemPool) { physPoolIn.add(m.stack); physPoolTy.add(RecipeSourceType.ITEM); }
-
+            // 使用预构建的快照执行配方逻辑
             rawOutputs.add(recipeToRun.assemble(new SimulationRecipeInput(mainInput, new ArrayList<>(physPoolIn), new ArrayList<>(physPoolTy)), level.registryAccess()));
 
             if (primaryOutputPos == null) capturePrimaryPos(match.foundMaterials);
@@ -744,7 +741,7 @@ public class ChamberProcess {
     }
 
     private void triggerMachineEffects(Level level) {
-        be.setLitState(true);
+        be.triggerLit();
         BlockPos min = be.getStructure().getMinPos();
         BlockPos max = be.getStructure().getMaxPos();
         double cx = (min.getX() + max.getX()) / 2.0 + 0.5;

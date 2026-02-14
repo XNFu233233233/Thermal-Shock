@@ -1,8 +1,0 @@
-{
-  "parent": "minecraft:block/orientable",
-  "textures": {
-    "front": "thermalshock:block/chamber_controller_front_on",
-    "side": "minecraft:block/bricks",
-    "top": "minecraft:block/bricks"
-  }
-}

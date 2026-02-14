@@ -71,8 +71,8 @@ public class SimulationChamberRenderer implements BlockEntityRenderer<BlockEntit
         }
 
         // 3. 渲染覆盖层 (Overlay)
-        if (currentState.is(ThermalShockBlocks.SIMULATION_CHAMBER_CONTROLLER.get())) {
-            renderControllerOverlay(be, currentState, poseStack, bufferSource, combinedLight);
+        if (be instanceof SimulationChamberBlockEntity controller) {
+            renderControllerOverlay(controller, currentState, poseStack, bufferSource, combinedLight);
         } else if (currentState.is(ThermalShockBlocks.SIMULATION_CHAMBER_PORT.get())) {
             renderPortOverlay(poseStack, bufferSource, combinedLight);
         }
@@ -145,11 +145,12 @@ public class SimulationChamberRenderer implements BlockEntityRenderer<BlockEntit
     }
 
     // --- 控制器覆盖层 ---
-    private void renderControllerOverlay(BlockEntity be, BlockState state, PoseStack poseStack, MultiBufferSource bufferSource, int packedLight) {
+    private void renderControllerOverlay(SimulationChamberBlockEntity controller, BlockState state, PoseStack poseStack, MultiBufferSource bufferSource, int packedLight) {
         Direction facing = state.getValue(SimulationChamberBlock.FACING);
-        boolean isLit = state.getValue(SimulationChamberBlock.LIT);
+        boolean isLit = controller.isLit(); // [修改] 使用 BE 字段
 
         ResourceLocation texture = isLit ? OVERLAY_FRONT_ON : OVERLAY_FRONT_OFF;
+        int overlayLight = isLit ? 0xF000F0 : packedLight; // [新增] 发光状态强制全亮 (15级)
 
         poseStack.pushPose();
         poseStack.translate(0.5, 0.5, 0.5);
@@ -168,7 +169,7 @@ public class SimulationChamberRenderer implements BlockEntityRenderer<BlockEntit
 
         // 渲染北面
         VertexConsumer builder = bufferSource.getBuffer(RenderType.entityCutout(texture));
-        renderQuad(poseStack, builder, packedLight,
+        renderQuad(poseStack, builder, overlayLight,
                 1, 1, 0, 0,
                 1f, 1f, -0.002f, // 右上
                 1f, 0f, -0.002f, // 右下

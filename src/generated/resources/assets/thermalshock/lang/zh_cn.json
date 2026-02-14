@@ -133,7 +133,7 @@
   "message.thermalshock.too_many_vents": "排气口过多 (最多 9 个)",
   "recipe.thermalshock.future_cost": "提取消耗: %d H",
   "recipe.thermalshock.future_req": "提取需求: >%d H/t",
-  "tooltip.thermalshock.catalyst_buffer": "补充点数: %s",
+  "tooltip.thermalshock.catalyst_buffer": "催化点数: %s",
   "tooltip.thermalshock.catalyst_yield": "产量加成: %s",
   "tooltip.thermalshock.clump_instruction": "放入热冲击模拟室进行加工",
   "tooltip.thermalshock.cold_source_rate": "低温热源: %s H (基础值)",

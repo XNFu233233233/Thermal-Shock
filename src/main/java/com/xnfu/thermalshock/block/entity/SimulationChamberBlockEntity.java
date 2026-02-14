@@ -2,6 +2,7 @@ package com.xnfu.thermalshock.block.entity;
 
 import com.xnfu.thermalshock.block.SimulationChamberBlock;
 import com.xnfu.thermalshock.client.gui.SimulationChamberMenu;
+import com.xnfu.thermalshock.data.CatalystData;
 import com.xnfu.thermalshock.recipe.AbstractSimulationRecipe;
 import com.xnfu.thermalshock.item.SimulationUpgradeItem;
 import com.xnfu.thermalshock.registries.*;
@@ -33,6 +34,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 public class SimulationChamberBlockEntity extends BlockEntity implements MenuProvider {
 
@@ -127,6 +129,7 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
     // === 数值累积 ===
     private float catalystBuffer = 0.0f;
     private float currentBonusYield = 0.0f;
+    private float lockedCatalystPoints = 0.0f; // [新增] 记录当前激活催化剂的总容量
     private float accumulatedYield = 0.0f;
 
     // === GUI 数据同步 ===
@@ -157,6 +160,7 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
                 case 14 -> thermo.getCurrentLowTemp();
                 case 15 -> (int) (performance.getEfficiency() * 100);
                 case 16 -> performance.isVirtual() ? performance.getBatchSize() : structure.getVolume();
+                case 17 -> (int) (lockedCatalystPoints * 10); // [新增] 总容量
 
                 default -> 0;
             };
@@ -170,7 +174,7 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
         }
 
         @Override
-        public int getCount() { return 17; }
+        public int getCount() { return 18; }
     };
 
     public SimulationChamberBlockEntity(BlockPos pos, BlockState blockState) {
@@ -284,13 +288,15 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
             int currentHeat = thermo.getCurrentHeat();
             int maxHeat = thermo.getMaxHeatCapacity();
 
-            // [核心优化] 严格限流：只有在热量确实会发生变化时（未满且输入>0，或未空且输入<0），才执行累积并维持高频更新
+            // [核心优化] 严格限流：只有在热量确实会发生变化时，才执行累积并维持高频更新
             if (netInput > 0 && currentHeat < maxHeat) {
                 thermo.addHeat(netInput);
                 shouldLoopFast = true;
+                requestStatusSync();
             } else if (netInput < 0 && currentHeat > 0) {
                 thermo.addHeat(netInput);
                 shouldLoopFast = true;
+                requestStatusSync();
             }
         }
 
@@ -306,6 +312,7 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
             boolean success = process.tick(level);
             if (success) {
                 shouldLoopFast = true; // 配方运行中，维持高频更新
+                requestStatusSync();
             }
         }
 
@@ -313,7 +320,7 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
         if (litTimer > 0) {
             litTimer--;
             if (litTimer == 0) {
-                updateLitBlockState(false);
+                requestStatusSync(); // [新增] 状态从亮变灭，同步之
             } else {
                 shouldLoopFast = true; // 视觉动画进行中，维持高频更新
             }
@@ -612,61 +619,67 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
     // =========================================================
 
     public void processCatalyst() {
-        if (!this.structure.isFormed()) return;
+        if (!this.structure.isFormed() || level == null) return;
 
-        // 只要 Buffer 没满且有脏标记，就尝试循环填充
-        double maxBuffer = com.xnfu.thermalshock.Config.catalystBufferCap;
-        if (catalystBuffer < maxBuffer && this.catalystDirty) {
+        // [核心逻辑] 效能锁：只要当前还有 Buffer，就锁定当前加成，不消耗任何新物品
+        if (this.catalystBuffer > 0) return;
 
-            // 1. 循环填充：从接口 (直到满或没东西)
-            boolean keepRefilling = true;
-            while (keepRefilling && catalystBuffer < maxBuffer) {
-                keepRefilling = refillBufferFromPorts();
+        // [核心逻辑] 消费优先级：1. Slot 0 -> 2. 接口直连
+        
+        // A. 尝试从内部 Slot 0 激活
+        ItemStack slotStack = itemHandler.getStackInSlot(0);
+        if (!slotStack.isEmpty()) {
+            var data = BuiltInRegistries.ITEM.wrapAsHolder(slotStack.getItem())
+                    .getData(ThermalShockDataMaps.CATALYST_PROPERTY);
+            if (data != null) {
+                activateCatalyst(data);
+                slotStack.shrink(1);
+                setChanged();
+                return;
             }
-
-            // 2. 循环填充：从内部 Slot
-            while (catalystBuffer <= maxBuffer - 10.0f) { // 留一点余量防止溢出浪费
-                ItemStack s = itemHandler.getStackInSlot(0);
-                if (s.isEmpty()) break;
-
-                var d = BuiltInRegistries.ITEM.wrapAsHolder(s.getItem())
-                        .getData(ThermalShockDataMaps.CATALYST_PROPERTY);
-                if (d != null) {
-                    currentBonusYield = d.bonusYield();
-                    catalystBuffer += d.bufferAmount();
-                    s.shrink(1);
-                    setChanged();
-                } else {
-                    break;
-                }
-            }
-
-            // 处理完毕，清除标记
-            this.catalystDirty = false;
         }
+
+        // B. 尝试从外部接口直接激活 (直连消费优化，节省 ItemStack 转移开销)
+        if (findAndActivateFromPorts()) {
+            return;
+        }
+
+        // 如果没有任何催化剂可消耗，清除脏标记
+        this.catalystDirty = false;
     }
 
-    private boolean refillBufferFromPorts() {
-        for (BlockPos pos : cachedCatalystPorts) {
+    private void activateCatalyst(CatalystData data) {
+        this.currentBonusYield = data.bonusYield();
+        this.catalystBuffer = data.catalystPoints();
+        this.lockedCatalystPoints = data.catalystPoints(); // 锁定总量
+        this.catalystDirty = true; 
+        setChanged();
+    }
+
+    private boolean findAndActivateFromPorts() {
+        // [修改] 仅允许从专门的催化剂端口 (Dedicated Catalyst Ports) 消费，不再支持通用输入端口
+        return checkPortsForCatalyst(cachedCatalystPorts);
+    }
+
+    private boolean checkPortsForCatalyst(List<BlockPos> ports) {
+        for (BlockPos pos : ports) {
             if (level.getBlockEntity(pos) instanceof SimulationPortBlockEntity port) {
                 IItemHandler handler = port.getItemHandler();
                 for (int i = 0; i < handler.getSlots(); i++) {
-                    ItemStack stack = handler.extractItem(i, 1, true); // Simulate
-                    if (!stack.isEmpty()) {
-                        var d = BuiltInRegistries.ITEM.wrapAsHolder(stack.getItem())
-                                .getData(ThermalShockDataMaps.CATALYST_PROPERTY);
-                        if (d != null) {
-                            handler.extractItem(i, 1, false); // Execute
-                            this.catalystBuffer += d.bufferAmount();
-                            this.currentBonusYield = d.bonusYield();
-                            setChanged();
-                            return true; // 吃到一个，返回 true
-                        }
+                    ItemStack stack = handler.getStackInSlot(i);
+                    if (stack.isEmpty()) continue;
+
+                    var data = BuiltInRegistries.ITEM.wrapAsHolder(stack.getItem())
+                            .getData(ThermalShockDataMaps.CATALYST_PROPERTY);
+                    if (data != null) {
+                        activateCatalyst(data);
+                        handler.extractItem(i, 1, false);
+                        return true;
                     }
                 }
             }
         }
-        return false; // 遍历所有接口都没吃到，返回 false
+        return false;
     }
 
     public float calculateCatalystBonus(float efficiency) {
@@ -679,6 +692,7 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
         float costPerItem = 1.0f / efficiency;
         float totalCost = costPerItem * batchSize;
         this.catalystBuffer = Math.max(0, this.catalystBuffer - totalCost);
+        this.catalystDirty = true; // [核心修复] 消耗后标记脏，以便下次 tick 自动补给
         setChanged();
     }
 
@@ -703,20 +717,12 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
         }
     }
 
-    public void setLitState(boolean lit) {
-        if (lit) {
+    public void triggerLit() {
+        if (this.litTimer <= 0) {
             this.litTimer = 20;
-            updateLitBlockState(true);
+            requestStatusSync();
         } else {
-            this.litTimer = 0;
-            updateLitBlockState(false);
-        }
-    }
-
-    private void updateLitBlockState(boolean isLit) {
-        BlockState s = getBlockState();
-        if (s.hasProperty(SimulationChamberBlock.LIT) && s.getValue(SimulationChamberBlock.LIT) != isLit) {
-            level.setBlock(worldPosition, s.setValue(SimulationChamberBlock.LIT, isLit), 3);
+            this.litTimer = 20; // 刷新时间
         }
     }
 
@@ -835,13 +841,13 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
         this.mode = this.mode.next();
         this.thermo.clearHeat(); // [修改] 使用 clearHeat()
         setChanged();
-        syncData();
+        requestStatusSync(); // [修改]
     }
 
     public void toggleLock() {
         recipeLocked = !recipeLocked;
         setChanged();
-        syncData();
+        requestStatusSync(); // [修改]
     }
 
     public void setSelectedRecipe(ResourceLocation id) {
@@ -853,7 +859,7 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
             markBlockCacheDirty();
         }
         setChanged();
-        syncData();
+        requestStatusSync(); // [修改]
     }
 
     private void syncData() {
@@ -873,6 +879,7 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
         tag.putString("Mode", mode.name());
         tag.putFloat("CatalystBuffer", catalystBuffer);
         tag.putFloat("CurrentBonusYield", currentBonusYield);
+        tag.putFloat("LockedCatalystPoints", lockedCatalystPoints); // [新增]
         tag.putFloat("AccumulatedYield", accumulatedYield);
         if (selectedRecipeId != null) tag.putString("SelectedRecipe", selectedRecipeId.toString());
         tag.putBoolean("RecipeLocked", recipeLocked);
@@ -888,6 +895,7 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
         if (tag.contains("Mode")) mode = MachineMode.valueOf(tag.getString("Mode"));
         catalystBuffer = tag.getFloat("CatalystBuffer");
         if (tag.contains("CurrentBonusYield")) currentBonusYield = tag.getFloat("CurrentBonusYield");
+        if (tag.contains("LockedCatalystPoints")) lockedCatalystPoints = tag.getFloat("LockedCatalystPoints"); // [加载]
         accumulatedYield = tag.getFloat("AccumulatedYield");
         selectedRecipeId = tag.contains("SelectedRecipe") ?
                 ResourceLocation.tryParse(tag.getString("SelectedRecipe")) : null;
@@ -988,6 +996,48 @@ public class SimulationChamberBlockEntity extends BlockEntity implements MenuPro
         if (heat != null) {
             this.thermo.clearHeat();
             this.thermo.addHeat(heat);
+        }
+    }
+
+    private boolean clientIsWorking = false; // [客户端专用]
+
+    public boolean isLit() {
+        return level.isClientSide ? clientIsWorking : litTimer > 0;
+    }
+
+    // =========================================================
+    // 9. 自定义轻量同步逻辑 (优化全量 NBT)
+    // =========================================================
+
+    public void syncFromPacket(com.xnfu.thermalshock.network.PacketSyncMachineStatus pkt) {
+        // [客户端逻辑] 仅更新动态数值
+        this.thermo.clearHeat();
+        this.thermo.addHeat(pkt.thermal().currentHeat());
+        this.clientIsWorking = pkt.thermal().isWorking(); // [更新视觉状态]
+        this.catalystBuffer = pkt.catalyst().buffer();
+        this.lockedCatalystPoints = pkt.catalyst().lockedPoints();
+        this.currentBonusYield = pkt.catalyst().bonus();
+        this.mode = MachineMode.values()[pkt.modeOrdinal() % MachineMode.values().length];
+        this.matchedRecipeId = pkt.matchedRecipeId().orElse(null);
+        
+        this.thermo.setClientTemps(pkt.thermal().highTemp(), pkt.thermal().lowTemp());
+    }
+
+    public void requestStatusSync() {
+        if (level != null && !level.isClientSide) {
+            var thermal = new com.xnfu.thermalshock.network.PacketSyncMachineStatus.ThermalData(
+                    thermo.getCurrentHeat(), thermo.getCurrentHighTemp(), thermo.getCurrentLowTemp(), litTimer > 0);
+            var catalyst = new com.xnfu.thermalshock.network.PacketSyncMachineStatus.CatalystData(
+                    catalystBuffer, lockedCatalystPoints, currentBonusYield);
+
+            var pkt = new com.xnfu.thermalshock.network.PacketSyncMachineStatus(
+                    worldPosition,
+                    thermal,
+                    catalyst,
+                    mode.ordinal(),
+                    Optional.ofNullable(matchedRecipeId)
+            );
+            net.neoforged.neoforge.network.PacketDistributor.sendToPlayersTrackingChunk((net.minecraft.server.level.ServerLevel) level, new net.minecraft.world.level.ChunkPos(worldPosition), pkt);
         }
     }
 }

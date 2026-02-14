@@ -31,13 +31,11 @@ public class SimulationChamberBlock extends BaseEntityBlock {
     public static final MapCodec<SimulationChamberBlock> CODEC = simpleCodec(SimulationChamberBlock::new);
 
     public static final DirectionProperty FACING = BlockStateProperties.HORIZONTAL_FACING;
-    public static final BooleanProperty LIT = BlockStateProperties.LIT;
 
     public SimulationChamberBlock(Properties properties) {
         super(properties);
         this.registerDefaultState(this.stateDefinition.any()
-                .setValue(FACING, net.minecraft.core.Direction.NORTH)
-                .setValue(LIT, false));
+                .setValue(FACING, net.minecraft.core.Direction.NORTH));
     }
 
     @Override
@@ -52,7 +50,7 @@ public class SimulationChamberBlock extends BaseEntityBlock {
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
-        builder.add(FACING, LIT);
+        builder.add(FACING);
     }
 
     @Override

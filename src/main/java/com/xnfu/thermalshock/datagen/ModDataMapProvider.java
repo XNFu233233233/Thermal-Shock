@@ -33,6 +33,7 @@ public class ModDataMapProvider extends DataMapProvider {
 
         // 2. 催化剂 (Catalyst)
         var catalyst = this.builder(ThermalShockDataMaps.CATALYST_PROPERTY);
+        // 参数: bonusYield, catalystPoints
         catalyst.add(key(Items.IRON_INGOT), new CatalystData(0.10f, 10.0f), false);
         catalyst.add(key(Items.DIAMOND), new CatalystData(0.50f, 20.0f), false);
 

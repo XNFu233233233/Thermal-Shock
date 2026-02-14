@@ -25,10 +25,10 @@ public class CatalystBarWidget extends AbstractWidget {
 
         // 2. 数据
         float current = menu.getCatalystAmount();
-        float max = 100.0f;
+        float max = menu.getCatalystMax(); // [修改] 使用从服务端同步的实时最大值
 
-        // 3. 计算高度
-        int h = (int)(current / max * height);
+        // 3. 计算高度 (如果 max 为 0，说明没催化剂，高度为 0)
+        int h = (max > 0) ? (int)(current / max * height) : 0;
         if (h > height) h = height;
 
         // 4. 绘制填充 (粉紫色渐变)
@@ -46,7 +46,7 @@ public class CatalystBarWidget extends AbstractWidget {
         tooltip.add(Component.translatable("gui.thermalshock.tooltip.catalyst_bar").withStyle(ChatFormatting.LIGHT_PURPLE));
         if (isShiftDown) {
             tooltip.add(Component.translatable("gui.thermalshock.tooltip.catalyst_bar.desc").withStyle(ChatFormatting.GRAY));
-            tooltip.add(Component.literal(String.format("%.1f / 100.0 Pts", menu.getCatalystAmount())).withStyle(ChatFormatting.DARK_GRAY));
+            tooltip.add(Component.literal(String.format("%.1f / %.1f Pts", menu.getCatalystAmount(), menu.getCatalystMax())).withStyle(ChatFormatting.DARK_GRAY));
         } else {
             tooltip.add(Component.literal(String.format("%.1f Pts", menu.getCatalystAmount())));
         }

@@ -35,15 +35,10 @@ public class ModBlockStateProvider extends BlockStateProvider {
 
         ResourceLocation sideTexture = mcLoc("block/bricks");
         ResourceLocation frontOff = modLoc("block/chamber_controller_front_off");
-        ResourceLocation frontOn = modLoc("block/chamber_controller_front_on");
 
         ModelFile modelOff = models().orientable(block.getId().getPath() + "_off", sideTexture, frontOff, sideTexture);
-        ModelFile modelOn = models().orientable(block.getId().getPath() + "_on", sideTexture, frontOn, sideTexture);
 
-        horizontalBlock(block.get(), state -> {
-            boolean lit = state.getValue(BlockStateProperties.LIT);
-            return lit ? modelOn : modelOff;
-        });
+        horizontalBlock(block.get(), modelOff);
 
         simpleBlockItem(block.get(), modelOff);
     }
