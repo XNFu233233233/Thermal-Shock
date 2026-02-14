@@ -1,0 +1,9 @@
+{
+  "values": [
+    "thermalshock:simulation_chamber_controller",
+    "thermalshock:simulation_chamber_port",
+    "thermalshock:thermal_heater",
+    "thermalshock:thermal_freezer",
+    "thermalshock:thermal_converter"
+  ]
+}
