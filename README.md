@@ -33,7 +33,7 @@ As the human orchestrator, I rely entirely on AI for technical iterations. I do 
     *   **Thermal Shock:** Focuses on the differential (ΔT) between high and low temperatures to shatter and refine materials.
 *   **Material Clump:** A unique data-driven item that acts as a carrier for output results and processing requirements.
 *   **Thermal Converter:** A compact machine for straightforward item and fluid conversions based on temperature thresholds.
-*   **Native KubeJS Support:** Fully integrated with KubeJS, enabling pack creators to define recipes, fuels, and data maps via JavaScript.
+*   **Native KubeJS Support:** Fully integrated with KubeJS. See the [KubeJS Integration Guide](./wiki/KubeJS-Integration.md) for details.
 
 ## 🛠️ Requirements
 *   **Minecraft:** 1.21.1

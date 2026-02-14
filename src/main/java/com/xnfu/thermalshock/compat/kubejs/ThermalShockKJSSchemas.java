@@ -36,6 +36,7 @@ public class ThermalShockKJSSchemas {
     
     public static final RecipeKey<Integer> MIN_HOT = INT.otherKey("min_hot").optional(Integer.MIN_VALUE).alwaysWrite().exclude();
     public static final RecipeKey<Integer> MAX_COLD = INT.otherKey("max_cold").optional(Integer.MAX_VALUE).alwaysWrite().exclude();
+    public static final RecipeKey<Integer> MAX_HEAT = INT.otherKey("max_heat").optional(Integer.MAX_VALUE).alwaysWrite().exclude();
     public static final RecipeKey<Integer> DELTA = INT.otherKey("delta").alwaysWrite();
 
     // === 3. RAW Converter Components (Pass-through) ===
@@ -65,5 +66,5 @@ public class ThermalShockKJSSchemas {
     public static final RecipeSchema SHOCK_FILLING = new RecipeSchema(TARGET_ITEM, ITEM_INPUTS, BLOCK_INPUTS, DELTA, TARGET_COUNT, MIN_HOT, MAX_COLD).factory(FACTORY);
     public static final RecipeSchema EXTRACTION = new RecipeSchema(RESULT, TARGET_ITEM, ITEM_INPUTS, BLOCK_INPUTS, MIN_HEAT, HEAT_COST).factory(FACTORY);
     public static final RecipeSchema FUEL = new RecipeSchema(INGREDIENT.inputKey("ingredient"), INT.otherKey("burn_time").optional(0).alwaysWrite(), INT.otherKey("heat_rate").optional(0).alwaysWrite());
-    public static final RecipeSchema CONVERTER = new RecipeSchema(CON_OUT_I, CON_IN_I, INT.otherKey("process_time").optional(20).alwaysWrite(), CON_OUT_F, CON_IN_F, MIN_HEAT, MAX_COLD).factory(FACTORY);
+    public static final RecipeSchema CONVERTER = new RecipeSchema(CON_OUT_I, CON_IN_I, INT.otherKey("process_time").optional(20).alwaysWrite(), CON_OUT_F, CON_IN_F, MIN_HEAT, MAX_HEAT).factory(FACTORY);
 }

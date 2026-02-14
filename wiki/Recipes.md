@@ -1,87 +1,242 @@
-# Recipes Reference
+# Custom Recipe Reference
 
-This guide provides a detailed breakdown of all custom recipe types in Thermal Shock. Each section includes a full attribute reference and a JSON example.
+This guide details all custom recipe types and their complete JSON structures for the Thermal Shock mod. All examples follow the NeoForge 1.21.1 serialization standards.
 
 ---
 
-## 1. Basic Processing (Standard Mode)
+## 1. Overheating (`thermalshock:overheating`)
+Uses sustained high temperature to melt or transform items/blocks.
 
-### A. Overheating (`thermalshock:overheating`)
-Used for smelting or converting items using high heat.
-*   **Input Limit**: Maximum **3** items.
-*   **Attributes**:
-    *   `ingredients`: (Array) List of input items. Use `{"type": "item", "value": {"item": "id"}}`.
-    *   `result`: (Object) The resulting item. `{"id": "id", "count": n}`.
-    *   `min_heat`: (Integer) The minimum heat rate (H/t) required from the environment to start.
-    *   `heat_cost`: (Integer) Total accumulated heat (H) required to complete the recipe.
+### Properties
+| Property | Type | Required | Default | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `ingredients` | Array | Yes | - | Input list. Supports `item` or `block` types. |
+| `result` | Object | Yes | - | Output item. Standard ItemStack format. |
+| `min_heat` | Integer | No | `0` | Minimum heat rate (H/t) required to start. |
+| `heat_cost` | Integer | No | `100` | Total heat (H) required to complete the recipe. |
 
-**Example**:
+### Example
 ```json
 {
   "type": "thermalshock:overheating",
-  "ingredients": [{ "type": "item", "value": { "item": "minecraft:sand" } }],
-  "result": { "id": "minecraft:glass", "count": 1 },
-  "min_heat": 50,
-  "heat_cost": 200
+  "ingredients": [
+    {
+      "type": "item",
+      "value": {
+        "item": "minecraft:iron_ingot"
+      }
+    }
+  ],
+  "result": {
+    "id": "minecraft:iron_nugget",
+    "count": 9
+  },
+  "min_heat": 200,
+  "heat_cost": 1000
 }
 ```
 
-### B. Thermal Shock (`thermalshock:thermal_shock`)
-Shatters items using rapid temperature changes (ΔT).
-*   **Input Limit**: Maximum **3** items.
-*   **Attributes**:
-    *   `ingredients`: (Array) Input items.
-    *   `result`: (Object) Resulting item.
-    *   `min_hot`: (Integer) Minimum high temperature (H) required in the chamber.
-    *   `max_cold`: (Integer) Maximum cold temperature (H) allowed (usually negative).
-    *   `delta`: (Integer) The required difference between high and low sources (|Hot - Cold|).
+---
 
-**Example**:
+## 2. Thermal Shock (`thermalshock:thermal_shock`)
+Uses the temperature difference (ΔT) between extreme hot and cold sources to shatter materials.
+
+### Properties
+| Property | Type | Required | Default | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `ingredients` | Array | Yes | - | Input list. Supports `item` or `block` types. |
+| `result` | Object | Yes | - | Output item. Standard ItemStack format. |
+| `delta` | Integer | **Yes** | - | Minimum absolute temperature difference (|Hot - Cold|). |
+| `min_hot` | Integer | No | `-2147483648` | Minimum hot temperature value required. |
+| `max_cold` | Integer | No | `2147483647` | Maximum cold temperature value allowed. |
+
+### Example
 ```json
 {
   "type": "thermalshock:thermal_shock",
-  "ingredients": [{ "type": "item", "value": { "item": "minecraft:cobblestone" } }],
-  "result": { "id": "minecraft:gravel", "count": 1 },
-  "min_hot": 100,
-  "max_cold": -50,
+  "ingredients": [
+    {
+      "type": "item",
+      "value": {
+        "item": "minecraft:cobblestone"
+      }
+    }
+  ],
+  "result": {
+    "id": "minecraft:gravel",
+    "count": 1
+  },
   "delta": 150
 }
 ```
 
 ---
 
-## 2. Advanced Processing (Data-Driven Clumps)
+## 3. Clump Filling (Thermal Shock) (`thermalshock:thermal_shock_filling`)
+Encodes product data into a Material Clump via thermal shock. **Input must include a clump item.**
 
-### A. Clump Filling Machine (`thermalshock:thermal_shock_filling`)
-Injects data into a Material Clump using Thermal Shock.
-*   **Input Limit**: Maximum **4** items (including the clump).
-*   **Attributes**:
-    *   `ingredients`: (Array) Inputs. Usually includes an empty clump.
-    *   `target_result`: (Object) The item data to be encoded into the clump.
-    *   `min_hot`/`max_cold`/`delta`: Standard thermal shock requirements.
-    *   `clump_min_heat`: The `min_heat` value written into the new clump.
-    *   `clump_heat_cost`: The `heat_cost` value written into the new clump.
+### Properties
+| Property | Type | Required | Default | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `ingredients` | Array | Yes | - | Input list. Must contain `thermalshock:material_clump`. |
+| `target_item` | String | Yes | - | The product ID encoded into the clump. |
+| `count` | Integer | No | `1` | The quantity of the product encoded. |
+| `delta` | Integer | **Yes** | - | Minimum ΔT required for filling. |
 
-### B. Clump Extraction (`thermalshock:clump_processing`)
-Restores items from a filled Clump.
-*   **Input Limit**: Maximum **4** items.
-*   **Attributes**:
-    *   `ingredients`: (Array) Inputs. Must include the filled clump.
-    *   `target_content`: (Object) The specific item data the clump must contain to match this recipe.
-    *   `min_heat`: (Integer) Minimum heat rate for extraction.
-    *   `heat_cost`: (Integer) Heat required to finish extraction.
+### Example
+```json
+{
+  "type": "thermalshock:thermal_shock_filling",
+  "ingredients": [
+    {
+      "type": "item",
+      "value": {
+        "item": "thermalshock:material_clump"
+      }
+    },
+    {
+      "type": "item",
+      "value": {
+        "item": "minecraft:gold_ore"
+      }
+    }
+  ],
+  "target_item": "minecraft:gold_ingot",
+  "count": 1,
+  "delta": 700
+}
+```
 
 ---
 
-## 3. Support Types
+## 4. Clump Processing (`thermalshock:clump_processing`)
+Extracts items from a filled Material Clump.
 
-### Thermal Fuel (`thermalshock:thermal_fuel`)
-*   `ingredient`: The fuel item.
-*   `burn_time`: Duration in ticks.
-*   `heat_rate`: Output rate (Positive = Heater, Negative = Freezer).
+### Properties
+| Property | Type | Required | Default | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `ingredients` | Array | Yes | - | Input list. Must contain a filled clump. |
+| `target_item` | String | Yes | - | Product ID inside the clump to match this recipe. |
+| `min_heat` | Integer | No | `0` | Minimum heat rate required for extraction. |
+| `heat_cost` | Integer | No | `100` | Total heat cost for extraction. |
 
-### Thermal Converter (`thermalshock:thermal_converter`)
-Complex multi-tank processing.
-*   `item_inputs` / `fluid_inputs`: Arrays of input objects.
-*   `item_outputs` / `fluid_outputs`: Arrays of output objects with `chance`.
-*   `process_time`: Duration in ticks.
+### Example
+```json
+{
+  "type": "thermalshock:clump_processing",
+  "ingredients": [
+    {
+      "type": "item",
+      "value": {
+        "item": "thermalshock:material_clump"
+      }
+    }
+  ],
+  "target_item": "minecraft:gold_ingot",
+  "min_heat": 300,
+  "heat_cost": 2000
+}
+```
+
+---
+
+## 5. Thermal Fuel (`thermalshock:thermal_fuel`)
+Defines fuel properties for heat or cold sources.
+
+### Example
+```json
+{
+  "type": "thermalshock:thermal_fuel",
+  "ingredient": {
+    "item": "minecraft:blaze_rod"
+  },
+  "burn_time": 2400,
+  "heat_rate": 500
+}
+```
+
+---
+
+## 6. Thermal Converter (`thermalshock:thermal_converter`)
+A precision machine supporting multiple item/fluid inputs and probabilistic outputs.
+
+### Internal Object Structures
+
+#### Item Input (`item_inputs`)
+```json
+{
+  "ingredient": { "item": "..." },
+  "count": 1,
+  "consume_chance": 1.0
+}
+```
+
+#### Item Output (`item_outputs`)
+```json
+{
+  "item": { "id": "...", "count": 1 },
+  "chance": 1.0
+}
+```
+
+#### Fluid Entry (`fluid_inputs` / `fluid_outputs`)
+```json
+{
+  "fluid": { "id": "...", "amount": 1000 },
+  "consume_chance": 1.0,
+  "chance": 1.0
+}
+```
+
+### Complex Example
+```json
+{
+  "type": "thermalshock:thermal_converter",
+  "item_inputs": [
+    {
+      "ingredient": { "item": "minecraft:raw_iron" },
+      "count": 1,
+      "consume_chance": 1.0
+    }
+  ],
+  "item_outputs": [
+    {
+      "item": { "id": "minecraft:iron_ingot", "count": 1 },
+      "chance": 1.0
+    },
+    {
+      "item": { "id": "minecraft:iron_nugget", "count": 3 },
+      "chance": 0.5
+    }
+  ],
+  "fluid_inputs": [
+    {
+      "fluid": { "id": "minecraft:water", "amount": 1000 },
+      "consume_chance": 0.8
+    }
+  ],
+  "min_heat": 500,
+  "process_time": 100
+}
+```
+
+---
+
+## 7. Clump Filling (Crafting) (`thermalshock:clump_filling`)
+Shaped crafting recipe to manually fill a clump at a crafting table.
+
+### Example
+```json
+{
+  "type": "thermalshock:clump_filling",
+  "pattern": [
+    "I",
+    "C"
+  ],
+  "key": {
+    "I": { "item": "minecraft:iron_ore" },
+    "C": { "item": "thermalshock:material_clump" }
+  },
+  "target_item": "minecraft:iron_ingot"
+}
+```

@@ -130,6 +130,12 @@ public class ThermalShockRecipeJS extends KubeRecipe {
         return this;
     }
 
+    @RemapForJS("maxHeat")
+    public ThermalShockRecipeJS maxHeat(int value) {
+        setValue(ThermalShockKJSSchemas.MAX_HEAT, value);
+        return this;
+    }
+
     @RemapForJS("targetCount")
     public ThermalShockRecipeJS targetCount(int value) {
         setValue(ThermalShockKJSSchemas.TARGET_COUNT, value);

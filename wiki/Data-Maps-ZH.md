@@ -12,7 +12,7 @@
 | :--- | :--- | :--- | :--- |
 | `max_heat_rate` | 整数 | 是 | 该外壳能从正热源传导的最大 H/t。 |
 | `max_cold_rate` | 整数 | 是 | 该外壳能从冷源传导的最大 H/t (绝对值)。 |
-| `efficiency` | 浮点数 | 否 | 催化剂消耗效率倍率 (默认: 1.0)。值越小消耗越慢。 |
+| `efficiency` | 浮点数 | 否 | 结构效率系数 (默认: 1.0)。值越大消耗越慢 (例如 2.0 代表消耗减半)。 |
 
 ### 完整示例
 **路径**: `data/thermalshock/data_maps/block/chamber_casing.json`
