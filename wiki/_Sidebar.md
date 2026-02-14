@@ -1,24 +1,15 @@
 ### 🌐 English
-*   [Home](./Home)
-*   **Recipes**
-    *   [`overheating`](./Recipes#overheating)
-    *   [`thermal_shock`](./Recipes#thermal_shock)
-    *   [`clump_filling`](./Recipes#clump_filling)
-*   **KubeJS**
-    *   [`overheating`](./KubeJS-Integration#overheating)
-    *   [`clump_filling`](./KubeJS-Integration#clump_filling)
-*   [Data Maps](./Data-Maps)
+* [HOME](./Home)
+* [DATAPACKS](./Data-Packs)
+    * [recipes](./Recipes)
+    * [data maps](./Data-Maps)
+* [KUBEJS](./KubeJS-Integration)
 
 ---
 
 ### 🏮 中文
-*   [首页](./Home-ZH)
-*   **JSON Recipes**
-    *   [`overheating`](./Recipes-ZH#overheating)
-    *   [`thermal_shock`](./Recipes-ZH#thermal_shock)
-    *   [`clump_filling`](./Recipes-ZH#clump_filling)
-*   **KubeJS 集成**
-    *   [`overheating`](./KubeJS-Integration-ZH#overheating)
-    *   [`thermal_shock`](./KubeJS-Integration-ZH#thermal_shock)
-    *   [`clump_filling`](./KubeJS-Integration-ZH#clump_filling)
-*   **数据映射](./Data-Maps-ZH)
+* [HOME](./Home-ZH)
+* [DATAPACKS](./Data-Packs-ZH)
+    * [recipes](./Recipes-ZH)
+    * [data maps](./Data-Maps-ZH)
+* [KUBEJS](./KubeJS-Integration-ZH)
