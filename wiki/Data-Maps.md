@@ -4,7 +4,15 @@ Thermal Shock utilizes NeoForge Data Maps to allow modpack authors to flexibly c
 
 ---
 
-## 1. Structural Casing (`thermalshock:chamber_casing`)
+### 📖 Quick Navigation
+*   [`chamber_casing`](#chamber_casing)
+*   [`chamber_catalyst`](#chamber_catalyst)
+*   [`heat_source`](#heat_source)
+*   [`cold_source`](#cold_source)
+
+---
+
+## chamber_casing
 Defines which blocks can be used as the outer shell of a Simulation Chamber.
 
 ### Property List
@@ -30,7 +38,7 @@ Defines which blocks can be used as the outer shell of a Simulation Chamber.
 
 ---
 
-## 2. Catalyst (`thermalshock:chamber_catalyst`)
+## chamber_catalyst
 Defines catalyst items that can be placed in the Simulation Chamber's dedicated slot.
 
 ### Property List
@@ -54,7 +62,7 @@ Defines catalyst items that can be placed in the Simulation Chamber's dedicated 
 
 ---
 
-## 3. Environmental Heat Source (`thermalshock:heat_source`)
+## heat_source
 Defines custom blocks as environmental heat sources.
 
 ### Property List
@@ -76,7 +84,7 @@ Defines custom blocks as environmental heat sources.
 
 ---
 
-## 4. Environmental Cold Source (`thermalshock:cold_source`)
+## cold_source
 Defines custom blocks as environmental cold sources.
 
 ### Property List

@@ -4,7 +4,20 @@
 
 ---
 
-## 1. 核心参数规则
+### 📖 快速导航
+*   [`rules`](#rules)
+*   [`overheating`](#overheating)
+*   [`thermal_shock`](#thermal_shock)
+*   [`thermal_shock_filling`](#thermal_shock_filling)
+*   [`clump_filling`](#clump_filling)
+*   [`clump_processing`](#clump_processing)
+*   [`thermal_converter`](#thermal_converter)
+*   [`thermal_fuel`](#thermal_fuel)
+*   [`data_maps`](#data_maps)
+
+---
+
+## rules
 为了保持脚本简洁，我们采用了 **“精简构造函数 + 链式调用”** 的设计模式：
 *   **必填项**：放在括号 `()` 中。如果不需要某项参数（如方块输入），必须传入空数组 `[]` 作为占位符。
 *   **选填项**：使用 `.方法名()` 追加。如果不调用，则使用模组默认值。
@@ -12,7 +25,7 @@
 
 ---
 
-## 2. 核心物理量定义
+## physics
 在配置涉及温度的配方时，需理解以下数值及其判定的物理意义：
 
 ### A. 对于模拟室 (Chamber)
@@ -25,7 +38,7 @@
 
 ---
 
-## 3. 过热加工 (`overheating`)
+## overheating
 利用持续的高温熔融或转化物品。
 
 ### 位置参数 (构造函数)
@@ -59,7 +72,7 @@ event.recipes.thermalshock.overheating('sponge', [], ['minecraft:water'])
 
 ---
 
-## 4. 热冲击 (`thermal_shock`)
+## thermal_shock
 利用极高与极低热源产生的热应力破碎物质。
 
 ### 位置参数 (构造函数)
@@ -89,7 +102,7 @@ event.recipes.thermalshock.thermal_shock('obsidian', [], ['minecraft:lava'], 800
 
 ---
 
-## 5. 团块填充 (热冲击) (`thermal_shock_filling`)
+## thermal_shock_filling
 通过热冲击将产物数据编码进物质团块。
  - 注: 必须输入一个 `thermalshock:material_clump`
 
@@ -122,7 +135,7 @@ event.recipes.thermalshock.thermal_shock_filling('gold_nugget', ['raw_gold'], []
 
 ---
 
-## 6. 团块填充 (工作台合成) (`clump_filling`)
+## clump_filling
 在工作台中手动填充团块。继承原版有序合成逻辑。
 - 注: 必须输入一个 `thermalshock:material_clump`
 
@@ -159,7 +172,7 @@ event.recipes.thermalshock.clump_filling('gold_ingot', [
 
 ---
 
-## 7. 团块提取 (`clump_processing`)
+## clump_processing
 从已填充的团块中还原物品。
 *注：系统会自动在输入中追加带数据的 `thermalshock:material_clump`。*
 
@@ -190,7 +203,7 @@ event.recipes.thermalshock.clump_processing('netherite_ingot', 'netherite_ingot'
 
 ---
 
-## 7. 热力转换器 (`thermal_converter`)
+## thermal_converter
 单方块精密转换，支持多物品/流体和概率。
 
 ### 位置参数 (构造函数)
@@ -227,7 +240,7 @@ event.recipes.thermalshock.thermal_converter("obsidian", "cobblestone", 100)
 
 ---
 
-## 8. 热力燃料 (`thermal_fuel`)
+## thermal_fuel
 定义发热/发冷源的燃料属性。
 
 ### 位置参数 (构造函数)
@@ -245,7 +258,7 @@ event.recipes.thermalshock.thermal_fuel('blue_ice', 4800, -100) // 产生冷量
 
 ---
 
-## 9. Data Maps 集成
+## data_maps
 用于动态定义方块和物品的核心热力属性。**必须在 `server_scripts` 中监听。**
 
 ### A. 结构外壳 (`registerCasing`)
@@ -290,7 +303,7 @@ ThermalShockEvents.registerColdSource(event => {
 
 ---
 
-## 11. 辅助功能总结
+## summary
 *   **占位符**：构造函数中不使用的参数位置必须填充 `[]`。
 *   **缩写支持**：字符串支持 `3x item` 和 `1000x fluid` 格式。
 *   **模拟升级特性**：在模拟室中，`block_inputs` 若为流体方块，在安装升级后将自动支持接口流体自动化。

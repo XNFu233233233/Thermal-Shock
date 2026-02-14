@@ -1,10 +1,21 @@
-# Custom Recipe Reference
+# Custom Recipe Reference (JSON)
 
-This guide details all custom recipe types and their complete JSON structures for the Thermal Shock mod. All examples follow the NeoForge 1.21.1 serialization standards.
+This guide details all custom recipe types and their complete JSON structures for the Thermal Shock mod.
 
 ---
 
-## 1. Overheating (`thermalshock:overheating`)
+### 📖 Quick Navigation
+*   [`overheating`](#overheating)
+*   [`thermal_shock`](#thermal_shock)
+*   [`thermal_shock_filling`](#thermal_shock_filling)
+*   [`clump_processing`](#clump_processing)
+*   [`thermal_fuel`](#thermal_fuel)
+*   [`thermal_converter`](#thermal_converter)
+*   [`clump_filling`](#clump_filling)
+
+---
+
+## overheating
 Uses sustained high temperature to melt or transform items/blocks.
 
 ### Properties
@@ -38,7 +49,7 @@ Uses sustained high temperature to melt or transform items/blocks.
 
 ---
 
-## 2. Thermal Shock (`thermalshock:thermal_shock`)
+## thermal_shock
 Uses the temperature difference (ΔT) between extreme hot and cold sources to shatter materials.
 
 ### Properties
@@ -72,7 +83,7 @@ Uses the temperature difference (ΔT) between extreme hot and cold sources to sh
 
 ---
 
-## 3. Clump Filling (Thermal Shock) (`thermalshock:thermal_shock_filling`)
+## thermal_shock_filling
 Encodes product data into a Material Clump via thermal shock. **Input must include a clump item.**
 
 ### Properties
@@ -109,7 +120,7 @@ Encodes product data into a Material Clump via thermal shock. **Input must inclu
 
 ---
 
-## 4. Clump Processing (`thermalshock:clump_processing`)
+## clump_processing
 Extracts items from a filled Material Clump.
 
 ### Properties
@@ -140,7 +151,7 @@ Extracts items from a filled Material Clump.
 
 ---
 
-## 5. Thermal Fuel (`thermalshock:thermal_fuel`)
+## thermal_fuel
 Defines fuel properties for heat or cold sources.
 
 ### Example
@@ -157,7 +168,7 @@ Defines fuel properties for heat or cold sources.
 
 ---
 
-## 6. Thermal Converter (`thermalshock:thermal_converter`)
+## thermal_converter
 A precision machine supporting multiple item/fluid inputs and probabilistic outputs.
 
 ### Internal Object Structures
@@ -222,7 +233,7 @@ A precision machine supporting multiple item/fluid inputs and probabilistic outp
 
 ---
 
-## 7. Clump Filling (Crafting) (`thermalshock:clump_filling`)
+## clump_filling
 Shaped crafting recipe to manually fill a clump at a crafting table.
 
 ### Example

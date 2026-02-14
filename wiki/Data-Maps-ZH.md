@@ -4,7 +4,15 @@
 
 ---
 
-## 1. 结构外壳 (`thermalshock:chamber_casing`)
+### 📖 快速导航
+*   [`chamber_casing`](#chamber_casing)
+*   [`chamber_catalyst`](#chamber_catalyst)
+*   [`heat_source`](#heat_source)
+*   [`cold_source`](#cold_source)
+
+---
+
+## chamber_casing
 定义哪些方块可以作为模拟室的外壳。
 
 ### 属性列表
@@ -30,7 +38,7 @@
 
 ---
 
-## 2. 催化剂 (`thermalshock:chamber_catalyst`)
+## chamber_catalyst
 定义可放入模拟室专用槽位的催化物品。
 
 ### 属性列表
@@ -54,7 +62,7 @@
 
 ---
 
-## 3. 环境热源 (`thermalshock:heat_source`)
+## heat_source
 定义自定义方块作为环境热量来源。
 
 ### 属性列表
@@ -76,7 +84,7 @@
 
 ---
 
-## 4. 环境冷源 (`thermalshock:cold_source`)
+## cold_source
 定义自定义方块作为环境冷量来源。
 
 ### 属性列表
