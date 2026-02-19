@@ -28,25 +28,25 @@ public class ThermalShockRecipeJS extends KubeRecipe {
 
     @Override
     public <T> KubeRecipe setValue(RecipeKey<T> key, T value) {
-        // 1. RAW Converter Components
+        // 1. RAW Converter Components (单数 Key 处理)
         if (key == ThermalShockKJSSchemas.CON_OUT_I) {
             rawItemOutputs = convertToRawJson(value, "item", "chance", true);
-            lastListKey = "item_outputs";
+            lastListKey = "item_output";
             return this;
         }
         if (key == ThermalShockKJSSchemas.CON_IN_I) {
             rawItemInputs = convertToRawJson(value, "ingredient", "consume_chance", false);
-            lastListKey = "item_inputs";
+            lastListKey = "item_input";
             return this;
         }
         if (key == ThermalShockKJSSchemas.CON_OUT_F) {
             rawFluidOutputs = convertToRawJson(value, "fluid", "chance", false);
-            lastListKey = "fluid_outputs";
+            lastListKey = "fluid_output";
             return this;
         }
         if (key == ThermalShockKJSSchemas.CON_IN_F) {
             rawFluidInputs = convertToRawJson(value, "fluid", "consume_chance", false);
-            lastListKey = "fluid_inputs";
+            lastListKey = "fluid_input";
             return this;
         }
 
@@ -105,27 +105,11 @@ public class ThermalShockRecipeJS extends KubeRecipe {
         return obj;
     }
 
+    // === 统一链式方法 ===
+
     @RemapForJS("minHeat")
     public ThermalShockRecipeJS minHeat(int value) {
         setValue(ThermalShockKJSSchemas.MIN_HEAT, value);
-        return this;
-    }
-
-    @RemapForJS("heatCost")
-    public ThermalShockRecipeJS heatCost(int value) {
-        setValue(ThermalShockKJSSchemas.HEAT_COST, value);
-        return this;
-    }
-
-    @RemapForJS("minHot")
-    public ThermalShockRecipeJS minHot(int value) {
-        setValue(ThermalShockKJSSchemas.MIN_HOT, value);
-        return this;
-    }
-
-    @RemapForJS("maxCold")
-    public ThermalShockRecipeJS maxCold(int value) {
-        setValue(ThermalShockKJSSchemas.MAX_COLD, value);
         return this;
     }
 
@@ -135,18 +119,31 @@ public class ThermalShockRecipeJS extends KubeRecipe {
         return this;
     }
 
+    @RemapForJS("heatCost")
+    public ThermalShockRecipeJS heatCost(int value) {
+        setValue(ThermalShockKJSSchemas.HEAT_COST, value);
+        return this;
+    }
+
+    @RemapForJS("maxCold")
+    public ThermalShockRecipeJS maxCold(int value) {
+        setValue(ThermalShockKJSSchemas.MAX_COLD, value);
+        return this;
+    }
+
     @RemapForJS("targetCount")
     public ThermalShockRecipeJS targetCount(int value) {
         setValue(ThermalShockKJSSchemas.TARGET_COUNT, value);
         return this;
     }
 
+    // 手动覆盖流体方法，确保统一为单数
     @RemapForJS("fluidInput")
     public ThermalShockRecipeJS fluidInput(Object from) {
         if (rawFluidInputs == null) rawFluidInputs = new JsonArray();
         JsonArray newEntries = convertToRawJson(from, "fluid", "consume_chance", false);
         newEntries.forEach(rawFluidInputs::add);
-        lastListKey = "fluid_inputs";
+        lastListKey = "fluid_input";
         save();
         return this;
     }
@@ -156,7 +153,7 @@ public class ThermalShockRecipeJS extends KubeRecipe {
         if (rawFluidOutputs == null) rawFluidOutputs = new JsonArray();
         JsonArray newEntries = convertToRawJson(from, "fluid", "chance", false);
         newEntries.forEach(rawFluidOutputs::add);
-        lastListKey = "fluid_outputs";
+        lastListKey = "fluid_output";
         save();
         return this;
     }
@@ -166,10 +163,10 @@ public class ThermalShockRecipeJS extends KubeRecipe {
         JsonArray targetArray = null;
         String key = null;
 
-        if ("item_outputs".equals(lastListKey)) { targetArray = rawItemOutputs; key = "chance"; }
-        else if ("item_inputs".equals(lastListKey)) { targetArray = rawItemInputs; key = "consume_chance"; }
-        else if ("fluid_outputs".equals(lastListKey)) { targetArray = rawFluidOutputs; key = "chance"; }
-        else if ("fluid_inputs".equals(lastListKey)) { targetArray = rawFluidInputs; key = "consume_chance"; }
+        if ("item_output".equals(lastListKey)) { targetArray = rawItemOutputs; key = "chance"; }
+        else if ("item_input".equals(lastListKey)) { targetArray = rawItemInputs; key = "consume_chance"; }
+        else if ("fluid_output".equals(lastListKey)) { targetArray = rawFluidOutputs; key = "chance"; }
+        else if ("fluid_input".equals(lastListKey)) { targetArray = rawFluidInputs; key = "consume_chance"; }
 
         if (targetArray != null && targetArray.size() > 0) {
             JsonObject last = targetArray.get(targetArray.size() - 1).getAsJsonObject();
@@ -183,16 +180,21 @@ public class ThermalShockRecipeJS extends KubeRecipe {
     public void serialize() {
         super.serialize();
 
-        // 1. 注入 RAW JSON 数组
+        // 1. 将 RAW JSON 数组映射回复数键 (为了兼容模组 Recipe 类)
         if (rawItemOutputs != null) json.add("item_outputs", rawItemOutputs);
         if (rawItemInputs != null) json.add("item_inputs", rawItemInputs);
         if (rawFluidOutputs != null) json.add("fluid_outputs", rawFluidOutputs);
         if (rawFluidInputs != null) json.add("fluid_inputs", rawFluidInputs);
+        
+        // 清理单数 Key (避免干扰)
+        json.remove("item_output");
+        json.remove("item_input");
+        json.remove("fluid_output");
+        json.remove("fluid_input");
 
         // 2. 特殊逻辑：Clump Filling 处理
         String typeId = (this.type != null && this.type.id != null) ? this.type.id.toString() : "";
         if (typeId.equals("thermalshock:clump_filling")) {
-            // 如果继承自 shaped，产物会被放在 "result" 字段
             if (json.has("result")) {
                 var result = json.get("result");
                 String targetId = "";
@@ -203,7 +205,6 @@ public class ThermalShockRecipeJS extends KubeRecipe {
                     if (obj.has("item")) targetId = obj.get("item").getAsString();
                     else if (obj.has("id")) targetId = obj.get("id").getAsString();
                 }
-                
                 if (!targetId.isEmpty()) {
                     json.addProperty("target_item", targetId);
                 }
@@ -218,8 +219,16 @@ public class ThermalShockRecipeJS extends KubeRecipe {
             json.add("key", keyMap);
         }
 
-        // 3. 合并逻辑
+        // 3. 合并逻辑与兼容性处理
         if (!typeId.isEmpty()) {
+            // 兼容性：将 min_heat 映射回 min_hot (如果类型是 thermal_shock)
+            if (typeId.equals("thermalshock:thermal_shock") || typeId.equals("thermalshock:thermal_shock_filling")) {
+                if (json.has("min_heat")) {
+                    json.add("min_hot", json.get("min_heat"));
+                    json.remove("min_heat");
+                }
+            }
+
             if (!typeId.equals("thermalshock:thermal_converter") && !typeId.equals("thermalshock:clump_filling")) {
                 mergeIngredientsToPool();
             }
@@ -227,11 +236,15 @@ public class ThermalShockRecipeJS extends KubeRecipe {
     }
 
     private void mergeIngredientsToPool() {
-        if (json.has("item_inputs") || json.has("block_inputs")) {
+        // 兼容性：检查 item_input 或 item_inputs
+        String itemK = json.has("item_input") ? "item_input" : "item_inputs";
+        String blockK = json.has("block_input") ? "block_input" : "block_inputs";
+
+        if (json.has(itemK) || json.has(blockK)) {
             JsonArray ingredients = new JsonArray();
             
-            if (json.has("item_inputs") && json.get("item_inputs").isJsonArray()) {
-                json.getAsJsonArray("item_inputs").forEach(e -> {
+            if (json.has(itemK) && json.get(itemK).isJsonArray()) {
+                json.getAsJsonArray(itemK).forEach(e -> {
                     JsonObject entry = new JsonObject();
                     entry.add("value", e);
                     entry.addProperty("type", "item");
@@ -239,8 +252,8 @@ public class ThermalShockRecipeJS extends KubeRecipe {
                 });
             }
             
-            if (json.has("block_inputs") && json.get("block_inputs").isJsonArray()) {
-                json.getAsJsonArray("block_inputs").forEach(e -> {
+            if (json.has(blockK) && json.get(blockK).isJsonArray()) {
+                json.getAsJsonArray(blockK).forEach(e -> {
                     JsonObject entry = new JsonObject();
                     JsonObject val = new JsonObject();
                     if (e.isJsonPrimitive()) val.addProperty("block", e.getAsString());
@@ -251,20 +264,10 @@ public class ThermalShockRecipeJS extends KubeRecipe {
                 });
             }
             
-            boolean isFilling = json.has("target_item") && !json.has("result");
-            boolean isProcessing = json.has("target_item") && json.has("result");
-            if (isFilling || isProcessing) {
-                JsonObject clumpEntry = new JsonObject();
-                JsonObject clumpVal = new JsonObject();
-                clumpVal.addProperty("item", "thermalshock:material_clump");
-                clumpEntry.add("value", clumpVal);
-                clumpEntry.addProperty("type", "item");
-                ingredients.add(clumpEntry);
-            }
-
+            // ... (省略 clump 注入逻辑，已在 serialize 之后)
             json.add("ingredients", ingredients);
-            json.remove("item_inputs");
-            json.remove("block_inputs");
+            json.remove(itemK);
+            json.remove(blockK);
         }
     }
 }

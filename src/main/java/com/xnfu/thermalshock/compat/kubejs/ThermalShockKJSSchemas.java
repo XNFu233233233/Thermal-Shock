@@ -39,25 +39,23 @@ public class ThermalShockKJSSchemas {
     public static final RecipeKey<String> TARGET_ITEM = ID_STR.outputKey("target_item"); 
     public static final RecipeKey<Integer> TARGET_COUNT = INT.otherKey("target_count").optional(1).alwaysWrite().exclude();
 
-    public static final RecipeKey<List<Ingredient>> ITEM_INPUTS = INGREDIENT.asList().withBounds(IntBounds.of(0, 9)).inputKey("item_inputs");
-    public static final RecipeKey<List<String>> BLOCK_INPUTS = ID_STR.asList().withBounds(IntBounds.of(0, 9)).inputKey("block_inputs");
+    // 统一输入/输出 Key 为单数 (KubeJS 方法名会自动变为 itemInput 等)
+    public static final RecipeKey<List<Ingredient>> ITEM_INPUT = INGREDIENT.asList().withBounds(IntBounds.of(0, 9)).inputKey("item_input");
+    public static final RecipeKey<List<String>> BLOCK_INPUT = ID_STR.asList().withBounds(IntBounds.of(0, 9)).inputKey("block_input");
 
+    // 统一热量参数名
     public static final RecipeKey<Integer> MIN_HEAT = INT.otherKey("min_heat").optional(0).alwaysWrite().exclude();
+    public static final RecipeKey<Integer> MAX_HEAT = INT.otherKey("max_heat").optional(Integer.MAX_VALUE).alwaysWrite().exclude();
     public static final RecipeKey<Integer> HEAT_COST = INT.otherKey("heat_cost").optional(100).alwaysWrite().exclude();
     
-    public static final RecipeKey<Integer> MIN_HOT = INT.otherKey("min_hot").optional(Integer.MIN_VALUE).alwaysWrite().exclude();
     public static final RecipeKey<Integer> MAX_COLD = INT.otherKey("max_cold").optional(Integer.MAX_VALUE).alwaysWrite().exclude();
-    public static final RecipeKey<Integer> MAX_HEAT = INT.otherKey("max_heat").optional(Integer.MAX_VALUE).alwaysWrite().exclude();
     public static final RecipeKey<Integer> DELTA = INT.otherKey("delta").alwaysWrite();
 
-    public static final RecipeKey<Object> CON_OUT_I = RAW_COMPONENT.outputKey("item_outputs").optional(List.of());
-    public static final RecipeKey<Object> CON_OUT_F = RAW_COMPONENT.outputKey("fluid_outputs").optional(List.of()).exclude();
-    public static final RecipeKey<Object> CON_IN_I = RAW_COMPONENT.inputKey("item_inputs").optional(List.of());
-    public static final RecipeKey<Object> CON_IN_F = RAW_COMPONENT.inputKey("fluid_inputs").optional(List.of()).exclude();
-
-    // 有序配方专用键
-    public static final RecipeKey<Object> PATTERN = RAW_COMPONENT.inputKey("pattern");
-    public static final RecipeKey<Object> KEY = RAW_COMPONENT.inputKey("key");
+    // Converter 专用 (使用单数 Key)
+    public static final RecipeKey<Object> CON_OUT_I = RAW_COMPONENT.outputKey("item_output").optional(List.of());
+    public static final RecipeKey<Object> CON_OUT_F = RAW_COMPONENT.outputKey("fluid_output").optional(List.of()).exclude();
+    public static final RecipeKey<Object> CON_IN_I = RAW_COMPONENT.inputKey("item_input").optional(List.of());
+    public static final RecipeKey<Object> CON_IN_F = RAW_COMPONENT.inputKey("fluid_input").optional(List.of()).exclude();
 
     public static final KubeRecipeFactory FACTORY = new KubeRecipeFactory(
             ResourceLocation.fromNamespaceAndPath(ThermalShock.MODID, "recipe_js"),
@@ -65,10 +63,11 @@ public class ThermalShockKJSSchemas {
             ThermalShockRecipeJS::new
     );
 
-    public static final RecipeSchema OVERHEATING = new RecipeSchema(RESULT, ITEM_INPUTS, BLOCK_INPUTS, MIN_HEAT, HEAT_COST).factory(FACTORY);
-    public static final RecipeSchema SHOCK = new RecipeSchema(RESULT, ITEM_INPUTS, BLOCK_INPUTS, DELTA, MIN_HOT, MAX_COLD).factory(FACTORY);
-    public static final RecipeSchema SHOCK_FILLING = new RecipeSchema(TARGET_ITEM, ITEM_INPUTS, BLOCK_INPUTS, DELTA, TARGET_COUNT, MIN_HOT, MAX_COLD).factory(FACTORY);
-    public static final RecipeSchema EXTRACTION = new RecipeSchema(RESULT, TARGET_ITEM, ITEM_INPUTS, BLOCK_INPUTS, MIN_HEAT, HEAT_COST).factory(FACTORY);
+    // 更新 Schema 定义，统一使用 MIN_HEAT 代替 MIN_HOT
+    public static final RecipeSchema OVERHEATING = new RecipeSchema(RESULT, ITEM_INPUT, BLOCK_INPUT, MIN_HEAT, HEAT_COST).factory(FACTORY);
+    public static final RecipeSchema SHOCK = new RecipeSchema(RESULT, ITEM_INPUT, BLOCK_INPUT, DELTA, MIN_HEAT, MAX_COLD).factory(FACTORY);
+    public static final RecipeSchema SHOCK_FILLING = new RecipeSchema(TARGET_ITEM, ITEM_INPUT, BLOCK_INPUT, DELTA, TARGET_COUNT, MIN_HEAT, MAX_COLD).factory(FACTORY);
+    public static final RecipeSchema EXTRACTION = new RecipeSchema(RESULT, TARGET_ITEM, ITEM_INPUT, BLOCK_INPUT, MIN_HEAT, HEAT_COST).factory(FACTORY);
     public static final RecipeSchema FUEL = new RecipeSchema(INGREDIENT.inputKey("ingredient"), INT.otherKey("burn_time").optional(0).alwaysWrite(), INT.otherKey("heat_rate").optional(0).alwaysWrite());
     public static final RecipeSchema CONVERTER = new RecipeSchema(CON_OUT_I, CON_IN_I, INT.otherKey("process_time").optional(20).alwaysWrite(), CON_OUT_F, CON_IN_F, MIN_HEAT, MAX_HEAT).factory(FACTORY);
 }
